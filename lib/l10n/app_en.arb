@@ -1,0 +1,131 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Recover Deleted Messages",
+
+  "dateToday": "Today",
+  "dateYesterday": "Yesterday",
+
+  "onboardingIntroTitle": "Never miss a deleted message",
+  "onboardingIntroDescription": "This app quietly backs up your WhatsApp and WhatsApp Business notifications, so if someone deletes a message before you see it, you still can.",
+  "onboardingHowItWorksTitle": "How it works",
+  "onboardingHowItWorksDescription": "When a WhatsApp notification disappears before you open that chat here, it's flagged as deleted and you're alerted instantly.",
+  "onboardingPrivacyTitle": "100% on your device",
+  "onboardingPrivacyDescription": "Nothing is ever uploaded anywhere. Everything stays stored locally in this app, for your eyes only.",
+
+  "permissionRequiredTag": "Required",
+  "permissionRecommendedTag": "Recommended",
+
+  "notificationAccessTitle": "Notification access",
+  "notificationAccessDescription": "Without this the app cannot see incoming WhatsApp notifications at all. Tap below, find this app in the list, and turn the toggle on.",
+  "notificationAccessGrantedLabel": "Access granted",
+  "notificationAccessActionLabel": "Open notification access settings",
+
+  "batteryOptimizationTitle": "Battery optimization",
+  "batteryOptimizationDescription": "Excluding this app from battery optimization stops Android from killing the background listener, so no messages are missed while your phone is idle.",
+  "batteryOptimizationGrantedLabel": "Excluded from optimization",
+  "batteryOptimizationActionLabel": "Exclude from battery optimization",
+
+  "nextButton": "Next",
+  "getStartedButton": "Get started",
+
+  "navChats": "Chats",
+  "navDeleted": "Deleted",
+  "navStatuses": "Statuses",
+  "navSettings": "Settings",
+  "deletedMessagesTitle": "Deleted messages",
+
+  "chatsEmptyState": "No chats captured yet. Once a WhatsApp notification arrives, it will show up here.",
+
+  "statusAccessTitle": "Grant access to Statuses",
+  "statusAccessDescription": "WhatsApp keeps current statuses in their own folder on your device for about 24 hours. To save them here, pick that folder once in the next screen.",
+  "statusFolderPathLabel": "Navigate to:",
+  "statusAccessAction": "Choose folder",
+  "statusAccessDeniedMessage": "Access wasn't granted. Make sure to select the exact Statuses folder shown above and tap \"Use this folder\".",
+  "statusesEmptyState": "No statuses saved yet. Open WhatsApp Status once so it downloads, then pull to refresh here.",
+  "statusFilterAll": "All",
+  "statusFilterImages": "Images",
+  "statusFilterVideos": "Videos",
+  "statusDownloadTooltip": "Download",
+  "statusShareTooltip": "Share",
+  "statusDownloadSuccess": "Saved to gallery",
+  "statusDownloadFailed": "Couldn't save this file",
+
+  "appWhatsApp": "WhatsApp",
+  "appWhatsAppBusiness": "WhatsApp Business",
+
+  "deletedBadge": "{count, plural, one{1 deleted} other{{count} deleted}}",
+  "@deletedBadge": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "chatDetailEmpty": "No messages captured for this chat.",
+
+  "newMessagesBanner": "{count, plural, one{1 new message} other{{count} new messages}}",
+  "@newMessagesBanner": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "deletedFeedEmpty": "Nothing recovered yet. Deleted messages will show up here as soon as they are detected.",
+  "deletedFeedMediaWithSender": "{sender}: {label}",
+  "@deletedFeedMediaWithSender": {
+    "placeholders": {
+      "sender": { "type": "String" },
+      "label": { "type": "String" }
+    }
+  },
+  "deletedFeedNoText": "[no text captured]",
+
+  "mediaTypeImage": "Photo",
+  "mediaTypeVideo": "Video",
+  "mediaTypeAudio": "Voice message",
+  "mediaTypeDocument": "Document",
+  "mediaTypeSticker": "Sticker",
+  "mediaTypeGif": "GIF",
+  "openFileFailed": "Couldn't open this file",
+  "linkOpenFailed": "Couldn't open this link",
+  "copyAction": "Copy",
+  "shareAction": "Share",
+  "linkCopied": "Link copied",
+  "documentNotRecoverableTitle": "Not recoverable",
+  "documentNotRecoverableExplanation": "WhatsApp didn't attach this file to the notification, only its name, so it can't be recovered.",
+  "noReadReceiptsExplanation": "Viewing this chat here doesn't send a read receipt (blue tick) on WhatsApp.",
+  "editedBadge": "Edited",
+  "deletedMessageLabel": "This message was deleted",
+  "editedToExplanation": "This message was later edited to: \"{newText}\"",
+  "@editedToExplanation": {
+    "placeholders": {
+      "newText": { "type": "String" }
+    }
+  },
+
+  "settingsPermissionsHeader": "Permissions",
+  "settingsNotificationAccessDesc": "Needed to capture WhatsApp notifications.",
+  "settingsBatteryDesc": "Excluding this app keeps the listener alive in the background.",
+  "openSettingsAction": "Open settings",
+  "excludeAppAction": "Exclude app",
+  "settingsMonitoredAppsHeader": "Monitored apps",
+  "settingsDataHeader": "Data",
+  "clearAllDataTitle": "Clear all captured data",
+  "clearAllDataSubtitle": "Removes every stored chat and message from this device.",
+  "clearAllDialogTitle": "Clear all data?",
+  "clearAllDialogContent": "This cannot be undone.",
+  "cancelButton": "Cancel",
+  "clearButton": "Clear",
+  "settingsHowItWorksHeader": "How this works",
+  "settingsHowItWorksBody": "This app backs up incoming WhatsApp notifications locally. A message is marked \"deleted\" when its notification disappears before you opened that chat inside this app -- this is a best-effort signal, not a guarantee, since WhatsApp does not publish an official \"message deleted\" event. The same applies to edited messages: if WhatsApp updates a message's notification with new text before you've seen it, the original text is kept and marked \"Edited\" so you can still see what it said before. Media is only recovered if WhatsApp attached it to the notification itself. Nothing is ever sent off this device.",
+  "settingsLanguageHeader": "Language",
+  "languageEnglish": "English",
+  "languageHindi": "हिन्दी",
+
+  "settingsBackgroundHeader": "Background reliability",
+  "settingsBackgroundDesc": "Some phone brands (Xiaomi, Oppo, Vivo, OnePlus, Huawei, Samsung) kill background apps more aggressively than stock Android, even with battery optimization already excluded above. If messages stop being captured after the app hasn't been opened for a while, open your phone's autostart / protected apps / background activity settings for this app and allow it to run in the background.",
+  "settingsBackgroundAction": "Open background app settings",
+
+  "iosUnsupportedTitle": "Not available on iOS",
+  "iosUnsupportedBody": "This app recovers deleted WhatsApp messages by reading your device's notification history in the background. iOS does not allow any app to do that for other apps' notifications, so this feature cannot work here. It is only available on Android."
+}
