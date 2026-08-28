@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../core/app_state.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'chats/chats_list_screen.dart';
-import 'deleted/deleted_feed_screen.dart';
 import 'settings/settings_screen.dart';
 import 'statuses/statuses_screen.dart';
 
@@ -20,7 +19,6 @@ class _HomeShellState extends State<HomeShell> {
 
   static const _screens = [
     ChatsListScreen(),
-    // DeletedFeedScreen(),
     StatusesScreen(),
     SettingsScreen(),
   ];
@@ -38,7 +36,6 @@ class _HomeShellState extends State<HomeShell> {
     final l10n = AppLocalizations.of(context);
     final titles = [
       l10n.navChats,
-      // l10n.deletedMessagesTitle,
       l10n.navStatuses,
       l10n.navSettings,
     ];
@@ -61,10 +58,6 @@ class _HomeShellState extends State<HomeShell> {
             icon: const Icon(Icons.chat_bubble_outline),
             label: l10n.navChats,
           ),
-          // NavigationDestination(
-          //   icon: const Icon(Icons.delete_outline),
-          //   label: l10n.navDeleted,
-          // ),
           NavigationDestination(
             icon: const Icon(Icons.donut_large_outlined),
             label: l10n.navStatuses,

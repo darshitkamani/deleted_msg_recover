@@ -70,9 +70,9 @@ class MainActivity : FlutterActivity() {
                             requestIgnoreBatteryOptimizations()
                             result.success(null)
                         }
-                        // Chats/messages/deleted-feed queries run several correlated
-                        // subqueries per row -- fast normally, but slow enough to ANR
-                        // on the main thread once a backlog of messages piles up (e.g.
+                        // Chats/messages queries run several correlated subqueries
+                        // per row -- fast normally, but slow enough to ANR on the
+                        // main thread once a backlog of messages piles up (e.g.
                         // after being offline for a while), so these all run off-thread.
                         "getChats" -> runInBackground(result) { store.getChats() }
                         "getMessages" -> {
@@ -83,7 +83,6 @@ class MainActivity : FlutterActivity() {
                                 runInBackground(result) { store.getMessages(chatKey) }
                             }
                         }
-                        "getDeletedFeed" -> runInBackground(result) { store.getDeletedFeed() }
                         "markChatOpened" -> {
                             val chatKey = call.argument<String>("chatKey")
                             if (chatKey == null) {

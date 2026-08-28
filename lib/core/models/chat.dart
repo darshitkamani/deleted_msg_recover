@@ -5,7 +5,6 @@ class Chat {
   final bool isGroup;
   final String? lastText;
   final int lastTimestamp;
-  final int deletedCount;
   final int totalCount;
 
   const Chat({
@@ -15,7 +14,6 @@ class Chat {
     required this.isGroup,
     required this.lastText,
     required this.lastTimestamp,
-    required this.deletedCount,
     required this.totalCount,
   });
 
@@ -29,7 +27,6 @@ class Chat {
       isGroup: map['isGroup'] as bool? ?? false,
       lastText: map['lastText'] as String?,
       lastTimestamp: (map['lastTimestamp'] as num?)?.toInt() ?? 0,
-      deletedCount: (map['deletedCount'] as num?)?.toInt() ?? 0,
       totalCount: (map['totalCount'] as num?)?.toInt() ?? 0,
     );
   }

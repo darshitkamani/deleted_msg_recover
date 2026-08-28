@@ -1,9 +1,6 @@
 package com.recoverdeletedmessages.app
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -24,7 +21,6 @@ private data class ExtractedMedia(val path: String, val type: String, val mime: 
 
 private const val PKG_WHATSAPP = "com.whatsapp"
 private const val PKG_WHATSAPP_BUSINESS = "com.whatsapp.w4b"
-private const val EDIT_ALERT_CHANNEL_ID = "recover_edited_alerts"
 
 // Filter logcat with `adb logcat -s NotifCapture` (or `flutter logs`, which
 // shows every tag) to see exactly what happens to each WhatsApp notification
@@ -53,14 +49,6 @@ class NotificationListener : NotificationListenerService() {
     // of notifications in a row is exactly what freezes the UI (and can ANR)
     // right at launch. Everything that actually touches disk runs here instead.
     private val bgExecutor = Executors.newSingleThreadExecutor()
-
-    // Last seen ordered message window per chat, for WindowDiff to compare
-    // against on the next notification for that chat. Only ever read/written
-    // from bgExecutor (single-threaded), so no locking is needed. In-memory
-    // only and fine to lose on process death -- worst case, the next diff
-    // just has nothing to compare against and skips straight back to the
-    // plain timestamp-matching path below, same as before this existed.
-    private val lastWindowByChat = mutableMapOf<String, List<WindowItem>>()
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -182,37 +170,20 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "removed pkg=$pkg key=${sbn.key} reason=${describeReason(reason)}")
         val notifKey = sbn.key
         val removedAt = System.currentTimeMillis()
-        // REASON_CLICK/CANCEL/CANCEL_ALL all mean the *user* made this
-        // notification go away -- tapping it, swiping it, or hitting "clear
-        // all" -- which is an unambiguous "they saw it, never a deletion".
-        // Every other reason (REASON_APP_CANCEL and friends) is WhatsApp
-        // itself cancelling the notification, which happens on essentially
-        // every new message/media-download/re-rank as ordinary churn -- that
-        // still has to go through the grace-period/lastOpenedAt guessing
-        // game in markRemoved to tell "just got reposted" apart from "really
-        // is gone now".
-        val definitelyRead = reason == NotificationListenerService.REASON_CLICK ||
-            reason == NotificationListenerService.REASON_CANCEL ||
-            reason == NotificationListenerService.REASON_CANCEL_ALL
         handler.postDelayed({
-            bgExecutor.execute { resolveRemoval(notifKey, removedAt, definitelyRead) }
+            bgExecutor.execute { resolveRemoval(notifKey, removedAt) }
         }, REMOVAL_GRACE_MS)
     }
 
-    private fun resolveRemoval(notifKey: String, removedAt: Long, definitelyRead: Boolean) {
+    private fun resolveRemoval(notifKey: String, removedAt: Long) {
         val store = MessageStore.getInstance(applicationContext)
-        val results = store.markRemoved(notifKey, removedAt, forceNotDeleted = definitelyRead)
-        Log.d(
-            TAG,
-            "resolveRemoval key=$notifKey definitelyRead=$definitelyRead -> " +
-                "${results.size} chat(s) affected"
-        )
+        val results = store.markRemoved(notifKey, removedAt)
+        Log.d(TAG, "resolveRemoval key=$notifKey -> ${results.size} chat(s) affected")
         for (r in results) {
-            val op = if (r.isDeleted) "DELETE" else "REMOVE"
-            Log.i(TAG, "Message => $op chat=\"${r.chatTitle}\" text=${r.text?.take(60)}")
+            Log.i(TAG, "Message => REMOVE chat=\"${r.chatTitle}\" text=${r.text?.take(60)}")
             EventBridge.emit(
                 mapOf(
-                    "type" to if (r.isDeleted) "deleted" else "removed",
+                    "type" to "removed",
                     "chatKey" to r.chatKey,
                     "chatTitle" to r.chatTitle,
                     "text" to r.text
@@ -275,8 +246,6 @@ class NotificationListener : NotificationListenerService() {
         val store = MessageStore.getInstance(applicationContext)
         store.upsertChat(chatKey, pkg, title, isGroup)
 
-        val diffHandledTimestamps = runWindowDiff(store, chatKey, title, isGroup, style.messages)
-
         var inserted = false
         val lastMessage = style.messages.lastOrNull()
         for (msg in style.messages) {
@@ -288,11 +257,6 @@ class NotificationListener : NotificationListenerService() {
                 Log.d(TAG, "  skip message: download/upload placeholder (\"$text\")")
                 continue
             }
-            if (msg.timestamp in diffHandledTimestamps) {
-                Log.d(TAG, "  skip message ts=${msg.timestamp}: already resolved by window diff")
-                continue
-            }
-
             val sender = msg.person?.name?.toString() ?: (if (isGroup) null else title)
             // sbn.key often embeds a base64 tag (e.g. contains '/'), which would
             // otherwise be read as a path separator when used as a filename.
@@ -307,7 +271,6 @@ class NotificationListener : NotificationListenerService() {
                 chatKey, sbn.key, sender, text, media?.path, media?.type, media?.mime, msg.timestamp
             )
             val op = when {
-                result.editedFromText != null -> "EDIT"
                 result.rowId != -1L -> "INSERT"
                 result.mediaBackfilled -> "UPDATE"
                 else -> "SKIP (duplicate)"
@@ -326,18 +289,6 @@ class NotificationListener : NotificationListenerService() {
                 // know to reload even though this isn't a "new" message.
                 EventBridge.emit(mapOf("type" to "updated", "chatKey" to chatKey, "chatTitle" to title))
             }
-            if (result.editedFromText != null) {
-                EventBridge.emit(
-                    mapOf(
-                        "type" to "edited",
-                        "chatKey" to chatKey,
-                        "chatTitle" to title,
-                        "text" to result.editedFromText,
-                        "editedText" to text
-                    )
-                )
-                postEditedAlert(title, result.editedFromText, text)
-            }
         }
 
         if (inserted) {
@@ -346,93 +297,6 @@ class NotificationListener : NotificationListenerService() {
             EventBridge.emit(mapOf("type" to "new", "chatKey" to chatKey, "chatTitle" to title))
         } else {
             Log.d(TAG, "chat=\"$title\": nothing new inserted from this notification")
-        }
-    }
-
-    /**
-     * Compares this notification's message window against the last one seen
-     * for this chat to catch edits/deletes that (notif_key, timestamp)
-     * matching in [MessageStore.insertMessage] can miss -- see [WindowDiff]
-     * for why. Directly resolves whatever it finds and returns the set of
-     * timestamps it handled, so the caller's normal per-message loop skips
-     * them instead of double-processing (which would otherwise insert a
-     * stray duplicate row for an edit, for example).
-     *
-     * Wrapped defensively: this is a heuristic layered on top of already-
-     * working capture logic, so any failure here must never take that logic
-     * down with it -- worst case, it just falls back to the plain path.
-     */
-    private fun runWindowDiff(
-        store: MessageStore,
-        chatKey: String,
-        title: String,
-        isGroup: Boolean,
-        messages: List<NotificationCompat.MessagingStyle.Message>
-    ): Set<Long> {
-        return try {
-            val newWindow = messages.mapNotNull { m ->
-                val t = m.text?.toString()
-                if (t != null && isDownloadPlaceholder(t)) {
-                    null
-                } else {
-                    WindowItem(m.timestamp, t, m.person?.name?.toString() ?: (if (isGroup) null else title))
-                }
-            }
-            val prevWindow = lastWindowByChat[chatKey] ?: emptyList()
-            val ops = WindowDiff.diff(prevWindow, newWindow)
-            lastWindowByChat[chatKey] = newWindow
-
-            val handled = mutableSetOf<Long>()
-            for (op in ops) {
-                when (op) {
-                    is WindowDiffOp.Edit -> {
-                        val originalText = store.markEditedAt(chatKey, op.old.timestamp, op.new.text)
-                        if (originalText != null) {
-                            Log.i(
-                                TAG,
-                                "Message => EDIT (window diff) chat=\"$title\" " +
-                                    "text=${originalText.take(60)} -> ${op.new.text?.take(60)}"
-                            )
-                            handled += op.old.timestamp
-                            handled += op.new.timestamp
-                            EventBridge.emit(
-                                mapOf(
-                                    "type" to "edited",
-                                    "chatKey" to chatKey,
-                                    "chatTitle" to title,
-                                    "text" to originalText,
-                                    "editedText" to op.new.text
-                                )
-                            )
-                            postEditedAlert(title, originalText, op.new.text)
-                        }
-                    }
-                    is WindowDiffOp.Delete -> {
-                        val result = store.markDeletedDirect(chatKey, op.old.timestamp)
-                        if (result != null) {
-                            Log.i(TAG, "Message => DELETE (window diff) chat=\"$title\" text=${result.text?.take(60)}")
-                            handled += op.old.timestamp
-                            EventBridge.emit(
-                                mapOf(
-                                    "type" to "deleted",
-                                    "chatKey" to chatKey,
-                                    "chatTitle" to title,
-                                    "text" to result.text
-                                )
-                            )
-                        }
-                    }
-                    is WindowDiffOp.Insert -> {
-                        // Informational only -- the normal insert loop below
-                        // already handles brand new messages via
-                        // (notif_key, timestamp).
-                    }
-                }
-            }
-            handled
-        } catch (e: Exception) {
-            Log.w(TAG, "Window diff failed for chat=\"$title\": ${e.message}")
-            emptySet()
         }
     }
 
@@ -522,36 +386,6 @@ class NotificationListener : NotificationListenerService() {
             ExtractedMedia(outFile.absolutePath, "image", "image/jpeg")
         } catch (_: Exception) {
             null
-        }
-    }
-
-    private fun postEditedAlert(chatTitle: String, originalText: String?, newText: String?) {
-        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                EDIT_ALERT_CHANNEL_ID, "Edited message alerts", NotificationManager.IMPORTANCE_HIGH
-            )
-            nm.createNotificationChannel(channel)
-        }
-        val original = originalText ?: "?"
-        val edited = newText ?: "?"
-        // Collapsed notifications only show one line, so lead with the
-        // original -> new summary; BigTextStyle lets the user expand it to
-        // see both on their own line if the combined text gets long.
-        val summary = "Originally: $original  →  Now: $edited"
-        val builder = NotificationCompat.Builder(applicationContext, EDIT_ALERT_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
-            .setContentTitle("Edited message from $chatTitle")
-            .setContentText(summary)
-            .setStyle(
-                NotificationCompat.BigTextStyle()
-                    .bigText("Originally: $original\nEdited to: $edited")
-            )
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-        try {
-            nm.notify(chatTitle.hashCode() xor 0x1EDA, builder.build())
-        } catch (_: SecurityException) {
         }
     }
 }

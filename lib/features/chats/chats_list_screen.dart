@@ -109,26 +109,7 @@ class _ChatTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(time, style: Theme.of(context).textTheme.labelSmall),
-          if (chat.deletedCount > 0)
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                AppLocalizations.of(context).deletedBadge(chat.deletedCount),
-                style: const TextStyle(color: Colors.white, fontSize: 11),
-              ),
-            ),
-        ],
-      ),
+      trailing: Text(time, style: Theme.of(context).textTheme.labelSmall),
       onTap: () {
         Navigator.of(
           context,

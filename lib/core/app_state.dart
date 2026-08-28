@@ -12,21 +12,20 @@ import 'native_bridge.dart';
 const _localeCodePrefKey = 'locale_code';
 const _onboardingCompletePrefKey = 'onboarding_complete';
 
-/// Central app state: permission status, monitored apps, cached
-/// chats/deleted feed, and the user's chosen display language. Refreshes
-/// itself when the native listener reports a new or deleted message while
-/// the app is in the foreground, and again on every app resume -- some
-/// OEMs (notably on Android 10-12) kill the Flutter engine while the app
-/// is backgrounded, so a message captured by the still-running
-/// NotificationListenerService never reaches the live event stream and
-/// would otherwise only show up after the app is fully relaunched.
+/// Central app state: permission status, monitored apps, cached chats, and
+/// the user's chosen display language. Refreshes itself when the native
+/// listener reports a new message while the app is in the foreground, and
+/// again on every app resume -- some OEMs (notably on Android 10-12) kill
+/// the Flutter engine while the app is backgrounded, so a message captured
+/// by the still-running NotificationListenerService never reaches the live
+/// event stream and would otherwise only show up after the app is fully
+/// relaunched.
 class AppState extends ChangeNotifier with WidgetsBindingObserver {
   bool notificationAccessGranted = false;
   bool ignoringBatteryOptimizations = false;
   Set<String> monitoredApps = {pkgWhatsApp, pkgWhatsAppBusiness};
 
   List<Chat> chats = [];
-  List<DeletedFeedItem> deletedFeed = [];
   bool loading = false;
 
   Locale? locale;
@@ -120,12 +119,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     if (!isSupportedPlatform) return;
     loading = true;
     notifyListeners();
-    final results = await Future.wait([
-      NativeBridge.getChats(),
-      NativeBridge.getDeletedFeed(),
-    ]);
-    chats = results[0] as List<Chat>;
-    deletedFeed = results[1] as List<DeletedFeedItem>;
+    chats = await NativeBridge.getChats();
     loading = false;
     notifyListeners();
   }

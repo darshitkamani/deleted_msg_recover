@@ -230,19 +230,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  void _explainEdit(BuildContext context) {
-    final newText = message.editedText;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          newText != null
-              ? AppLocalizations.of(context).editedToExplanation(newText)
-              : AppLocalizations.of(context).editedBadge,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -288,12 +275,7 @@ class MessageBubble extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(left: 4, top: 2),
-                child: _TimeRow(
-                  time: time,
-                  isDeleted: message.isDeleted,
-                  isEdited: message.isEdited && message.editedText == null,
-                  onEditedTap: () => _explainEdit(context),
-                ),
+                child: _TimeRow(time: time),
               ),
             ],
           ),
@@ -301,18 +283,13 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
-    final Color background = message.isDeleted
-        ? (isDark ? const Color(0xFF3B2222) : const Color(0xFFFBE4E4))
-        : (isDark ? const Color(0xFF1F2C34) : Colors.white);
+    final Color background = isDark ? const Color(0xFF1F2C34) : Colors.white;
 
     final placeholder = message.hasMedia || message.text == null
         ? null
         : _placeholderInfo(message.text!);
 
-    final urls = {
-      ..._extractUrls(message.text),
-      ..._extractUrls(message.editedText),
-    }.toList();
+    final urls = _extractUrls(message.text);
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -377,88 +354,11 @@ class MessageBubble extends StatelessWidget {
                       style: theme.textTheme.bodyMedium,
                     ),
                   ),
-                if (message.isDeleted) ...[
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    height: 1,
-                    color: theme.colorScheme.error.withValues(alpha: 0.2),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(2, 4, 2, 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: theme.colorScheme.error,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          AppLocalizations.of(context).deletedMessageLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.error,
-                            fontWeight: FontWeight.bold,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                if (message.isEdited && message.editedText != null) ...[
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    height: 1,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.15,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(2, 4, 2, 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.edit_note_rounded,
-                              size: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              AppLocalizations.of(context).editedBadge,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.bold,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: _LinkifiedText(
-                            message.editedText!,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 Align(
                   alignment: Alignment.centerRight,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: _TimeRow(
-                      time: time,
-                      isDeleted: message.isDeleted,
-                      isEdited: message.isEdited && message.editedText == null,
-                      onEditedTap: () => _explainEdit(context),
-                    ),
+                    child: _TimeRow(time: time),
                   ),
                 ),
               ],
@@ -594,53 +494,17 @@ IconData _documentIcon(String nameOrPath) {
 
 class _TimeRow extends StatelessWidget {
   final String time;
-  final bool isDeleted;
-  final bool isEdited;
-  final VoidCallback? onEditedTap;
 
-  const _TimeRow({
-    required this.time,
-    required this.isDeleted,
-    this.isEdited = false,
-    this.onEditedTap,
-  });
+  const _TimeRow({required this.time});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (isEdited)
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: InkWell(
-              onTap: onEditedTap,
-              child: Text(
-                AppLocalizations.of(context).editedBadge,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-          ),
-        if (isDeleted)
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Icon(
-              Icons.delete_outline,
-              size: 13,
-              color: theme.colorScheme.error,
-            ),
-          ),
-        Text(
-          time,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+    return Text(
+      time,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
     );
   }
 }

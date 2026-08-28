@@ -56,13 +56,6 @@ class NativeBridge {
         .toList();
   }
 
-  static Future<List<DeletedFeedItem>> getDeletedFeed() async {
-    final result = await _methodChannel.invokeMethod<List<dynamic>>('getDeletedFeed');
-    return (result ?? [])
-        .map((e) => DeletedFeedItem.fromMap(e as Map<dynamic, dynamic>))
-        .toList();
-  }
-
   static Future<void> markChatOpened(String chatKey) {
     return _methodChannel.invokeMethod('markChatOpened', {'chatKey': chatKey});
   }
