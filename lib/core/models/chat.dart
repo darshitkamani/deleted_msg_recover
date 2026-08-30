@@ -6,6 +6,8 @@ class Chat {
   final String? lastText;
   final int lastTimestamp;
   final int totalCount;
+  final bool lastIsDeleted;
+  final bool lastIsEdited;
 
   const Chat({
     required this.chatKey,
@@ -15,6 +17,8 @@ class Chat {
     required this.lastText,
     required this.lastTimestamp,
     required this.totalCount,
+    this.lastIsDeleted = false,
+    this.lastIsEdited = false,
   });
 
   bool get isBusiness => package == 'com.whatsapp.w4b';
@@ -28,6 +32,8 @@ class Chat {
       lastText: map['lastText'] as String?,
       lastTimestamp: (map['lastTimestamp'] as num?)?.toInt() ?? 0,
       totalCount: (map['totalCount'] as num?)?.toInt() ?? 0,
+      lastIsDeleted: map['lastStatus'] == 'deleted',
+      lastIsEdited: map['lastIsEdited'] as bool? ?? false,
     );
   }
 }

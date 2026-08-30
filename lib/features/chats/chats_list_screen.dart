@@ -97,17 +97,53 @@ class _ChatTile extends StatelessWidget {
           ).format(DateTime.fromMillisecondsSinceEpoch(chat.lastTimestamp))
         : '';
 
+    final theme = Theme.of(context);
+    final previewText = chat.lastText?.isNotEmpty == true
+        ? chat.lastText!
+        : appLabelForPackage(context, chat.package);
+
     return ListTile(
       leading: CircleAvatar(
         child: Icon(chat.isGroup ? Icons.group : Icons.person),
       ),
       title: Text(chat.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        chat.lastText?.isNotEmpty == true
-            ? chat.lastText!
-            : appLabelForPackage(context, chat.package),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      subtitle: Row(
+        children: [
+          if (chat.lastIsDeleted)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(
+                Icons.delete_outline_rounded,
+                size: 14,
+                color: theme.colorScheme.error,
+              ),
+            )
+          else if (chat.lastIsEdited)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(
+                Icons.edit_outlined,
+                size: 14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          Flexible(
+            child: Text(
+              // The icon already flags deleted/edited -- the text itself
+              // stays the actual recovered content, same as the chat detail
+              // bubble, rather than being replaced by a generic label.
+              previewText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: chat.lastIsDeleted
+                  ? TextStyle(
+                      color: theme.colorScheme.error,
+                      fontStyle: FontStyle.italic,
+                    )
+                  : null,
+            ),
+          ),
+        ],
       ),
       trailing: Text(time, style: Theme.of(context).textTheme.labelSmall),
       onTap: () {

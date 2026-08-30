@@ -246,58 +246,151 @@ class NotificationListener : NotificationListenerService() {
         val store = MessageStore.getInstance(applicationContext)
         store.upsertChat(chatKey, pkg, title, isGroup)
 
-        var inserted = false
+        // Placeholders are dropped before reconciliation, not after -- a message that's still
+        // "Downloading..." isn't part of the real conversation window WhatsApp will keep
+        // presenting, so it must not occupy a matching slot for the real content that replaces it.
         val lastMessage = style.messages.lastOrNull()
-        for (msg in style.messages) {
+        val incoming = style.messages.mapNotNull { msg ->
             val text = msg.text?.toString()
-            // WhatsApp shows a transient placeholder message while media is
-            // still downloading; it gets replaced within a second or two and
-            // would otherwise be captured and then immediately look deleted.
             if (text != null && isDownloadPlaceholder(text)) {
                 Log.d(TAG, "  skip message: download/upload placeholder (\"$text\")")
-                continue
+                null
+            } else {
+                msg to WindowEntry(
+                    timestamp = msg.timestamp,
+                    text = text ?: "",
+                    sender = msg.person?.name?.toString() ?: (if (isGroup) null else title)
+                )
             }
-            val sender = msg.person?.name?.toString() ?: (if (isGroup) null else title)
-            // sbn.key often embeds a base64 tag (e.g. contains '/'), which would
-            // otherwise be read as a path separator when used as a filename.
-            val uniqueId = safeFileId("${sbn.key}_${msg.timestamp}")
-            var media = extractMessageMedia(msg, uniqueId)
-            // The outer notification's big-picture extra only ever reflects the
-            // newest message's image, so only try it for the last message here.
-            if (media == null && msg === lastMessage) {
-                media = extractPictureExtra(extras, uniqueId)
-            }
-            val result = store.insertMessage(
-                chatKey, sbn.key, sender, text, media?.path, media?.type, media?.mime, msg.timestamp
-            )
-            val op = when {
-                result.rowId != -1L -> "INSERT"
-                result.mediaBackfilled -> "UPDATE"
-                else -> "SKIP (duplicate)"
-            }
-            Log.d(
-                TAG,
-                "Message => $op chat=\"$title\" from=$sender text=${text?.take(60)}" +
-                    (if (media != null) " media=${media.type}" else "")
-            )
-            if (result.rowId != -1L) {
-                inserted = true
-            } else if (result.mediaBackfilled) {
-                // Nothing new was inserted, but an existing row just gained
-                // media it didn't have before (e.g. a sticker/photo whose data
-                // wasn't available on first capture). The chat screen needs to
-                // know to reload even though this isn't a "new" message.
-                EventBridge.emit(mapOf("type" to "updated", "chatKey" to chatKey, "chatTitle" to title))
+        }
+        if (incoming.isEmpty()) {
+            Log.d(TAG, "chat=\"$title\": nothing left to reconcile after filtering placeholders")
+            return
+        }
+
+        val stored = store.getWindow(chatKey, MessageReconciler.DEFAULT_WINDOW_CAP)
+        val priorTotalMessageCount = store.getActiveMessageCount(chatKey)
+        val actions = MessageReconciler.reconcile(
+            stored = stored,
+            incoming = incoming.map { it.second },
+            priorTotalMessageCount = priorTotalMessageCount
+        )
+
+        var inserted = false
+        var edited = false
+        var deleted = false
+
+        // actions[0 until incoming.size] line up 1:1 with `incoming`, in order -- see the
+        // contract documented on MessageReconciler.reconcile. Anything past that is a
+        // DeletedSilently action for a stored entry with no incoming counterpart at all.
+        for (i in incoming.indices) {
+            val (msg, entry) = incoming[i]
+            when (val action = actions[i]) {
+                is ReconcileAction.Insert -> {
+                    // sbn.key often embeds a base64 tag (e.g. contains '/'), which would
+                    // otherwise be read as a path separator when used as a filename.
+                    val uniqueId = safeFileId("${sbn.key}_${msg.timestamp}")
+                    var media = extractMessageMedia(msg, uniqueId)
+                    if (media == null && msg === lastMessage) {
+                        media = extractPictureExtra(extras, uniqueId)
+                    }
+                    val result = store.insertMessage(
+                        chatKey, sbn.key, entry.sender, entry.text, media?.path, media?.type, media?.mime, entry.timestamp
+                    )
+                    Log.d(
+                        TAG,
+                        "Message => INSERT chat=\"$title\" from=${entry.sender} text=${entry.text.take(60)}" +
+                            (if (media != null) " media=${media.type}" else "")
+                    )
+                    if (result.rowId != -1L) inserted = true
+                }
+
+                is ReconcileAction.Edit -> {
+                    val rowId = action.previous.id
+                    if (rowId == null) {
+                        Log.w(TAG, "  edit action with no row id, dropping: ${action.previous}")
+                        continue
+                    }
+                    store.applyEdit(rowId, action.updated.text, System.currentTimeMillis())
+                    Log.i(
+                        TAG,
+                        "Message => EDIT chat=\"$title\" \"${action.previous.text.take(40)}\" -> \"${action.updated.text.take(40)}\""
+                    )
+                    edited = true
+                    EventBridge.emit(
+                        mapOf(
+                            "type" to "edited",
+                            "chatKey" to chatKey,
+                            "chatTitle" to title,
+                            "previousText" to action.previous.text,
+                            "newText" to action.updated.text
+                        )
+                    )
+                }
+
+                is ReconcileAction.DeletedWithPlaceholder -> {
+                    applyDeletion(store, chatKey, title, action.previous, "PLACEHOLDER")
+                    deleted = true
+                }
+
+                is ReconcileAction.Noop -> {
+                    // Text is unchanged, but media may not have been available on first capture
+                    // (e.g. a sticker mid-download) and could be ready now.
+                    val rowId = entry.id ?: continue
+                    if (store.hasMedia(rowId)) continue
+                    val uniqueId = safeFileId("${sbn.key}_${msg.timestamp}")
+                    var media = extractMessageMedia(msg, uniqueId)
+                    if (media == null && msg === lastMessage) {
+                        media = extractPictureExtra(extras, uniqueId)
+                    }
+                    if (media != null) {
+                        store.backfillMedia(rowId, media.path, media.type, media.mime)
+                        Log.d(TAG, "Message => UPDATE (media backfill) chat=\"$title\"")
+                        EventBridge.emit(mapOf("type" to "updated", "chatKey" to chatKey, "chatTitle" to title))
+                    }
+                }
+
+                is ReconcileAction.DeletedSilently -> {
+                    // Never produced for an incoming entry -- see the loop below.
+                }
             }
         }
 
-        if (inserted) {
+        for (i in incoming.size until actions.size) {
+            val action = actions[i] as? ReconcileAction.DeletedSilently ?: continue
+            applyDeletion(store, chatKey, title, action.previous, "SILENT")
+            deleted = true
+        }
+
+        if (inserted || edited) {
             store.touchChatActivity(chatKey, System.currentTimeMillis())
+        }
+        if (inserted) {
             Log.i(TAG, "chat=\"$title\": new message(s) inserted, emitting \"new\" event")
             EventBridge.emit(mapOf("type" to "new", "chatKey" to chatKey, "chatTitle" to title))
-        } else {
+        }
+        if (!inserted && !edited && !deleted) {
             Log.d(TAG, "chat=\"$title\": nothing new inserted from this notification")
         }
+    }
+
+    private fun applyDeletion(store: MessageStore, chatKey: String, title: String, previous: WindowEntry, source: String) {
+        val rowId = previous.id
+        if (rowId == null) {
+            Log.w(TAG, "  delete action with no row id, dropping: $previous")
+            return
+        }
+        store.applyDelete(rowId, System.currentTimeMillis())
+        Log.i(TAG, "Message => DELETE ($source) chat=\"$title\" text=${previous.text.take(60)}")
+        EventBridge.emit(
+            mapOf(
+                "type" to "deleted",
+                "chatKey" to chatKey,
+                "chatTitle" to title,
+                "recoveredText" to previous.text,
+                "sender" to previous.sender
+            )
+        )
     }
 
     /** Human-readable label for a NotificationListenerService removal reason code, for logs. */

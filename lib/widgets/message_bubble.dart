@@ -257,6 +257,15 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+              if (message.isDeleted)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 2),
+                  child: _StatusTag(
+                    icon: Icons.delete_outline_rounded,
+                    label: AppLocalizations.of(context).deletedMessageLabel,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
               Image.file(
                 File(message.mediaPath!),
                 width: 130,
@@ -285,11 +294,15 @@ class MessageBubble extends StatelessWidget {
 
     final Color background = isDark ? const Color(0xFF1F2C34) : Colors.white;
 
-    final placeholder = message.hasMedia || message.text == null
-        ? null
-        : _placeholderInfo(message.text!);
+    // Edited messages show what they originally said, not the current text
+    // WhatsApp itself would show -- that's the entire point of the tag.
+    final displayText = message.isEdited ? message.originalText : message.text;
 
-    final urls = _extractUrls(message.text);
+    final placeholder = message.hasMedia || displayText == null
+        ? null
+        : _placeholderInfo(displayText);
+
+    final urls = _extractUrls(displayText);
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -338,20 +351,54 @@ class MessageBubble extends StatelessWidget {
                       ),
                     ),
                   ),
+                if (message.isDeleted)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: _StatusTag(
+                      icon: Icons.delete_outline_rounded,
+                      label: AppLocalizations.of(context).deletedMessageLabel,
+                      color: theme.colorScheme.error,
+                    ),
+                  )
+                else if (message.isEdited)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: _StatusTag(
+                      icon: Icons.edit_outlined,
+                      label: AppLocalizations.of(context).editedBadge,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 if (message.hasMedia)
-                  _buildMedia(context)
+                  _buildMedia(context, displayText)
                 else if (placeholder != null)
                   _UnrecoverableFileRow(
                     icon: placeholder.$1,
                     label: placeholder.$2,
                     onTap: () => _explainNotRecoverable(context),
                   )
-                else if (message.text != null && message.text!.isNotEmpty)
+                else if (displayText != null && displayText.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(2, 2, 2, 4),
                     child: _LinkifiedText(
-                      message.text!,
+                      displayText,
                       style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                // Shown unconditionally, not behind a tap -- both what it
+                // originally said (above, as the main bubble content) and
+                // what it currently says need to be visible at once.
+                if (message.isEdited)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 0, 2, 4),
+                    child: Text(
+                      AppLocalizations.of(
+                        context,
+                      ).editedToExplanation(message.text ?? ''),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
                 Align(
@@ -369,7 +416,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildMedia(BuildContext context) {
+  Widget _buildMedia(BuildContext context, String? displayText) {
     final path = message.mediaPath!;
     switch (message.mediaType) {
       case MediaType.image:
@@ -423,8 +470,8 @@ class MessageBubble extends StatelessWidget {
       case MediaType.document:
         return _FileRow(
           icon: _documentIcon(path),
-          label: message.text?.isNotEmpty == true
-              ? message.text!
+          label: displayText?.isNotEmpty == true
+              ? displayText!
               : mediaTypeLabel(context, MediaType.document),
           onTap: () => _openFile(context),
         );
@@ -489,6 +536,39 @@ IconData _documentIcon(String nameOrPath) {
       return Icons.image_outlined;
     default:
       return Icons.insert_drive_file_rounded;
+  }
+}
+
+/// Small icon+label row flagging a message as deleted or edited, shown above
+/// its recovered content.
+class _StatusTag extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _StatusTag({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: color,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
   }
 }
 

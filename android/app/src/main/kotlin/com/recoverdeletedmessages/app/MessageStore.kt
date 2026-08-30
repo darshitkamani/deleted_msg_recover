@@ -18,6 +18,15 @@ data class RemovalResult(
  * though nothing new was actually inserted. */
 data class InsertResult(val rowId: Long, val mediaBackfilled: Boolean = false)
 
+/** Returned after applying a [ReconcileAction.Edit] or a delete action, so the caller has
+ * what it needs to emit an event without a second query. */
+data class ChangeResult(
+    val chatKey: String,
+    val chatTitle: String,
+    val previousText: String?,
+    val sender: String?
+)
+
 /**
  * Single local datastore for captured WhatsApp/WhatsApp Business notifications.
  * This is the only source of truth for message data; Flutter never touches
@@ -28,7 +37,10 @@ class MessageStore private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "recover.db"
-        private const val DB_VERSION = 5
+        private const val DB_VERSION = 6
+
+        const val STATUS_ACTIVE = "active"
+        const val STATUS_DELETED = "deleted"
 
         @Volatile
         private var instance: MessageStore? = null
@@ -64,16 +76,34 @@ class MessageStore private constructor(context: Context) :
                 media_type TEXT,
                 media_mime TEXT,
                 timestamp INTEGER NOT NULL,
-                removed_at INTEGER
+                removed_at INTEGER,
+                status TEXT NOT NULL DEFAULT 'active',
+                edited_at INTEGER,
+                deleted_at INTEGER
             )
             """.trimIndent()
         )
-        db.execSQL("CREATE UNIQUE INDEX idx_messages_dedup ON messages(notif_key, timestamp)")
+        // Deliberately (chat_key, timestamp, text) rather than (chat_key, timestamp) alone --
+        // two distinct messages can legitimately share a timestamp (a fast burst), and only
+        // collapsing on identical text too keeps both of those rows instead of losing one.
+        db.execSQL("CREATE UNIQUE INDEX idx_messages_dedup ON messages(chat_key, timestamp, text)")
         db.execSQL("CREATE INDEX idx_messages_chat ON messages(chat_key)")
         db.execSQL("CREATE INDEX idx_messages_notif_key ON messages(notif_key)")
+        db.execSQL(
+            """
+            CREATE TABLE message_edits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER NOT NULL,
+                old_text TEXT,
+                changed_at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX idx_message_edits_message ON message_edits(message_id)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        db.execSQL("DROP TABLE IF EXISTS message_edits")
         db.execSQL("DROP TABLE IF EXISTS messages")
         db.execSQL("DROP TABLE IF EXISTS chats")
         onCreate(db)
@@ -118,14 +148,14 @@ class MessageStore private constructor(context: Context) :
         val rowId = db.insertWithOnConflict("messages", null, values, SQLiteDatabase.CONFLICT_IGNORE)
         if (rowId != -1L) return InsertResult(rowId, mediaBackfilled = false)
 
-        // A row for this (notif_key, timestamp) already exists -- this happens
+        // A row for this (chat_key, timestamp, text) already exists -- this happens
         // when the same notification gets reprocessed (e.g. app restart, or
         // WhatsApp updating it in place). Media that failed to save before
         // might now succeed -- backfill it.
         var mediaBackfilled = false
         db.rawQuery(
-            "SELECT id, media_path FROM messages WHERE chat_key = ? AND notif_key = ? AND timestamp = ?",
-            arrayOf(chatKey, notifKey, timestamp.toString())
+            "SELECT id, media_path FROM messages WHERE chat_key = ? AND timestamp = ? AND text IS ?",
+            arrayOf(chatKey, timestamp.toString(), text)
         ).use { cursor ->
             if (cursor.moveToFirst()) {
                 val existingId = cursor.getLong(0)
@@ -211,7 +241,9 @@ class MessageStore private constructor(context: Context) :
             SELECT c.chat_key, c.package, c.title, c.is_group,
                    (SELECT text FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_text,
                    (SELECT timestamp FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_ts,
-                   (SELECT COUNT(*) FROM messages m WHERE m.chat_key = c.chat_key) AS total_count
+                   (SELECT COUNT(*) FROM messages m WHERE m.chat_key = c.chat_key) AS total_count,
+                   (SELECT status FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_status,
+                   (SELECT edited_at FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_edited_at
             FROM chats c
             ORDER BY last_ts DESC
             """.trimIndent(),
@@ -226,7 +258,9 @@ class MessageStore private constructor(context: Context) :
                         "isGroup" to (cursor.getInt(3) == 1),
                         "lastText" to cursor.getString(4),
                         "lastTimestamp" to (if (cursor.isNull(5)) 0L else cursor.getLong(5)),
-                        "totalCount" to cursor.getInt(6)
+                        "totalCount" to cursor.getInt(6),
+                        "lastStatus" to cursor.getString(7),
+                        "lastIsEdited" to !cursor.isNull(8)
                     )
                 )
             }
@@ -238,7 +272,8 @@ class MessageStore private constructor(context: Context) :
         val result = mutableListOf<Map<String, Any?>>()
         readableDatabase.rawQuery(
             """
-            SELECT id, sender, text, media_path, media_type, media_mime, timestamp, removed_at
+            SELECT id, sender, text, media_path, media_type, media_mime, timestamp, removed_at,
+                   status, edited_at, deleted_at
             FROM messages WHERE chat_key = ? ORDER BY timestamp ASC
             """.trimIndent(),
             arrayOf(chatKey)
@@ -253,7 +288,11 @@ class MessageStore private constructor(context: Context) :
                         "mediaType" to cursor.getString(4),
                         "mediaMime" to cursor.getString(5),
                         "timestamp" to cursor.getLong(6),
-                        "removedAt" to (if (cursor.isNull(7)) null else cursor.getLong(7))
+                        "removedAt" to (if (cursor.isNull(7)) null else cursor.getLong(7)),
+                        "status" to cursor.getString(8),
+                        "editedAt" to (if (cursor.isNull(9)) null else cursor.getLong(9)),
+                        "deletedAt" to (if (cursor.isNull(10)) null else cursor.getLong(10)),
+                        "editHistory" to getEditHistory(cursor.getLong(0))
                     )
                 )
             }
@@ -261,8 +300,154 @@ class MessageStore private constructor(context: Context) :
         return result
     }
 
+    private fun getEditHistory(messageId: Long): List<Map<String, Any?>> {
+        val result = mutableListOf<Map<String, Any?>>()
+        readableDatabase.rawQuery(
+            "SELECT old_text, changed_at FROM message_edits WHERE message_id = ? ORDER BY changed_at ASC",
+            arrayOf(messageId.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                result.add(mapOf("text" to cursor.getString(0), "changedAt" to cursor.getLong(1)))
+            }
+        }
+        return result
+    }
+
+    /**
+     * The last [cap] not-yet-deleted messages for [chatKey], oldest first -- the same shape
+     * WhatsApp's own notification window has, for [MessageReconciler] to diff against. Deleted
+     * messages are excluded: once gone, WhatsApp will never show them in a window again, so
+     * they must not be compared against either.
+     */
+    fun getWindow(chatKey: String, cap: Int): List<WindowEntry> {
+        val entries = mutableListOf<WindowEntry>()
+        readableDatabase.rawQuery(
+            """
+            SELECT id, timestamp, text, sender FROM messages
+            WHERE chat_key = ? AND status != ?
+            ORDER BY timestamp DESC, id DESC LIMIT ?
+            """.trimIndent(),
+            arrayOf(chatKey, STATUS_DELETED, cap.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                entries.add(
+                    WindowEntry(
+                        timestamp = cursor.getLong(1),
+                        text = cursor.getString(2) ?: "",
+                        sender = cursor.getString(3),
+                        id = cursor.getLong(0)
+                    )
+                )
+            }
+        }
+        return entries.asReversed()
+    }
+
+    fun getActiveMessageCount(chatKey: String): Int {
+        readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM messages WHERE chat_key = ? AND status != ?",
+            arrayOf(chatKey, STATUS_DELETED)
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        }
+    }
+
+    /** Applies a [ReconcileAction.Edit]: archives the old text and updates the row in place. */
+    fun applyEdit(rowId: Long, newText: String, editedAt: Long): ChangeResult? {
+        val db = writableDatabase
+        val row = findRowForChange(db, rowId) ?: return null
+
+        db.insertWithOnConflict(
+            "message_edits",
+            null,
+            ContentValues().apply {
+                put("message_id", rowId)
+                put("old_text", row.text)
+                put("changed_at", editedAt)
+            },
+            SQLiteDatabase.CONFLICT_IGNORE
+        )
+        db.update(
+            "messages",
+            ContentValues().apply {
+                put("text", newText)
+                put("edited_at", editedAt)
+            },
+            "id = ?",
+            arrayOf(rowId.toString())
+        )
+        return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
+    }
+
+    /**
+     * Applies a delete action (placeholder or silent): marks the row deleted without touching
+     * [text] -- the last known real text is exactly what this app exists to preserve, so it's
+     * left in place rather than overwritten with a placeholder or cleared.
+     */
+    fun applyDelete(rowId: Long, deletedAt: Long): ChangeResult? {
+        val db = writableDatabase
+        val row = findRowForChange(db, rowId) ?: return null
+
+        db.update(
+            "messages",
+            ContentValues().apply {
+                put("status", STATUS_DELETED)
+                put("deleted_at", deletedAt)
+            },
+            "id = ?",
+            arrayOf(rowId.toString())
+        )
+        return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
+    }
+
+    /** Fills in media for a row that matched as unchanged (Noop) but didn't have it yet --
+     * mirrors the old insert-time backfill, just keyed by row id instead of a conflict. */
+    fun backfillMedia(rowId: Long, mediaPath: String, mediaType: String, mediaMime: String) {
+        writableDatabase.update(
+            "messages",
+            ContentValues().apply {
+                put("media_path", mediaPath)
+                put("media_type", mediaType)
+                put("media_mime", mediaMime)
+            },
+            "id = ? AND media_path IS NULL",
+            arrayOf(rowId.toString())
+        )
+    }
+
+    fun hasMedia(rowId: Long): Boolean {
+        readableDatabase.rawQuery(
+            "SELECT media_path FROM messages WHERE id = ?",
+            arrayOf(rowId.toString())
+        ).use { cursor ->
+            return cursor.moveToFirst() && cursor.getString(0) != null
+        }
+    }
+
+    private data class RowForChange(
+        val chatKey: String,
+        val chatTitle: String,
+        val text: String?,
+        val sender: String?
+    )
+
+    private fun findRowForChange(db: SQLiteDatabase, rowId: Long): RowForChange? {
+        db.rawQuery(
+            """
+            SELECT m.chat_key, c.title, m.text, m.sender
+            FROM messages m JOIN chats c ON c.chat_key = m.chat_key
+            WHERE m.id = ?
+            """.trimIndent(),
+            arrayOf(rowId.toString())
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            return RowForChange(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3))
+        }
+    }
+
     fun clearAll() {
         val db = writableDatabase
+        db.execSQL("DELETE FROM message_edits")
         db.execSQL("DELETE FROM messages")
         db.execSQL("DELETE FROM chats")
     }
