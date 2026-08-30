@@ -109,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
               child: Row(
                 children: [
                   _DotsIndicator(count: _pageCount, index: _page),
@@ -175,7 +175,7 @@ class _IntroSlide extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 20, 32, 8),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -293,7 +293,7 @@ class _PermissionSlide extends StatelessWidget {
     final green = Colors.green.shade600;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
       child: Column(
         children: [
           const SizedBox(height: 24),

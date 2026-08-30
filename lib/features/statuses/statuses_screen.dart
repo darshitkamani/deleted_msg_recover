@@ -7,6 +7,8 @@ import '../../core/constants.dart';
 import '../../core/models/status_item.dart';
 import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/app_tab_switcher.dart';
+import '../../widgets/error_state.dart';
 import 'image_viewer_screen.dart';
 import 'video_player_screen.dart';
 import 'video_thumbnail_tile.dart';
@@ -32,6 +34,7 @@ class _StatusesScreenState extends State<StatusesScreen> {
   List<StatusItem> _items = [];
   String _folderHint = '';
   bool _loading = false;
+  Object? _error;
   _MediaFilter _filter = _MediaFilter.all;
 
   @override
@@ -41,22 +44,33 @@ class _StatusesScreenState extends State<StatusesScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _loading = true);
-    final hasAccess = await NativeBridge.hasStatusAccess(_package);
-    List<StatusItem> items = [];
-    String hint = '';
-    if (hasAccess) {
-      items = await NativeBridge.listStatuses(_package);
-    } else {
-      hint = await NativeBridge.statusFolderHint(_package);
-    }
-    if (!mounted) return;
     setState(() {
-      _hasAccess = hasAccess;
-      _items = items;
-      _folderHint = hint;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final hasAccess = await NativeBridge.hasStatusAccess(_package);
+      List<StatusItem> items = [];
+      String hint = '';
+      if (hasAccess) {
+        items = await NativeBridge.listStatuses(_package);
+      } else {
+        hint = await NativeBridge.statusFolderHint(_package);
+      }
+      if (!mounted) return;
+      setState(() {
+        _hasAccess = hasAccess;
+        _items = items;
+        _folderHint = hint;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
   }
 
   void _switchPackage(String package) {
@@ -116,15 +130,15 @@ class _StatusesScreenState extends State<StatusesScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: _AppTabSwitcher(
+          child: AppTabSwitcher(
             selected: _package,
             onChanged: _switchPackage,
             options: [
-              _AppTabOption(
+              AppTabOption(
                 value: pkgWhatsApp,
                 label: appLabelForPackage(context, pkgWhatsApp),
               ),
-              _AppTabOption(
+              AppTabOption(
                 value: pkgWhatsAppBusiness,
                 label: appLabelForPackage(context, pkgWhatsAppBusiness),
               ),
@@ -164,7 +178,9 @@ class _StatusesScreenState extends State<StatusesScreen> {
                 ),
         ),
         Expanded(
-          child: _loading
+          child: _error != null
+              ? ErrorState(error: _error!, onRetry: _refresh)
+              : _loading
               ? const Center(child: CircularProgressIndicator())
               : (_hasAccess ?? false)
               ? _StatusGrid(
@@ -178,145 +194,6 @@ class _StatusesScreenState extends State<StatusesScreen> {
                 ),
         ),
       ],
-    );
-  }
-}
-
-class _AppTabOption {
-  final String value;
-  final String label;
-
-  const _AppTabOption({required this.value, required this.label});
-}
-
-/// A pill-shaped, sliding-indicator tab switcher -- replaces the stock
-/// [SegmentedButton], which renders as two flat, unrelated buttons with no
-/// motion and mismatches the rest of the screen's rounded, card-based look.
-class _AppTabSwitcher extends StatelessWidget {
-  final String selected;
-  final List<_AppTabOption> options;
-  final ValueChanged<String> onChanged;
-
-  const _AppTabSwitcher({
-    required this.selected,
-    required this.options,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final selectedIndex = options
-        .indexWhere((o) => o.value == selected)
-        .clamp(0, options.length - 1);
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final segmentWidth = constraints.maxWidth / options.length;
-          return Stack(
-            children: [
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                left: segmentWidth * selectedIndex,
-                width: segmentWidth,
-                top: 0,
-                bottom: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: scheme.shadow.withValues(alpha: 0.12),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  for (final option in options)
-                    Expanded(
-                      child: _AppTabButton(
-                        label: option.label,
-                        selected: option.value == selected,
-                        onTap: () => onChanged(option.value),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _AppTabButton extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _AppTabButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = selected
-        ? scheme.onPrimaryContainer
-        : scheme.onSurfaceVariant;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                child: selected
-                    ? Icon(
-                        Icons.check_rounded,
-                        key: const ValueKey('check'),
-                        size: 17,
-                        color: color,
-                      )
-                    : const SizedBox(key: ValueKey('no-check'), width: 0),
-              ),
-              if (selected) const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -445,7 +322,7 @@ class _AccessRequest extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(32, 24, 32, 24),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       child: Column(
         children: [
           Container(
@@ -547,7 +424,7 @@ class _StatusGrid extends StatelessWidget {
             const SizedBox(height: 12),
             Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   AppLocalizations.of(context).statusesEmptyState,
                   textAlign: TextAlign.center,
@@ -601,10 +478,17 @@ class _StatusTileState extends State<_StatusTile> {
   Future<void> _download() async {
     if (_downloading) return;
     setState(() => _downloading = true);
-    final ok = await NativeBridge.downloadMedia(
-      widget.item.path,
-      isVideo: widget.item.isVideo,
-    );
+    // A throw here would otherwise leave this tile's download spinner
+    // stuck forever instead of resetting to a retryable state.
+    bool ok = false;
+    try {
+      ok = await NativeBridge.downloadMedia(
+        widget.item.path,
+        isVideo: widget.item.isVideo,
+      );
+    } catch (_) {
+      ok = false;
+    }
     if (!mounted) return;
     setState(() => _downloading = false);
     final l10n = AppLocalizations.of(context);

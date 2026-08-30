@@ -9,6 +9,7 @@ import '../../core/models/chat.dart';
 import '../../core/models/message.dart';
 import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/message_bubble.dart';
 
 /// Opening a chat here marks it "opened" -- this is the app's proxy for
@@ -27,6 +28,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   static const _bottomThreshold = 120.0;
 
   List<Message>? _messages;
+  Object? _error;
   StreamSubscription<Map<dynamic, dynamic>>? _eventSub;
   final _scrollController = ScrollController();
   bool _showScrollToBottom = false;
@@ -70,17 +72,26 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     bool jumpToBottom = true,
     bool countAsUnseen = false,
   }) async {
-    final messages = await appState.loadMessages(widget.chat.chatKey);
-    if (!mounted) return;
-    setState(() {
-      _messages = messages;
-      if (jumpToBottom) {
-        _jumpToBottomOnNextBuild = true;
-        _unseenNewMessages = 0;
-      } else if (countAsUnseen) {
-        _unseenNewMessages++;
-      }
-    });
+    try {
+      final messages = await appState.loadMessages(widget.chat.chatKey);
+      if (!mounted) return;
+      setState(() {
+        _messages = messages;
+        _error = null;
+        if (jumpToBottom) {
+          _jumpToBottomOnNextBuild = true;
+          _unseenNewMessages = 0;
+        } else if (countAsUnseen) {
+          _unseenNewMessages++;
+        }
+      });
+    } catch (e) {
+      // Otherwise a throw here (e.g. a stale build missing a platform
+      // channel method) leaves `_messages` null forever, and the spinner
+      // below never resolves into either the message list or an error.
+      if (!mounted) return;
+      setState(() => _error = e);
+    }
   }
 
   @override
@@ -161,6 +172,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         children: [
           Builder(
             builder: (context) {
+              if (_error != null) {
+                return ErrorState(
+                  error: _error!,
+                  onRetry: () => _loadMessages(context.read<AppState>()),
+                );
+              }
               final messages = _messages;
               if (messages == null) {
                 return const Center(child: CircularProgressIndicator());

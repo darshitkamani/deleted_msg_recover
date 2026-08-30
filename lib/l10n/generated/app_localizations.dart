@@ -236,6 +236,12 @@ abstract class AppLocalizations {
   /// **'Deleted'**
   String get navDeleted;
 
+  /// No description provided for @navRecover.
+  ///
+  /// In en, this message translates to:
+  /// **'Recover'**
+  String get navRecover;
+
   /// No description provided for @navStatuses.
   ///
   /// In en, this message translates to:
@@ -248,17 +254,383 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get navSettings;
 
+  /// No description provided for @navDirectChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct'**
+  String get navDirectChat;
+
   /// No description provided for @deletedMessagesTitle.
   ///
   /// In en, this message translates to:
   /// **'Deleted messages'**
   String get deletedMessagesTitle;
 
+  /// No description provided for @recoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Message Recovery'**
+  String get recoverTitle;
+
+  /// No description provided for @recoverTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Get back what was deleted'**
+  String get recoverTagline;
+
+  /// No description provided for @recoverPlusBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery+'**
+  String get recoverPlusBadge;
+
+  /// No description provided for @recoverChatRecoveryHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat Recovery'**
+  String get recoverChatRecoveryHeader;
+
+  /// No description provided for @recoverMediaRecoveryHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Media Recovery'**
+  String get recoverMediaRecoveryHeader;
+
+  /// No description provided for @recoverMoreHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'More Recovery'**
+  String get recoverMoreHeader;
+
+  /// No description provided for @recoverTextMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Text Message'**
+  String get recoverTextMessage;
+
+  /// No description provided for @recoverVoiceMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Message'**
+  String get recoverVoiceMessage;
+
+  /// No description provided for @recoverPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get recoverPhoto;
+
+  /// No description provided for @recoverVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get recoverVideo;
+
+  /// No description provided for @recoverFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get recoverFiles;
+
+  /// No description provided for @recoverStickersGifs.
+  ///
+  /// In en, this message translates to:
+  /// **'Stickers & GIFs'**
+  String get recoverStickersGifs;
+
+  /// No description provided for @recoverMediaEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing recovered here yet.'**
+  String get recoverMediaEmptyState;
+
+  /// No description provided for @mediaFolderAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant folder access'**
+  String get mediaFolderAccessTitle;
+
+  /// No description provided for @mediaFolderAccessDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp keeps downloaded photos, videos, files and stickers in its own Media folder. Recovering them here -- even ones whose message was deleted -- needs access to that folder once.'**
+  String get mediaFolderAccessDescription;
+
+  /// No description provided for @mediaFolderAccessAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose folder'**
+  String get mediaFolderAccessAction;
+
+  /// No description provided for @mediaFolderAccessDeniedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Access wasn\'t granted. Make sure to select the folder shown above and tap \"Use this folder\".'**
+  String get mediaFolderAccessDeniedMessage;
+
+  /// No description provided for @mediaFolderEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty here'**
+  String get mediaFolderEmptyTitle;
+
+  /// No description provided for @mediaFolderScanningState.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for recoverable files…'**
+  String get mediaFolderScanningState;
+
+  /// No description provided for @errorStateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get errorStateTitle;
+
+  /// No description provided for @errorStateRetryAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get errorStateRetryAction;
+
+  /// No description provided for @mediaFolderViewGuide.
+  ///
+  /// In en, this message translates to:
+  /// **'View the Guide'**
+  String get mediaFolderViewGuide;
+
+  /// No description provided for @mediaGuideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use'**
+  String get mediaGuideTitle;
+
+  /// No description provided for @mediaGuideFolderAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow Folder Access'**
+  String get mediaGuideFolderAccessTitle;
+
+  /// No description provided for @mediaGuideFolderAccessGrantedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Access granted -- recovered files show up here automatically.'**
+  String get mediaGuideFolderAccessGrantedBody;
+
+  /// No description provided for @mediaGuideFolderAccessBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to pick WhatsApp\'s Media folder, so recovered files can be found and copied here.'**
+  String get mediaGuideFolderAccessBody;
+
+  /// No description provided for @mediaGuideAutoDownloadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Media auto-download'**
+  String get mediaGuideAutoDownloadTitle;
+
+  /// No description provided for @mediaGuideAutoDownloadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to WhatsApp → Settings → Storage and Data, then enable Media Auto-Download for all options. Files that are downloaded stay recoverable here even after the message is deleted -- ones WhatsApp never downloaded can\'t be.'**
+  String get mediaGuideAutoDownloadBody;
+
+  /// No description provided for @mediaGuideOpenWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open WhatsApp'**
+  String get mediaGuideOpenWhatsApp;
+
+  /// No description provided for @mediaGuideOpenAppFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open WhatsApp -- is it installed?'**
+  String get mediaGuideOpenAppFailed;
+
+  /// No description provided for @directChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct Chat'**
+  String get directChatTitle;
+
+  /// No description provided for @directChatNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Number'**
+  String get directChatNumberLabel;
+
+  /// No description provided for @countryPickerSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search country or code'**
+  String get countryPickerSearchHint;
+
+  /// No description provided for @countryPickerNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No countries match your search'**
+  String get countryPickerNoResults;
+
+  /// No description provided for @directChatMessageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Input Message'**
+  String get directChatMessageLabel;
+
+  /// No description provided for @directChatSendAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get directChatSendAction;
+
+  /// No description provided for @directChatCopyLinkAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy Link'**
+  String get directChatCopyLinkAction;
+
+  /// No description provided for @directChatNumberRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a phone number first'**
+  String get directChatNumberRequired;
+
+  /// No description provided for @directChatLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get directChatLinkCopied;
+
+  /// No description provided for @paywallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recover Deleted WA Messages'**
+  String get paywallTitle;
+
+  /// No description provided for @paywallSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhanced recovery success'**
+  String get paywallSubtitle;
+
+  /// No description provided for @paywallFeatureSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'View chats without being “Seen”'**
+  String get paywallFeatureSeen;
+
+  /// No description provided for @paywallFeaturePrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'100% Private - On-device only'**
+  String get paywallFeaturePrivate;
+
+  /// No description provided for @paywallFeatureAdsFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads-free'**
+  String get paywallFeatureAdsFree;
+
+  /// No description provided for @paywallTrialBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'3 Days Free Trial'**
+  String get paywallTrialBadge;
+
+  /// No description provided for @paywallMonthlyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly ₹1,050.00'**
+  String get paywallMonthlyLabel;
+
+  /// No description provided for @paywallMonthlySubLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No Payment Now'**
+  String get paywallMonthlySubLabel;
+
+  /// No description provided for @paywallSaveBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Save 99%'**
+  String get paywallSaveBadge;
+
+  /// No description provided for @paywallLifetimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifetime ₹1,500.00'**
+  String get paywallLifetimeLabel;
+
+  /// No description provided for @paywallLifetimeSubLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time Payment'**
+  String get paywallLifetimeSubLabel;
+
+  /// No description provided for @paywallContinueAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get paywallContinueAction;
+
+  /// No description provided for @paywallDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-renewable, cancel anytime'**
+  String get paywallDisclaimer;
+
+  /// No description provided for @paywallComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases aren\'t available yet -- coming soon.'**
+  String get paywallComingSoon;
+
   /// No description provided for @chatsEmptyState.
   ///
   /// In en, this message translates to:
   /// **'No chats captured yet. Once a WhatsApp notification arrives, it will show up here.'**
   String get chatsEmptyState;
+
+  /// No description provided for @welcomeChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recover Deleted Message'**
+  String get welcomeChatTitle;
+
+  /// No description provided for @welcomeChatPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'If you want to ...'**
+  String get welcomeChatPreview;
+
+  /// No description provided for @welcomeChatGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi, dear'**
+  String get welcomeChatGreeting;
+
+  /// No description provided for @welcomeChatIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'If you want to'**
+  String get welcomeChatIntro;
+
+  /// No description provided for @welcomeChatFeatureRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore deleted messages'**
+  String get welcomeChatFeatureRestore;
+
+  /// No description provided for @welcomeChatFeatureUnseen.
+  ///
+  /// In en, this message translates to:
+  /// **'Read message without being seen'**
+  String get welcomeChatFeatureUnseen;
+
+  /// No description provided for @welcomeChatSeeHowToUse.
+  ///
+  /// In en, this message translates to:
+  /// **'See how to use'**
+  String get welcomeChatSeeHowToUse;
 
   /// No description provided for @statusAccessTitle.
   ///
@@ -488,6 +860,24 @@ abstract class AppLocalizations {
   /// **'This message was later edited to: \"{newText}\"'**
   String editedToExplanation(String newText);
 
+  /// No description provided for @permissionChangeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open system settings?'**
+  String get permissionChangeConfirmTitle;
+
+  /// No description provided for @permissionChangeConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" can only be changed from system settings, not directly here. Continue?'**
+  String permissionChangeConfirmBody(String title);
+
+  /// No description provided for @continueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueButton;
+
   /// No description provided for @settingsPermissionsHeader.
   ///
   /// In en, this message translates to:
@@ -572,11 +962,53 @@ abstract class AppLocalizations {
   /// **'How this works'**
   String get settingsHowItWorksHeader;
 
-  /// No description provided for @settingsHowItWorksBody.
+  /// No description provided for @settingsHowItWorksDetectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'This app backs up incoming WhatsApp notifications locally. A message is marked \"deleted\" when its notification disappears before you opened that chat inside this app -- this is a best-effort signal, not a guarantee, since WhatsApp does not publish an official \"message deleted\" event. The same applies to edited messages: if WhatsApp updates a message\'s notification with new text before you\'ve seen it, the original text is kept and marked \"Edited\" so you can still see what it said before. Media is only recovered if WhatsApp attached it to the notification itself. Nothing is ever sent off this device.'**
-  String get settingsHowItWorksBody;
+  /// **'How detection works'**
+  String get settingsHowItWorksDetectionTitle;
+
+  /// No description provided for @settingsHowItWorksDetectionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This app backs up incoming WhatsApp notifications locally. A message is marked \"deleted\" when its notification disappears before you\'ve opened that chat here -- a best-effort signal, not a guarantee, since WhatsApp doesn\'t publish an official \"deleted\" event.'**
+  String get settingsHowItWorksDetectionBody;
+
+  /// No description provided for @settingsHowItWorksEditedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited messages'**
+  String get settingsHowItWorksEditedTitle;
+
+  /// No description provided for @settingsHowItWorksEditedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'If WhatsApp updates a message\'s notification with new text before you\'ve seen it, the original text is kept and marked \"Edited\" so you can still see what it said before.'**
+  String get settingsHowItWorksEditedBody;
+
+  /// No description provided for @settingsHowItWorksMediaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Media recovery'**
+  String get settingsHowItWorksMediaTitle;
+
+  /// No description provided for @settingsHowItWorksMediaBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos, videos, and voice notes are only recovered if WhatsApp attached them to the notification itself.'**
+  String get settingsHowItWorksMediaBody;
+
+  /// No description provided for @settingsHowItWorksPrivacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'100% on this device'**
+  String get settingsHowItWorksPrivacyTitle;
+
+  /// No description provided for @settingsHowItWorksPrivacyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is ever sent off this device -- everything stays stored locally, for your eyes only.'**
+  String get settingsHowItWorksPrivacyBody;
 
   /// No description provided for @settingsLanguageHeader.
   ///
@@ -602,10 +1034,16 @@ abstract class AppLocalizations {
   /// **'Background reliability'**
   String get settingsBackgroundHeader;
 
+  /// No description provided for @settingsBackgroundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Some phone brands kill background apps'**
+  String get settingsBackgroundTitle;
+
   /// No description provided for @settingsBackgroundDesc.
   ///
   /// In en, this message translates to:
-  /// **'Some phone brands (Xiaomi, Oppo, Vivo, OnePlus, Huawei, Samsung) kill background apps more aggressively than stock Android, even with battery optimization already excluded above. If messages stop being captured after the app hasn\'t been opened for a while, open your phone\'s autostart / protected apps / background activity settings for this app and allow it to run in the background.'**
+  /// **'Xiaomi, Oppo, Vivo, OnePlus, Huawei and Samsung are more aggressive than stock Android, even with battery optimization already excluded above. If messages stop being captured after a while, allow this app to run in the background from your phone\'s autostart / protected apps settings.'**
   String get settingsBackgroundDesc;
 
   /// No description provided for @settingsBackgroundAction.

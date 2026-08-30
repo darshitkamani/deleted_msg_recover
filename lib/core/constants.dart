@@ -6,6 +6,12 @@ import 'models/media_type.dart';
 const String pkgWhatsApp = 'com.whatsapp';
 const String pkgWhatsAppBusiness = 'com.whatsapp.w4b';
 
+/// Index of the Settings tab in [HomeShell]'s bottom nav (Recover, Chats,
+/// Statuses, Settings) -- kept here rather than imported from home_shell.dart
+/// so screens that want to jump to Settings (e.g. the welcome chat's "See
+/// how to use" link) don't need an import cycle through it.
+const int homeShellSettingsTabIndex = 3;
+
 String appLabelForPackage(BuildContext context, String package) {
   final l10n = AppLocalizations.of(context);
   switch (package) {

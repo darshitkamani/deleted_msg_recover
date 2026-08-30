@@ -85,17 +85,210 @@ class AppLocalizationsHi extends AppLocalizations {
   String get navDeleted => 'डिलीट किए गए';
 
   @override
+  String get navRecover => 'Recover';
+
+  @override
   String get navStatuses => 'स्टेटस';
 
   @override
   String get navSettings => 'सेटिंग्स';
 
   @override
+  String get navDirectChat => 'Direct';
+
+  @override
   String get deletedMessagesTitle => 'डिलीट किए गए मैसेज';
+
+  @override
+  String get recoverTitle => 'Message Recovery';
+
+  @override
+  String get recoverTagline => 'Get back what was deleted';
+
+  @override
+  String get recoverPlusBadge => 'Recovery+';
+
+  @override
+  String get recoverChatRecoveryHeader => 'Chat Recovery';
+
+  @override
+  String get recoverMediaRecoveryHeader => 'Media Recovery';
+
+  @override
+  String get recoverMoreHeader => 'More Recovery';
+
+  @override
+  String get recoverTextMessage => 'Text Message';
+
+  @override
+  String get recoverVoiceMessage => 'Voice Message';
+
+  @override
+  String get recoverPhoto => 'Photo';
+
+  @override
+  String get recoverVideo => 'Video';
+
+  @override
+  String get recoverFiles => 'Files';
+
+  @override
+  String get recoverStickersGifs => 'Stickers & GIFs';
+
+  @override
+  String get recoverMediaEmptyState => 'Nothing recovered here yet.';
+
+  @override
+  String get mediaFolderAccessTitle => 'Grant folder access';
+
+  @override
+  String get mediaFolderAccessDescription =>
+      'WhatsApp keeps downloaded photos, videos, files and stickers in its own Media folder. Recovering them here -- even ones whose message was deleted -- needs access to that folder once.';
+
+  @override
+  String get mediaFolderAccessAction => 'Choose folder';
+
+  @override
+  String get mediaFolderAccessDeniedMessage =>
+      'Access wasn\'t granted. Make sure to select the folder shown above and tap \"Use this folder\".';
+
+  @override
+  String get mediaFolderEmptyTitle => 'Empty here';
+
+  @override
+  String get mediaFolderScanningState => 'Scanning for recoverable files…';
+
+  @override
+  String get errorStateTitle => 'Something went wrong';
+
+  @override
+  String get errorStateRetryAction => 'Try again';
+
+  @override
+  String get mediaFolderViewGuide => 'View the Guide';
+
+  @override
+  String get mediaGuideTitle => 'How to use';
+
+  @override
+  String get mediaGuideFolderAccessTitle => 'Allow Folder Access';
+
+  @override
+  String get mediaGuideFolderAccessGrantedBody =>
+      'Access granted -- recovered files show up here automatically.';
+
+  @override
+  String get mediaGuideFolderAccessBody =>
+      'Tap to pick WhatsApp\'s Media folder, so recovered files can be found and copied here.';
+
+  @override
+  String get mediaGuideAutoDownloadTitle => 'Enable Media auto-download';
+
+  @override
+  String get mediaGuideAutoDownloadBody =>
+      'Go to WhatsApp → Settings → Storage and Data, then enable Media Auto-Download for all options. Files that are downloaded stay recoverable here even after the message is deleted -- ones WhatsApp never downloaded can\'t be.';
+
+  @override
+  String get mediaGuideOpenWhatsApp => 'Open WhatsApp';
+
+  @override
+  String get mediaGuideOpenAppFailed =>
+      'Couldn\'t open WhatsApp -- is it installed?';
+
+  @override
+  String get directChatTitle => 'Direct Chat';
+
+  @override
+  String get directChatNumberLabel => 'Input Number';
+
+  @override
+  String get countryPickerSearchHint => 'Search country or code';
+
+  @override
+  String get countryPickerNoResults => 'No countries match your search';
+
+  @override
+  String get directChatMessageLabel => 'Input Message';
+
+  @override
+  String get directChatSendAction => 'Send';
+
+  @override
+  String get directChatCopyLinkAction => 'Copy Link';
+
+  @override
+  String get directChatNumberRequired => 'Enter a phone number first';
+
+  @override
+  String get directChatLinkCopied => 'Link copied';
+
+  @override
+  String get paywallTitle => 'Recover Deleted WA Messages';
+
+  @override
+  String get paywallSubtitle => 'Enhanced recovery success';
+
+  @override
+  String get paywallFeatureSeen => 'View chats without being “Seen”';
+
+  @override
+  String get paywallFeaturePrivate => '100% Private - On-device only';
+
+  @override
+  String get paywallFeatureAdsFree => 'Ads-free';
+
+  @override
+  String get paywallTrialBadge => '3 Days Free Trial';
+
+  @override
+  String get paywallMonthlyLabel => 'Monthly ₹1,050.00';
+
+  @override
+  String get paywallMonthlySubLabel => 'No Payment Now';
+
+  @override
+  String get paywallSaveBadge => 'Save 99%';
+
+  @override
+  String get paywallLifetimeLabel => 'Lifetime ₹1,500.00';
+
+  @override
+  String get paywallLifetimeSubLabel => 'One-time Payment';
+
+  @override
+  String get paywallContinueAction => 'Continue';
+
+  @override
+  String get paywallDisclaimer => 'Auto-renewable, cancel anytime';
+
+  @override
+  String get paywallComingSoon =>
+      'Purchases aren\'t available yet -- coming soon.';
 
   @override
   String get chatsEmptyState =>
       'अभी तक कोई चैट कैप्चर नहीं हुई। जैसे ही कोई व्हाट्सएप नोटिफिकेशन आएगा, यह यहाँ दिखेगा।';
+
+  @override
+  String get welcomeChatTitle => 'Recover Deleted Message';
+
+  @override
+  String get welcomeChatPreview => 'If you want to ...';
+
+  @override
+  String get welcomeChatGreeting => 'Hi, dear';
+
+  @override
+  String get welcomeChatIntro => 'If you want to';
+
+  @override
+  String get welcomeChatFeatureRestore => 'Restore deleted messages';
+
+  @override
+  String get welcomeChatFeatureUnseen => 'Read message without being seen';
+
+  @override
+  String get welcomeChatSeeHowToUse => 'See how to use';
 
   @override
   String get statusAccessTitle => 'स्टेटस का एक्सेस दें';
@@ -238,6 +431,17 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
+  String get permissionChangeConfirmTitle => 'Open system settings?';
+
+  @override
+  String permissionChangeConfirmBody(String title) {
+    return '\"$title\" can only be changed from system settings, not directly here. Continue?';
+  }
+
+  @override
+  String get continueButton => 'Continue';
+
+  @override
   String get settingsPermissionsHeader => 'अनुमतियाँ';
 
   @override
@@ -283,8 +487,32 @@ class AppLocalizationsHi extends AppLocalizations {
   String get settingsHowItWorksHeader => 'यह कैसे काम करता है';
 
   @override
-  String get settingsHowItWorksBody =>
-      'यह ऐप आने वाले व्हाट्सएप नोटिफिकेशन का स्थानीय बैकअप रखता है। किसी मैसेज को \"डिलीट\" तब चिह्नित किया जाता है जब उसका नोटिफिकेशन आपके इस ऐप में वह चैट खोलने से पहले गायब हो जाता है -- यह एक अनुमानित संकेत है, गारंटी नहीं, क्योंकि व्हाट्सएप कोई आधिकारिक \"मैसेज डिलीट\" इवेंट जारी नहीं करता। एडिट किए गए मैसेज के साथ भी यही होता है: अगर व्हाट्सएप आपके देखने से पहले किसी मैसेज के नोटिफिकेशन को नए टेक्स्ट के साथ अपडेट करता है, तो मूल टेक्स्ट सुरक्षित रखा जाता है और \"एडिट किया गया\" के रूप में चिह्नित किया जाता है, ताकि आप देख सकें कि पहले क्या लिखा था। मीडिया तभी रिकवर होता है जब व्हाट्सएप ने उसे नोटिफिकेशन के साथ भेजा हो। कुछ भी कभी इस डिवाइस से बाहर नहीं भेजा जाता।';
+  String get settingsHowItWorksDetectionTitle => 'How detection works';
+
+  @override
+  String get settingsHowItWorksDetectionBody =>
+      'This app backs up incoming WhatsApp notifications locally. A message is marked \"deleted\" when its notification disappears before you\'ve opened that chat here -- a best-effort signal, not a guarantee, since WhatsApp doesn\'t publish an official \"deleted\" event.';
+
+  @override
+  String get settingsHowItWorksEditedTitle => 'Edited messages';
+
+  @override
+  String get settingsHowItWorksEditedBody =>
+      'If WhatsApp updates a message\'s notification with new text before you\'ve seen it, the original text is kept and marked \"Edited\" so you can still see what it said before.';
+
+  @override
+  String get settingsHowItWorksMediaTitle => 'Media recovery';
+
+  @override
+  String get settingsHowItWorksMediaBody =>
+      'Photos, videos, and voice notes are only recovered if WhatsApp attached them to the notification itself.';
+
+  @override
+  String get settingsHowItWorksPrivacyTitle => '100% on this device';
+
+  @override
+  String get settingsHowItWorksPrivacyBody =>
+      'Nothing is ever sent off this device -- everything stays stored locally, for your eyes only.';
 
   @override
   String get settingsLanguageHeader => 'भाषा';
@@ -297,6 +525,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get settingsBackgroundHeader => 'बैकग्राउंड में भरोसेमंदी';
+
+  @override
+  String get settingsBackgroundTitle =>
+      'Some phone brands kill background apps';
 
   @override
   String get settingsBackgroundDesc =>

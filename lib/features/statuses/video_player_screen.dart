@@ -56,7 +56,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<void> _download() async {
     if (_downloading) return;
     setState(() => _downloading = true);
-    final ok = await NativeBridge.downloadMedia(widget.path, isVideo: true);
+    // A throw here (rather than downloadMedia's normal false-on-failure)
+    // would otherwise leave this button's spinner stuck forever.
+    bool ok = false;
+    try {
+      ok = await NativeBridge.downloadMedia(widget.path, isVideo: true);
+    } catch (_) {
+      ok = false;
+    }
     if (!mounted) return;
     setState(() => _downloading = false);
     final l10n = AppLocalizations.of(context);

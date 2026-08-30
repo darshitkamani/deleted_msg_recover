@@ -1,7 +1,9 @@
 import 'package:flutter/services.dart';
 
 import 'models/chat.dart';
+import 'models/media_folder_item.dart';
 import 'models/message.dart';
+import 'models/recovered_media.dart';
 import 'models/status_item.dart';
 
 /// Thin wrapper around the platform channels exposed by the Android side
@@ -53,6 +55,23 @@ class NativeBridge {
         .invokeMethod<List<dynamic>>('getMessages', {'chatKey': chatKey});
     return (result ?? [])
         .map((e) => Message.fromMap(e as Map<dynamic, dynamic>))
+        .toList();
+  }
+
+  /// All recovered messages carrying media of one of [mediaTypes], across
+  /// every chat -- optionally narrowed to a single [package]. Backs the
+  /// Recover grid's per-media-type screens (Photo, Video, Voice Message,
+  /// Files, Stickers & GIFs).
+  static Future<List<RecoveredMedia>> getMediaMessages(
+    List<String> mediaTypes, {
+    String? package,
+  }) async {
+    final result = await _methodChannel.invokeMethod<List<dynamic>>(
+      'getMediaMessages',
+      {'mediaTypes': mediaTypes, 'package': package},
+    );
+    return (result ?? [])
+        .map((e) => RecoveredMedia.fromMap(e as Map<dynamic, dynamic>))
         .toList();
   }
 
@@ -115,5 +134,52 @@ class NativeBridge {
 
   static Future<void> openBackgroundAppSettings() {
     return _methodChannel.invokeMethod('openBackgroundAppSettings');
+  }
+
+  static Future<bool> openApp(String package) async {
+    final result = await _methodChannel.invokeMethod<bool>('openApp', {'package': package});
+    return result ?? false;
+  }
+
+  /// Whether the user has already granted access to [package]'s Media
+  /// folder -- one grant covers every [listMediaFolder] kind.
+  static Future<bool> hasMediaFolderAccess(String package) async {
+    final result = await _methodChannel
+        .invokeMethod<bool>('hasMediaFolderAccess', {'package': package});
+    return result ?? false;
+  }
+
+  static Future<bool> requestMediaFolderAccess(String package) async {
+    final result = await _methodChannel
+        .invokeMethod<bool>('requestMediaFolderAccess', {'package': package});
+    return result ?? false;
+  }
+
+  /// Files already recovered for [kind] ('photo', 'video', 'files', or
+  /// 'stickersGifs') and [package] -- a fast local listing only, so it's
+  /// safe to call for a screen's first paint. Call [syncMediaFolder]
+  /// separately (and re-call this after) to actually scan for new files.
+  static Future<List<MediaFolderItem>> listMediaFolder(String kind, String package) async {
+    final result = await _methodChannel.invokeMethod<List<dynamic>>(
+      'listMediaFolder',
+      {'kind': kind, 'package': package},
+    );
+    return (result ?? [])
+        .map((e) => MediaFolderItem.fromMap(e as Map<dynamic, dynamic>))
+        .toList();
+  }
+
+  /// Scans WhatsApp's granted Media folder for new files matching [kind]
+  /// and copies them in -- the slow half of media-folder recovery. Can take
+  /// a while on a large folder or slow device, so callers should run this
+  /// in the background rather than blocking a screen on it.
+  static Future<void> syncMediaFolder(String kind, String package) {
+    return _methodChannel.invokeMethod('syncMediaFolder', {'kind': kind, 'package': package});
+  }
+
+  static Future<String> mediaFolderHint(String package) async {
+    final result = await _methodChannel
+        .invokeMethod<String>('mediaFolderHint', {'package': package});
+    return result ?? '';
   }
 }

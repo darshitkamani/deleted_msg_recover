@@ -32,11 +32,14 @@ import java.util.concurrent.Executors
 private const val METHOD_CHANNEL = "recover/native"
 private const val EVENT_CHANNEL = "recover/events"
 private const val REQUEST_STATUS_FOLDER = 4201
+private const val REQUEST_MEDIA_FOLDER = 4202
 
 class MainActivity : FlutterActivity() {
 
     private var pendingStatusResult: MethodChannel.Result? = null
     private var pendingStatusPackage: String? = null
+    private var pendingMediaResult: MethodChannel.Result? = null
+    private var pendingMediaPackage: String? = null
     private val bgExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -82,6 +85,11 @@ class MainActivity : FlutterActivity() {
                             } else {
                                 runInBackground(result) { store.getMessages(chatKey) }
                             }
+                        }
+                        "getMediaMessages" -> {
+                            val types = call.argument<List<String>>("mediaTypes") ?: emptyList()
+                            val pkg = call.argument<String>("package")
+                            runInBackground(result) { store.getMediaMessages(types, pkg) }
                         }
                         "markChatOpened" -> {
                             val chatKey = call.argument<String>("chatKey")
@@ -142,9 +150,63 @@ class MainActivity : FlutterActivity() {
                                 result.success(StatusRepository.expectedFolderHint(pkg))
                             }
                         }
+                        "hasMediaFolderAccess" -> {
+                            val pkg = call.argument<String>("package")
+                            if (pkg == null) {
+                                result.error("missing_arg", "package required", null)
+                            } else {
+                                result.success(MediaFolderRepository.hasAccess(applicationContext, pkg))
+                            }
+                        }
+                        "requestMediaFolderAccess" -> {
+                            val pkg = call.argument<String>("package")
+                            if (pkg == null) {
+                                result.error("missing_arg", "package required", null)
+                            } else {
+                                requestMediaFolderAccess(pkg, result)
+                            }
+                        }
+                        "listMediaFolder" -> {
+                            val kind = call.argument<String>("kind")
+                            val pkg = call.argument<String>("package")
+                            if (kind == null || pkg == null) {
+                                result.error("missing_arg", "kind and package required", null)
+                            } else {
+                                runInBackground(result) {
+                                    MediaFolderRepository.listMedia(applicationContext, kind, pkg)
+                                }
+                            }
+                        }
+                        "syncMediaFolder" -> {
+                            val kind = call.argument<String>("kind")
+                            val pkg = call.argument<String>("package")
+                            if (kind == null || pkg == null) {
+                                result.error("missing_arg", "kind and package required", null)
+                            } else {
+                                runInBackground(result) {
+                                    MediaFolderRepository.syncMedia(applicationContext, kind, pkg); null
+                                }
+                            }
+                        }
+                        "mediaFolderHint" -> {
+                            val pkg = call.argument<String>("package")
+                            if (pkg == null) {
+                                result.error("missing_arg", "package required", null)
+                            } else {
+                                result.success(MediaFolderRepository.expectedFolderHint(pkg))
+                            }
+                        }
                         "openBackgroundAppSettings" -> {
                             openBackgroundAppSettings()
                             result.success(null)
+                        }
+                        "openApp" -> {
+                            val pkg = call.argument<String>("package")
+                            if (pkg == null) {
+                                result.error("missing_arg", "package required", null)
+                            } else {
+                                result.success(openApp(pkg))
+                            }
                         }
                         "downloadMedia" -> {
                             val path = call.argument<String>("path")
@@ -262,6 +324,19 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /** Launches [pkg]'s own app (e.g. WhatsApp) so the user can find a setting this app has no
+     * API to open directly, such as WhatsApp's own media auto-download preference. */
+    private fun openApp(pkg: String): Boolean {
+        return try {
+            val intent = packageManager.getLaunchIntentForPackage(pkg) ?: return false
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     /**
      * Saves a recovered file into the public gallery (Pictures/Movies) so it
      * survives outside this app and shows up in the user's normal gallery
@@ -361,6 +436,37 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {
             pendingStatusResult = null
             pendingStatusPackage = null
+            result.success(false)
+        }
+    }
+
+    /**
+     * Same Storage Access Framework flow as [requestStatusAccess], but hints at WhatsApp's
+     * top-level "Media" folder rather than ".Statuses" -- one grant here covers every
+     * [MediaFolderRepository] kind (Photo/Video/Files/Stickers & GIFs) since they're all
+     * subfolders of it.
+     */
+    private fun requestMediaFolderAccess(pkg: String, result: MethodChannel.Result) {
+        pendingMediaResult = result
+        pendingMediaPackage = pkg
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            try {
+                val appFolder = if (pkg == "com.whatsapp.w4b") "WhatsApp Business" else "WhatsApp"
+                val hintPath = "primary:Android/media/$pkg/$appFolder/Media"
+                putExtra(
+                    DocumentsContract.EXTRA_INITIAL_URI,
+                    DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", hintPath)
+                )
+            } catch (_: Exception) {
+                // Hint is a convenience only; the picker still opens without it.
+            }
+        }
+        try {
+            startActivityForResult(intent, REQUEST_MEDIA_FOLDER)
+        } catch (_: Exception) {
+            pendingMediaResult = null
+            pendingMediaPackage = null
             result.success(false)
         }
     }
@@ -488,20 +594,51 @@ class MainActivity : FlutterActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQUEST_STATUS_FOLDER) return
+        when (requestCode) {
+            REQUEST_STATUS_FOLDER -> {
+                val result = pendingStatusResult
+                val pkg = pendingStatusPackage
+                pendingStatusResult = null
+                pendingStatusPackage = null
+                if (pkg == null) {
+                    result?.success(false)
+                } else {
+                    finishFolderGrant(data, resultCode, result) { treeUri ->
+                        StatusRepository.saveAccess(applicationContext, pkg, treeUri)
+                    }
+                }
+            }
+            REQUEST_MEDIA_FOLDER -> {
+                val result = pendingMediaResult
+                val pkg = pendingMediaPackage
+                pendingMediaResult = null
+                pendingMediaPackage = null
+                if (pkg == null) {
+                    result?.success(false)
+                } else {
+                    finishFolderGrant(data, resultCode, result) { treeUri ->
+                        MediaFolderRepository.saveAccess(applicationContext, pkg, treeUri)
+                    }
+                }
+            }
+        }
+    }
 
-        val result = pendingStatusResult
-        val pkg = pendingStatusPackage
-        pendingStatusResult = null
-        pendingStatusPackage = null
-
+    /** Shared tail end of both SAF folder-grant flows: persist the permission, hand it to
+     * [save], and report success/failure back to the pending Dart call. */
+    private fun finishFolderGrant(
+        data: Intent?,
+        resultCode: Int,
+        result: MethodChannel.Result?,
+        save: (Uri) -> Unit
+    ) {
         val treeUri = data?.data
-        if (resultCode == RESULT_OK && treeUri != null && pkg != null) {
+        if (resultCode == RESULT_OK && treeUri != null) {
             try {
                 contentResolver.takePersistableUriPermission(
                     treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-                StatusRepository.saveAccess(applicationContext, pkg, treeUri)
+                save(treeUri)
                 result?.success(true)
             } catch (_: Exception) {
                 result?.success(false)

@@ -300,6 +300,51 @@ class MessageStore private constructor(context: Context) :
         return result
     }
 
+    /**
+     * Every recovered message that has attached media of one of [mediaTypes], across all
+     * chats (optionally narrowed to a single [packageName]) -- backs the Recover grid's
+     * per-media-type screens (Photo, Video, Voice Message, Files, Stickers & GIFs), which show
+     * matches from every conversation at once rather than one chat at a time.
+     */
+    fun getMediaMessages(mediaTypes: List<String>, packageName: String?): List<Map<String, Any?>> {
+        if (mediaTypes.isEmpty()) return emptyList()
+        val result = mutableListOf<Map<String, Any?>>()
+        val typePlaceholders = mediaTypes.joinToString(",") { "?" }
+        val args = mutableListOf<String>()
+        args.addAll(mediaTypes)
+        val packageClause = if (packageName != null) "AND c.package = ?" else ""
+        if (packageName != null) args.add(packageName)
+
+        readableDatabase.rawQuery(
+            """
+            SELECT m.chat_key, c.title, c.package, m.sender, m.text, m.media_path, m.media_type,
+                   m.media_mime, m.timestamp, m.status
+            FROM messages m JOIN chats c ON c.chat_key = m.chat_key
+            WHERE m.media_path IS NOT NULL AND m.media_type IN ($typePlaceholders) $packageClause
+            ORDER BY m.timestamp DESC
+            """.trimIndent(),
+            args.toTypedArray()
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                result.add(
+                    mapOf(
+                        "chatKey" to cursor.getString(0),
+                        "chatTitle" to cursor.getString(1),
+                        "package" to cursor.getString(2),
+                        "sender" to cursor.getString(3),
+                        "text" to cursor.getString(4),
+                        "mediaPath" to cursor.getString(5),
+                        "mediaType" to cursor.getString(6),
+                        "mediaMime" to cursor.getString(7),
+                        "timestamp" to cursor.getLong(8),
+                        "status" to cursor.getString(9)
+                    )
+                )
+            }
+        }
+        return result
+    }
+
     private fun getEditHistory(messageId: Long): List<Map<String, Any?>> {
         val result = mutableListOf<Map<String, Any?>>()
         readableDatabase.rawQuery(

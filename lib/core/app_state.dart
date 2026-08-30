@@ -27,9 +27,24 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
 
   List<Chat> chats = [];
   bool loading = false;
+  Object? chatsError;
 
   Locale? locale;
   bool onboardingComplete = false;
+
+  /// Set by a pushed screen (e.g. the welcome chat's "See how to use" link)
+  /// that wants [HomeShell] to switch its bottom-nav tab once the screen
+  /// pops back to it. `null` once consumed.
+  int? pendingTabIndex;
+
+  void goToTab(int index) {
+    pendingTabIndex = index;
+    notifyListeners();
+  }
+
+  void clearPendingTab() {
+    pendingTabIndex = null;
+  }
 
   StreamSubscription<Map<dynamic, dynamic>>? _eventSub;
 
@@ -39,16 +54,35 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     await _loadLocale();
     await _loadOnboardingComplete();
     if (!isSupportedPlatform) return;
-    await refreshPermissions();
-    await refreshMonitoredApps();
+    // Each step runs independently -- one throwing (permissions, monitored
+    // apps) must not stop the others (crucially refreshData and the event
+    // subscription) from ever running at all.
+    await _guard(refreshPermissions);
+    await _guard(refreshMonitoredApps);
     await refreshData();
     _eventSub ??= NativeBridge.events.listen((_) => refreshData());
     WidgetsBinding.instance.addObserver(this);
   }
 
+  Future<void> _guard(Future<void> Function() step) async {
+    try {
+      await step();
+    } catch (_) {
+      // Swallowed deliberately: the field(s) that step would have set just
+      // keep their prior/default value, and later steps still run.
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && isSupportedPlatform) {
+      // Notification access and battery-optimization exclusion can only be
+      // granted from their system settings screens, so re-check both
+      // whenever the user comes back -- otherwise the Settings tab's
+      // switches would keep showing the pre-settings-visit state until
+      // some unrelated action (like opening a chat) happened to trigger a
+      // refresh.
+      _guard(refreshPermissions);
       refreshData();
     }
   }
@@ -118,8 +152,16 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> refreshData() async {
     if (!isSupportedPlatform) return;
     loading = true;
+    chatsError = null;
     notifyListeners();
-    chats = await NativeBridge.getChats();
+    try {
+      chats = await NativeBridge.getChats();
+    } catch (e) {
+      // Otherwise a throw here (e.g. a stale build missing a platform
+      // channel method) leaves `loading` stuck true with nothing ever
+      // clearing it, and no indication anywhere of what went wrong.
+      chatsError = e;
+    }
     loading = false;
     notifyListeners();
   }
