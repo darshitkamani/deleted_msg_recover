@@ -234,7 +234,13 @@ class MessageStore private constructor(context: Context) :
         )
     }
 
+    /** Guards [mergeDuplicateGroupChats] so it only ever scans once per process,
+     * not on every [getChats] call. */
+    @Volatile
+    private var duplicateChatsMerged = false
+
     fun getChats(): List<Map<String, Any?>> {
+        mergeDuplicateGroupChatsOnce()
         val result = mutableListOf<Map<String, Any?>>()
         readableDatabase.rawQuery(
             """
@@ -487,6 +493,113 @@ class MessageStore private constructor(context: Context) :
         ).use { cursor ->
             if (!cursor.moveToFirst()) return null
             return RowForChange(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3))
+        }
+    }
+
+    private fun mergeDuplicateGroupChatsOnce() {
+        if (duplicateChatsMerged) return
+        synchronized(this) {
+            if (duplicateChatsMerged) return
+            mergeDuplicateGroupChats()
+            duplicateChatsMerged = true
+        }
+    }
+
+    /**
+     * One-time (per process) cleanup for chat rows created before conversation
+     * titles were normalized (see [NotificationListener]/[ChatTitleUtils]): a
+     * group with an unread backlog used to get a brand new "chats" row per
+     * distinct "(N messages)" suffix instead of updating the one real group,
+     * each carrying its own overlapping slice of that group's messages. This
+     * folds every such duplicate back into a single canonical row keyed on
+     * the normalized title -- messages that are byte-identical across
+     * duplicates (same timestamp + text, captured from overlapping
+     * notification windows) collapse to one copy; anything genuinely
+     * distinct is kept and merged into the same thread.
+     */
+    private fun mergeDuplicateGroupChats() {
+        val db = writableDatabase
+        data class Row(
+            val chatKey: String,
+            val pkg: String,
+            val title: String,
+            val isGroup: Boolean,
+            val lastActivity: Long?,
+            val lastOpened: Long?
+        )
+
+        val rows = mutableListOf<Row>()
+        db.rawQuery(
+            "SELECT chat_key, package, title, is_group, last_activity_at, last_opened_at FROM chats",
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                rows.add(
+                    Row(
+                        cursor.getString(0),
+                        cursor.getString(1),
+                        cursor.getString(2),
+                        cursor.getInt(3) == 1,
+                        if (cursor.isNull(4)) null else cursor.getLong(4),
+                        if (cursor.isNull(5)) null else cursor.getLong(5)
+                    )
+                )
+            }
+        }
+
+        val groups = rows.groupBy { it.pkg to ChatTitleUtils.normalize(it.title) }
+
+        db.beginTransaction()
+        try {
+            for ((key, group) in groups) {
+                if (group.size < 2) continue
+                val (pkg, normalizedTitle) = key
+                val canonicalKey = "$pkg|$normalizedTitle"
+                val isGroup = group.any { it.isGroup }
+                val maxActivity = group.mapNotNull { it.lastActivity }.maxOrNull()
+                val maxOpened = group.mapNotNull { it.lastOpened }.maxOrNull()
+
+                if (group.none { it.chatKey == canonicalKey }) {
+                    db.insertWithOnConflict(
+                        "chats",
+                        null,
+                        ContentValues().apply {
+                            put("chat_key", canonicalKey)
+                            put("package", pkg)
+                            put("title", normalizedTitle)
+                            put("is_group", if (isGroup) 1 else 0)
+                        },
+                        SQLiteDatabase.CONFLICT_IGNORE
+                    )
+                }
+                db.execSQL(
+                    """
+                    UPDATE chats SET title = ?, is_group = ?,
+                        last_activity_at = COALESCE(?, last_activity_at),
+                        last_opened_at = COALESCE(?, last_opened_at)
+                    WHERE chat_key = ?
+                    """.trimIndent(),
+                    arrayOf<Any?>(normalizedTitle, if (isGroup) 1 else 0, maxActivity, maxOpened, canonicalKey)
+                )
+
+                for (dup in group) {
+                    if (dup.chatKey == canonicalKey) continue
+                    // Rows that lose the unique-index race here (chat_key,
+                    // timestamp, text) already have an identical copy moved
+                    // into canonicalKey -- genuine duplicates, dropped below.
+                    db.execSQL(
+                        "UPDATE OR IGNORE messages SET chat_key = ? WHERE chat_key = ?",
+                        arrayOf(canonicalKey, dup.chatKey)
+                    )
+                    db.execSQL("DELETE FROM messages WHERE chat_key = ?", arrayOf(dup.chatKey))
+                    db.execSQL("DELETE FROM chats WHERE chat_key = ?", arrayOf(dup.chatKey))
+                }
+            }
+            // Edits whose message got dropped as a duplicate above are now orphaned.
+            db.execSQL("DELETE FROM message_edits WHERE message_id NOT IN (SELECT id FROM messages)")
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
     }
 

@@ -234,12 +234,19 @@ class NotificationListener : NotificationListenerService() {
         }
 
         val isGroup = extras.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false)
-        val title = (extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)
+        val rawTitle = (extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)
             ?: extras.getCharSequence(Notification.EXTRA_TITLE))?.toString()
-        if (title == null) {
+        if (rawTitle == null) {
             Log.d(TAG, "skip key=${sbn.key}: no conversation/notification title present")
             return
         }
+        // A group with an unread backlog gets its conversation title rewritten
+        // to e.g. "TechOnTouch x WB (12 messages)" -- the count changes on
+        // every notification, so keying (and displaying) on the raw title
+        // split what's really one group across a new "chat" row per count.
+        // Stripping it back to the plain group name keeps them all mapped to
+        // the same chatKey.
+        val title = ChatTitleUtils.normalize(rawTitle)
         val chatKey = "$pkg|$title"
         Log.d(TAG, "handling key=${sbn.key} chat=\"$title\" group=$isGroup messages=${style.messages.size}")
 
