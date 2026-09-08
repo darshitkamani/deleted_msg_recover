@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/ads/ads_service.dart';
 import '../../core/constants.dart';
 import '../../core/models/status_item.dart';
 import '../../core/native_bridge.dart';
@@ -475,9 +476,13 @@ class _StatusTile extends StatefulWidget {
 class _StatusTileState extends State<_StatusTile> {
   bool _downloading = false;
 
-  Future<void> _download() async {
+  void _download() {
     if (_downloading) return;
     setState(() => _downloading = true);
+    AdsService.instance.gateWithRewardedInterstitial(_runDownload);
+  }
+
+  Future<void> _runDownload() async {
     // A throw here would otherwise leave this tile's download spinner
     // stuck forever instead of resetting to a retryable state.
     bool ok = false;
@@ -554,8 +559,10 @@ class _StatusTileState extends State<_StatusTile> {
                   child: _TileActionPill(
                     downloading: _downloading,
                     onDownload: _download,
-                    onShare: () => SharePlus.instance.share(
-                      ShareParams(files: [XFile(item.path)]),
+                    onShare: () => AdsService.instance.gateWithRewardedInterstitial(
+                      () => SharePlus.instance.share(
+                        ShareParams(files: [XFile(item.path)]),
+                      ),
                     ),
                   ),
                 ),

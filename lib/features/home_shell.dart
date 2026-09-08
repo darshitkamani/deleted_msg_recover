@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/ads/ads_service.dart';
+import '../core/ads/native_ad_slot.dart';
 import '../core/app_state.dart';
 import '../core/constants.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -17,7 +19,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
 
   static const _screens = [
@@ -28,12 +30,45 @@ class _HomeShellState extends State<HomeShell> {
     DirectChatScreen(),
   ];
 
+  // Shown (with retries -- see AdsService.showAppOpenAdWhenReady) once per
+  // cold start, not on every resume -- this is the app's home screen, not a
+  // splash gate, so there's no other single "app just launched" hook to
+  // hang it on. Stays true until a pause/resume cycle confirms the ad's own
+  // full-screen activity took over and came back, so we don't keep
+  // retrying (and risk a second ad) once it's actually been shown.
+  bool _awaitingAppOpenAd = true;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<AppState>().refreshData();
     });
+    AdsService.instance.showAppOpenAdWhenReady();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_awaitingAppOpenAd &&
+        (state == AppLifecycleState.paused || state == AppLifecycleState.resumed)) {
+      _awaitingAppOpenAd = false;
+      AdsService.instance.stopAppOpenRetry();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    AdsService.instance.stopAppOpenRetry();
+    super.dispose();
+  }
+
+  void _selectTab(int index) {
+    if (index != _index) {
+      AdsService.instance.showInterstitial((_, _) {});
+    }
+    setState(() => _index = index);
   }
 
   @override
@@ -81,22 +116,33 @@ class _HomeShellState extends State<HomeShell> {
       body: SafeArea(
         top: !showAppBar,
         bottom: false,
-        child: IndexedStack(index: _index, children: _screens),
+        child: Column(
+          children: [
+            const NativeAdSlot(),
+            Expanded(child: IndexedStack(index: _index, children: _screens)),
+          ],
+        ),
       ),
       // Settings has no button here: every tab already has its own settings
       // icon (in its header or the shared app bar above), so a 5th nav slot
       // just for it would be a redundant second way to get there. It's
       // still reachable -- appState.goToTab still lands on it correctly --
       // just not from this bar.
-      bottomNavigationBar: _BottomNavBar(
-        index: _index,
-        backgroundColor: Color.lerp(theme.colorScheme.surface, Colors.white, 0.6)!,
-        onSelect: (i) => setState(() => _index = i),
-        items: [
-          _NavItem(targetIndex: 0, icon: Icons.restore_rounded, label: l10n.navRecover),
-          _NavItem(targetIndex: 1, icon: Icons.chat_bubble_rounded, label: l10n.navChats),
-          _NavItem(targetIndex: 2, icon: Icons.donut_large_rounded, label: l10n.navStatuses),
-          _NavItem(targetIndex: 4, icon: Icons.send_rounded, label: l10n.navDirectChat),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AdsService.instance.bannerAd(),
+          _BottomNavBar(
+            index: _index,
+            backgroundColor: Color.lerp(theme.colorScheme.surface, Colors.white, 0.6)!,
+            onSelect: _selectTab,
+            items: [
+              _NavItem(targetIndex: 0, icon: Icons.restore_rounded, label: l10n.navRecover),
+              _NavItem(targetIndex: 1, icon: Icons.chat_bubble_rounded, label: l10n.navChats),
+              _NavItem(targetIndex: 2, icon: Icons.donut_large_rounded, label: l10n.navStatuses),
+              _NavItem(targetIndex: 4, icon: Icons.send_rounded, label: l10n.navDirectChat),
+            ],
+          ),
         ],
       ),
     );

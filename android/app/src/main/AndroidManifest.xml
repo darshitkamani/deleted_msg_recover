@@ -3,6 +3,11 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <!-- Needed by the Google Mobile Ads SDK to fetch ads; the debug manifest
+         only declares INTERNET for development, so release builds need it
+         here too. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <!-- Only needed on API 28 and below. From API 29 (Android 10) on, saving
          to the gallery goes through MediaStore and needs no storage permission
          at all, but pre-29 devices without this can't write to public storage. -->

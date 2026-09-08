@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/ads/ads_service.dart';
 import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
 
@@ -21,9 +22,13 @@ class ImageViewerScreen extends StatefulWidget {
 class _ImageViewerScreenState extends State<ImageViewerScreen> {
   bool _downloading = false;
 
-  Future<void> _download() async {
+  void _download() {
     if (_downloading) return;
     setState(() => _downloading = true);
+    AdsService.instance.gateWithRewardedInterstitial(_runDownload);
+  }
+
+  Future<void> _runDownload() async {
     // A throw here (rather than downloadMedia's normal false-on-failure)
     // would otherwise leave this button's spinner stuck forever.
     bool ok = false;
@@ -44,8 +49,11 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     );
   }
 
-  void _share() =>
-      SharePlus.instance.share(ShareParams(files: [XFile(widget.path)]));
+  void _share() {
+    AdsService.instance.gateWithRewardedInterstitial(
+      () => SharePlus.instance.share(ShareParams(files: [XFile(widget.path)])),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
