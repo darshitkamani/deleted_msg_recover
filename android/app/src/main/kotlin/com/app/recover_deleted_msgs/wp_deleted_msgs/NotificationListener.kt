@@ -1,4 +1,4 @@
-package com.recoverdeletedmessages.app
+package com.app.recover_deleted_msgs.wp_deleted_msgs
 
 import android.app.Notification
 import android.graphics.Bitmap
@@ -52,18 +52,6 @@ class NotificationListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        // Deliberately NOT starting the keep-alive foreground service here.
-        // This callback can fire in a stone-cold process the system spun up
-        // purely to rebind the listener -- e.g. right after a reinstall --
-        // with no Activity involved at all. Android requires startForeground()
-        // within 5 seconds of startForegroundService(), a clock that starts
-        // the instant it's called; on a slow device mid cold-start (dex
-        // loading, ART compilation, profile installation), that budget can
-        // be blown before our code gets a real turn on the CPU, which kills
-        // the whole process outright (RemoteServiceException) regardless of
-        // how little work we do here. MainActivity.onResume() starts this
-        // service instead, which only ever runs once Flutter/the UI is
-        // already up -- a process that's demonstrably warm.
         // activeNotifications is itself a synchronous Binder IPC call. With a
         // backlog of messages -- especially ones carrying embedded images in
         // their extras -- marshaling that payload can take seconds on its

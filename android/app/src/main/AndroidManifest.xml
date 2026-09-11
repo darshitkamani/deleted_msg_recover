@@ -1,8 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <!-- Pulled in transitively by androidx.work (via the ads plugins' WorkManager
+         dependency) for SystemForegroundService, which this app never uses,
+         since we don't call WorkManager's setForeground(). Stripped during
+         manifest merging so Play Console doesn't flag an unused foreground
+         service permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove"/>
     <!-- Needed by the Google Mobile Ads SDK to fetch ads; the debug manifest
          only declares INTERNET for development, so release builds need it
          here too. -->
@@ -15,7 +20,6 @@
 
     <application
         android:label="Recover Deleted Messages"
-        android:name=".RecoverApplication"
         android:icon="@mipmap/ic_launcher">
         <service
             android:name=".NotificationListener"
@@ -25,14 +29,6 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService"/>
             </intent-filter>
-        </service>
-        <service
-            android:name=".KeepAliveService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Keeps the notification listener alive so deleted messages can still be recovered"/>
         </service>
         <activity
             android:name=".MainActivity"

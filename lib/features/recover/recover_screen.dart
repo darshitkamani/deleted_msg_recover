@@ -3,20 +3,13 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/constants.dart';
-import '../../core/models/media_type.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../chats/chats_list_screen.dart';
 import '../paywall/paywall_screen.dart';
-import 'media_folder_screen.dart';
-import 'media_recovery_screen.dart';
 
-/// Landing screen for the Recover tab: a grid of recovery categories,
-/// mirroring the reference app's "Message Recovery" screen. Text Message
-/// routes to the existing recovered-chats list; Voice Message uses
-/// [MediaRecoveryScreen] (media captured from notifications, aggregated
-/// across chats); Photo/Video/Files/Stickers & GIFs use [MediaFolderScreen]
-/// instead, which scans WhatsApp's own Media folder on disk so it also
-/// catches files whose message was deleted but whose download survived.
+/// Landing screen for the Recover tab: three tiles -- Text Message routes to
+/// the existing recovered-chats list; Statuses and Direct just jump to their
+/// own tabs in [HomeShell].
 class RecoverScreen extends StatelessWidget {
   const RecoverScreen({super.key});
 
@@ -42,94 +35,39 @@ class RecoverScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
               children: [
-                _SectionHeader(l10n.recoverChatRecoveryHeader),
-                const SizedBox(height: 10),
-                _TileRow(
-                  tiles: [
-                    _RecoverTile(
-                      icon: Icons.chat_bubble_rounded,
-                      color: Colors.green.shade600,
-                      label: l10n.recoverTextMessage,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => _TitledScreen(
-                            title: l10n.recoverTextMessage,
-                            child: const ChatsListScreen(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _RecoverTile(
+                        icon: Icons.chat_bubble_rounded,
+                        color: Colors.green.shade600,
+                        label: l10n.recoverTextMessage,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => _TitledScreen(
+                              title: l10n.recoverTextMessage,
+                              child: const ChatsListScreen(),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    _RecoverTile(
-                      icon: Icons.graphic_eq_rounded,
-                      color: Colors.indigo.shade400,
-                      label: l10n.recoverVoiceMessage,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MediaRecoveryScreen(
-                            title: l10n.recoverVoiceMessage,
-                            mediaTypes: const [MediaType.audio],
-                          ),
-                        ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _RecoverTile(
+                        icon: Icons.donut_large_rounded,
+                        color: Colors.indigo.shade400,
+                        label: l10n.navStatuses,
+                        onTap: () => context.read<AppState>().goToTab(2),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                _SectionHeader(l10n.recoverMediaRecoveryHeader),
-                const SizedBox(height: 10),
-                _TileRow(
-                  tiles: [
-                    _RecoverTile(
-                      icon: Icons.image_rounded,
-                      color: Colors.orange.shade600,
-                      label: l10n.recoverPhoto,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              MediaFolderScreen(kind: 'photo', title: l10n.recoverPhoto),
-                        ),
-                      ),
-                    ),
-                    _RecoverTile(
-                      icon: Icons.videocam_rounded,
-                      color: Colors.lightBlue.shade600,
-                      label: l10n.recoverVideo,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              MediaFolderScreen(kind: 'video', title: l10n.recoverVideo),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                _SectionHeader(l10n.recoverMoreHeader),
-                const SizedBox(height: 10),
-                _TileRow(
-                  tiles: [
-                    _RecoverTile(
-                      icon: Icons.folder_rounded,
-                      color: Colors.amber.shade700,
-                      label: l10n.recoverFiles,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              MediaFolderScreen(kind: 'files', title: l10n.recoverFiles),
-                        ),
-                      ),
-                    ),
-                    _RecoverTile(
-                      icon: Icons.gif_box_rounded,
-                      color: Colors.teal.shade500,
-                      label: l10n.recoverStickersGifs,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => MediaFolderScreen(
-                            kind: 'stickersGifs',
-                            title: l10n.recoverStickersGifs,
-                          ),
-                        ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _RecoverTile(
+                        icon: Icons.send_rounded,
+                        color: Colors.lightBlue.shade600,
+                        label: l10n.navDirectChat,
+                        onTap: () => context.read<AppState>().goToTab(4),
                       ),
                     ),
                   ],
@@ -145,7 +83,7 @@ class RecoverScreen extends StatelessWidget {
 
 /// Wraps a tab-body screen (built to live inside [HomeShell]'s IndexedStack,
 /// with no [Scaffold] of its own) with a real app bar so it can also be
-/// pushed as a standalone route from the Recover grid.
+/// pushed as a standalone route from the Recover tiles.
 class _TitledScreen extends StatelessWidget {
   final String title;
   final Widget child;
@@ -351,41 +289,6 @@ class _RecoveryPlusPill extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String text;
-
-  const _SectionHeader(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
-    );
-  }
-}
-
-class _TileRow extends StatelessWidget {
-  final List<_RecoverTile> tiles;
-
-  const _TileRow({required this.tiles});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < tiles.length; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(child: tiles[i]),
-        ],
-      ],
     );
   }
 }

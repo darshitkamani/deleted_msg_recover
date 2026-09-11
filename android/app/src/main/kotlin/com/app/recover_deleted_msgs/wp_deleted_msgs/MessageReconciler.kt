@@ -1,4 +1,4 @@
-package com.recoverdeletedmessages.app
+package com.app.recover_deleted_msgs.wp_deleted_msgs
 
 /**
  * One message as it appears in a WhatsApp notification's messaging-style window.

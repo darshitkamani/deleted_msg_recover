@@ -1,4 +1,4 @@
-package com.recoverdeletedmessages.app
+package com.app.recover_deleted_msgs.wp_deleted_msgs
 
 import android.content.ComponentName
 import android.content.ContentValues
@@ -58,11 +58,7 @@ class MainActivity : FlutterActivity() {
                 try {
                     when (call.method) {
                         "isNotificationAccessGranted" -> {
-                            val granted = isNotificationAccessGranted()
-                            if (granted) {
-                                mainHandler.postDelayed({ KeepAliveStarter.start(applicationContext) }, 2000)
-                            }
-                            result.success(granted)
+                            result.success(isNotificationAccessGranted())
                         }
                         "openNotificationAccessSettings" -> {
                             openNotificationAccessSettings()
@@ -482,18 +478,6 @@ class MainActivity : FlutterActivity() {
                 ComponentName(this, NotificationListener::class.java)
             )
         } catch (_: Exception) {
-        }
-        if (isNotificationAccessGranted()) {
-            // Delayed rather than immediate: right after onResume() the main
-            // thread can still be saturated finishing engine/first-frame
-            // startup work (especially in a JIT debug build on a slow
-            // device), and Android's startForeground() clock starts the
-            // instant startForegroundService() is called -- giving the main
-            // thread a moment to drain first makes the service's own
-            // onStartCommand() far more likely to run promptly. A missed
-            // window is now non-fatal regardless (see RecoverApplication), this
-            // just reduces how often that fallback is needed.
-            mainHandler.postDelayed({ KeepAliveStarter.start(applicationContext) }, 2000)
         }
     }
 
