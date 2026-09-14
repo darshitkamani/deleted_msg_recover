@@ -61,13 +61,14 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        <!-- AdMob App ID. This is Google's official test App ID, safe for
-             debug builds, but it MUST be replaced with the real AdMob App ID
-             from the AdMob console before a production release, or ad
+        <!-- AdMob App ID: dynamic placeholder (${admobAppId}) switched by
+             build type in build.gradle.kts. Debug/release both currently use
+             Google's official test App ID; swap the release value for this
+             app's real AdMob App ID before a production release, or ad
              requests will fail. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="${admobAppId}" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

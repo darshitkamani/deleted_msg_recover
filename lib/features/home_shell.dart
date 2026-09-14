@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/ads/ads_service.dart';
-import '../core/ads/native_ad_slot.dart';
 import '../core/app_state.dart';
 import '../core/constants.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -45,29 +43,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<AppState>().refreshData();
     });
-    AdsService.instance.showAppOpenAdWhenReady();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_awaitingAppOpenAd &&
-        (state == AppLifecycleState.paused || state == AppLifecycleState.resumed)) {
+        (state == AppLifecycleState.paused ||
+            state == AppLifecycleState.resumed)) {
       _awaitingAppOpenAd = false;
-      AdsService.instance.stopAppOpenRetry();
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    AdsService.instance.stopAppOpenRetry();
+
     super.dispose();
   }
 
   void _selectTab(int index) {
-    if (index != _index) {
-      AdsService.instance.showInterstitial((_, _) {});
-    }
+    if (index != _index) {}
     setState(() => _index = index);
   }
 
@@ -78,7 +73,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (pendingTab != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         appState.clearPendingTab();
-        if (mounted && pendingTab != _index) setState(() => _index = pendingTab);
+        if (mounted && pendingTab != _index)
+          setState(() => _index = pendingTab);
       });
     }
 
@@ -108,7 +104,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                       IconButton(
                         tooltip: l10n.navSettings,
                         icon: const Icon(Icons.settings_rounded),
-                        onPressed: () => appState.goToTab(homeShellSettingsTabIndex),
+                        onPressed: () =>
+                            appState.goToTab(homeShellSettingsTabIndex),
                       ),
                     ],
             )
@@ -118,8 +115,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         bottom: false,
         child: Column(
           children: [
-            const NativeAdSlot(),
-            Expanded(child: IndexedStack(index: _index, children: _screens)),
+            Expanded(
+              child: IndexedStack(index: _index, children: _screens),
+            ),
           ],
         ),
       ),
@@ -131,16 +129,35 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AdsService.instance.bannerAd(),
           _BottomNavBar(
             index: _index,
-            backgroundColor: Color.lerp(theme.colorScheme.surface, Colors.white, 0.6)!,
+            backgroundColor: Color.lerp(
+              theme.colorScheme.surface,
+              Colors.white,
+              0.6,
+            )!,
             onSelect: _selectTab,
             items: [
-              _NavItem(targetIndex: 0, icon: Icons.restore_rounded, label: l10n.navRecover),
-              _NavItem(targetIndex: 1, icon: Icons.chat_bubble_rounded, label: l10n.navChats),
-              _NavItem(targetIndex: 2, icon: Icons.donut_large_rounded, label: l10n.navStatuses),
-              _NavItem(targetIndex: 4, icon: Icons.send_rounded, label: l10n.navDirectChat),
+              _NavItem(
+                targetIndex: 0,
+                icon: Icons.restore_rounded,
+                label: l10n.navRecover,
+              ),
+              _NavItem(
+                targetIndex: 1,
+                icon: Icons.chat_bubble_rounded,
+                label: l10n.navChats,
+              ),
+              _NavItem(
+                targetIndex: 2,
+                icon: Icons.donut_large_rounded,
+                label: l10n.navStatuses,
+              ),
+              _NavItem(
+                targetIndex: 4,
+                icon: Icons.send_rounded,
+                label: l10n.navDirectChat,
+              ),
             ],
           ),
         ],

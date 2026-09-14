@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/ads/ads_service.dart';
 import '../../core/constants.dart';
 import '../../core/models/status_item.dart';
 import '../../core/native_bridge.dart';
@@ -479,7 +478,7 @@ class _StatusTileState extends State<_StatusTile> {
   void _download() {
     if (_downloading) return;
     setState(() => _downloading = true);
-    AdsService.instance.gateWithRewardedInterstitial(_runDownload);
+    _runDownload();
   }
 
   Future<void> _runDownload() async {
@@ -559,10 +558,8 @@ class _StatusTileState extends State<_StatusTile> {
                   child: _TileActionPill(
                     downloading: _downloading,
                     onDownload: _download,
-                    onShare: () => AdsService.instance.gateWithRewardedInterstitial(
-                      () => SharePlus.instance.share(
-                        ShareParams(files: [XFile(item.path)]),
-                      ),
+                    onShare: () => SharePlus.instance.share(
+                      ShareParams(files: [XFile(item.path)]),
                     ),
                   ),
                 ),

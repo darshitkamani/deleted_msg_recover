@@ -37,6 +37,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
     signingConfigs {
@@ -50,7 +51,13 @@ android {
 
     buildTypes {
         release {
+            // TODO: swap in this app's real AdMob App ID before a production
+            // release -- currently Google's official test App ID, same as debug.
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
             signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
     }
 }
