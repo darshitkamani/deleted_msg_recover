@@ -6,6 +6,7 @@ import '../core/app_state.dart';
 import '../core/constants.dart';
 import '../l10n/generated/app_localizations.dart';
 import 'chats/chats_list_screen.dart';
+import 'deleted_feed/deleted_feed_screen.dart';
 import 'recover/direct_chat_screen.dart';
 import 'recover/recover_screen.dart';
 import 'settings/settings_screen.dart';
@@ -42,6 +43,7 @@ class _HomeShellState extends State<HomeShell> {
     StatusesScreen.new,
     SettingsScreen.new,
     DirectChatScreen.new,
+    DeletedFeedScreen.new,
   ];
 
   @override
@@ -105,6 +107,7 @@ class _HomeShellState extends State<HomeShell> {
       l10n.navStatuses,
       l10n.navSettings,
       l10n.directChatTitle,
+      l10n.deletedMessagesTitle,
     ];
 
     // Recover has its own distinct gradient header, so a plain app bar above
@@ -194,6 +197,11 @@ class _HomeShellState extends State<HomeShell> {
                   targetIndex: 4,
                   icon: Icons.send_rounded,
                   label: l10n.navDirectChat,
+                ),
+                _NavItem(
+                  targetIndex: 5,
+                  icon: Icons.delete_sweep_rounded,
+                  label: l10n.navDeleted,
                 ),
               ],
             ),

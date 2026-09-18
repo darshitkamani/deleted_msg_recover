@@ -87,6 +87,10 @@ class MainActivity : FlutterActivity() {
                             val pkg = call.argument<String>("package")
                             runInBackground(result) { store.getMediaMessages(types, pkg) }
                         }
+                        "getEditedOrDeletedMessages" -> {
+                            val pkg = call.argument<String>("package")
+                            runInBackground(result) { store.getEditedOrDeletedMessages(pkg) }
+                        }
                         "markChatOpened" -> {
                             val chatKey = call.argument<String>("chatKey")
                             if (chatKey == null) {

@@ -21,11 +21,11 @@ class AdsService {
           adConfigData: AdConfigData(
             adFlag: AdFlag(
               showAd: true,
-              showBanner: true,
+              showBanner: false,
               showInterstitial: true,
               showNative: true,
               showOpenApp: true,
-              showRewarded: true,
+              showRewarded: false,
               showRewardedInterstitial: true,
               // Package shows the app open ad on its own the instant it
               // finishes preloading after this cold start -- no further

@@ -404,6 +404,59 @@ class MessageStore private constructor(context: Context) :
         return result
     }
 
+    /**
+     * Every message that's either been edited or deleted, across all chats (optionally
+     * narrowed to a single [packageName]) -- backs the "Deleted" tab's user-wise view, which
+     * shows every recovered edit/deletion from every conversation at once rather than one
+     * chat at a time. Mirrors [getMediaMessages]'s cross-chat join, plus [getEditHistory] per
+     * row the same way [getMessages] already does.
+     */
+    fun getEditedOrDeletedMessages(packageName: String?): List<Map<String, Any?>> {
+        try {
+            val result = mutableListOf<Map<String, Any?>>()
+            val args = mutableListOf(STATUS_DELETED)
+            val packageClause = if (packageName != null) "AND c.package = ?" else ""
+            if (packageName != null) args.add(packageName)
+
+            readableDatabase.rawQuery(
+                """
+                SELECT m.id, m.chat_key, c.title, c.package, m.sender, m.text, m.timestamp,
+                       m.status, m.edited_at, m.deleted_at, m.media_path, m.media_type, m.media_mime
+                FROM messages m JOIN chats c ON c.chat_key = m.chat_key
+                WHERE (m.status = ? OR m.edited_at IS NOT NULL) $packageClause
+                ORDER BY m.timestamp DESC
+                """.trimIndent(),
+                args.toTypedArray()
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(0)
+                    result.add(
+                        mapOf(
+                            "id" to id,
+                            "chatKey" to cursor.getString(1),
+                            "chatTitle" to cursor.getString(2),
+                            "package" to cursor.getString(3),
+                            "sender" to cursor.getString(4),
+                            "text" to cursor.getString(5),
+                            "timestamp" to cursor.getLong(6),
+                            "status" to cursor.getString(7),
+                            "editedAt" to (if (cursor.isNull(8)) null else cursor.getLong(8)),
+                            "deletedAt" to (if (cursor.isNull(9)) null else cursor.getLong(9)),
+                            "mediaPath" to cursor.getString(10),
+                            "mediaType" to cursor.getString(11),
+                            "mediaMime" to cursor.getString(12),
+                            "editHistory" to getEditHistory(id)
+                        )
+                    )
+                }
+            }
+            return result
+        } catch (e: SQLException) {
+            reportNonFatal("getEditedOrDeletedMessages", e)
+            return emptyList()
+        }
+    }
+
     private fun getEditHistory(messageId: Long): List<Map<String, Any?>> {
         val result = mutableListOf<Map<String, Any?>>()
         readableDatabase.rawQuery(

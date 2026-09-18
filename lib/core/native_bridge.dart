@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 
 import 'models/chat.dart';
+import 'models/edited_deleted_message.dart';
 import 'models/media_folder_item.dart';
 import 'models/message.dart';
 import 'models/recovered_media.dart';
@@ -78,6 +79,21 @@ class NativeBridge {
     );
     return (result ?? [])
         .map((e) => RecoveredMedia.fromMap(e as Map<dynamic, dynamic>))
+        .toList();
+  }
+
+  /// Every message that's been edited or deleted, across every chat --
+  /// optionally narrowed to a single [package]. Backs the Deleted tab's
+  /// user-wise view.
+  static Future<List<EditedDeletedMessage>> getEditedOrDeletedMessages({
+    String? package,
+  }) async {
+    final result = await _methodChannel.invokeMethod<List<dynamic>>(
+      'getEditedOrDeletedMessages',
+      {'package': package},
+    );
+    return (result ?? [])
+        .map((e) => EditedDeletedMessage.fromMap(e as Map<dynamic, dynamic>))
         .toList();
   }
 
