@@ -9,6 +9,7 @@ import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/welcome_chat_tile.dart';
 
 /// Every edited or deleted message, aggregated across every chat and grouped
 /// by sender ("user wise") -- unlike ChatsListScreen/ChatDetailScreen, which
@@ -135,6 +136,10 @@ class _DeletedFeedList extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: PreloadGoogleAds.instance.showNativeAd(),
         ),
+        // Same app-authored explainer tile pinned above ChatsListScreen's
+        // real conversations, shown here too -- always present regardless
+        // of the WA/WA Business tab or whether anything's been detected yet.
+        const WelcomeChatTile(),
         if (groups.isEmpty)
           _EmptyState(text: l10n.deletedFeedEmpty)
         else
@@ -154,21 +159,34 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
       child: Column(
         children: [
-          Icon(
-            Icons.delete_sweep_outlined,
-            size: 44,
-            color: Theme.of(context).colorScheme.outline,
+          // Same circular-icon illustration convention as
+          // ChatsListScreen's empty state, sized up and tinted to this
+          // tab's "deleted" theme instead of the neutral one.
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.errorContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.delete_sweep_rounded,
+              size: 44,
+              color: theme.colorScheme.onErrorContainer,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           Text(
             text,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],

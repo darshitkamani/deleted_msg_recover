@@ -9,8 +9,8 @@ import '../../core/models/chat.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/welcome_chat_tile.dart';
 import 'chat_detail_screen.dart';
-import 'welcome_chat_screen.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -65,7 +65,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               // either package.
               itemCount: chats.length + 1 + (chats.isEmpty ? 1 : 0),
               itemBuilder: (context, index) {
-                if (index == 0) return const _WelcomeChatTile();
+                if (index == 0) return const WelcomeChatTile();
                 if (chats.isEmpty) {
                   return appState.chatsError != null
                       ? ErrorState(
@@ -118,96 +118,6 @@ class _EmptyChatsNotice extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// App-authored "chat" pinned above every real recovered conversation --
-/// tapping it opens [WelcomeChatScreen], a WhatsApp-styled explainer of what
-/// the app does. Always shown, regardless of the WA/WA Business tab.
-class _WelcomeChatTile extends StatelessWidget {
-  const _WelcomeChatTile();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      child: Material(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const WelcomeChatScreen())),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade600,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.forum_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.welcomeChatTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        l10n.welcomeChatPreview,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      DateFormat.Md().format(DateTime.now()),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Icon(
-                      Icons.done_all_rounded,
-                      size: 16,
-                      color: Colors.orange.shade600,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
