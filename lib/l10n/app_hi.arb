@@ -106,6 +106,8 @@
   "mediaTypeGif": "GIF",
   "openFileFailed": "यह फ़ाइल नहीं खोली जा सकी",
   "linkOpenFailed": "यह लिंक नहीं खोला जा सका",
+  "updateReadyMessage": "एक नया अपडेट इंस्टॉल के लिए तैयार है।",
+  "updateReadyAction": "रीस्टार्ट करें",
   "copyAction": "कॉपी करें",
   "shareAction": "शेयर करें",
   "linkCopied": "लिंक कॉपी हो गया",

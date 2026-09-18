@@ -511,6 +511,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get linkOpenFailed => 'यह लिंक नहीं खोला जा सका';
 
   @override
+  String get updateReadyMessage => 'एक नया अपडेट इंस्टॉल के लिए तैयार है।';
+
+  @override
+  String get updateReadyAction => 'रीस्टार्ट करें';
+
+  @override
   String get copyAction => 'कॉपी करें';
 
   @override

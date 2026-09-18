@@ -511,6 +511,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkOpenFailed => 'Couldn\'t open this link';
 
   @override
+  String get updateReadyMessage => 'A new update is ready to install.';
+
+  @override
+  String get updateReadyAction => 'Restart';
+
+  @override
   String get copyAction => 'Copy';
 
   @override

@@ -192,6 +192,8 @@
   "mediaTypeGif": "GIF",
   "openFileFailed": "Couldn't open this file",
   "linkOpenFailed": "Couldn't open this link",
+  "updateReadyMessage": "A new update is ready to install.",
+  "updateReadyAction": "Restart",
   "copyAction": "Copy",
   "shareAction": "Share",
   "linkCopied": "Link copied",

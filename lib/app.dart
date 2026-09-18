@@ -6,12 +6,14 @@ import 'package:provider/provider.dart';
 
 import 'core/ads/ads_service.dart';
 import 'core/app_state.dart';
+import 'core/update/update_service.dart';
 import 'features/apptour/app_tour_screen.dart';
 import 'features/home_shell.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'features/unsupported/ios_unsupported_screen.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'widgets/update_ready_banner.dart';
 
 class RecoverApp extends StatelessWidget {
   const RecoverApp({super.key});
@@ -107,6 +109,24 @@ class _RootRouterState extends State<_RootRouter> {
     // or the other -- loaded, or failed -- rather than only reacting to
     // success and otherwise always sitting through the full timeout below
     // even when the ad has clearly already failed (e.g. no network).
+
+    // Checked from app launch, not just once HomeShell is reached -- an
+    // "immediate" (blocking) update is meant to gate the whole app as soon
+    // as possible, not only once the user has clicked through onboarding.
+    // A "flexible" update instead just downloads silently in the
+    // background; onUpdateReady only fires once that's finished, at which
+    // point the user could be on any screen, so the banner below is shown
+    // via the root Overlay rather than depending on whichever screen
+    // happens to have a Scaffold under it.
+    UpdateService.instance.checkForUpdate(
+      onUpdateReady: () {
+        if (!mounted) return;
+        UpdateReadyBanner.show(
+          context,
+          onRestart: () => UpdateService.instance.completeFlexibleUpdate(),
+        );
+      },
+    );
   }
 
   @override

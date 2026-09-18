@@ -1010,6 +1010,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t open this link'**
   String get linkOpenFailed;
 
+  /// No description provided for @updateReadyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A new update is ready to install.'**
+  String get updateReadyMessage;
+
+  /// No description provided for @updateReadyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get updateReadyAction;
+
   /// No description provided for @copyAction.
   ///
   /// In en, this message translates to:
