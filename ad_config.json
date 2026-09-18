@@ -1,0 +1,10 @@
+{
+  "parameters": {
+    "ads_config": {
+      "defaultValue": {
+        "value": "{\"showAd\":true,\"showBanner\":false,\"showInterstitial\":true,\"showNative\":true,\"showOpenApp\":true,\"showRewarded\":false,\"showRewardedInterstitial\":true,\"showSplashAd\":true,\"nativeCounter\":0,\"interstitialCounter\":5,\"appOpenId\":\"ca-app-pub-3940256099942544/9257395921\",\"bannerId\":\"ca-app-pub-3940256099942544/6300978111\",\"nativeId\":\"ca-app-pub-3940256099942544/2247696110\",\"interstitialId\":\"ca-app-pub-3940256099942544/1033173712\",\"rewardedId\":\"ca-app-pub-3940256099942544/5224354917\",\"rewardedInterstitialId\":\"ca-app-pub-3940256099942544/5354046379\"}"
+      },
+      "valueType": "JSON"
+    }
+  }
+}

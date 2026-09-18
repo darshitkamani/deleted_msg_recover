@@ -1,4 +1,9 @@
+import 'dart:convert';
+
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:preload_google_ads/preload_google_ads.dart';
+
+import 'ad_remote_config.dart';
 
 /// Thin, idempotent wrapper around [PreloadGoogleAds.instance.initialize] --
 /// callers just call [init] whenever they know it's safe to; the network
@@ -15,35 +20,61 @@ class AdsService {
 
   Future<void>? _initFuture;
 
+  /// Firebase Remote Config key holding this app's ad flags/counters/ad
+  /// unit ids as a single JSON object (see [AdRemoteConfig]) -- lets the ad
+  /// mix be tuned from the Firebase console without an app update. A
+  /// published override doesn't need to repeat every key, only what's
+  /// actually being changed -- [AdRemoteConfig.fromJson] fills in anything
+  /// missing from [AdRemoteConfig.defaults].
+  static const _remoteConfigKey = 'ads_config';
+
   Future<void> init() {
-    return _initFuture ??= PreloadGoogleAds.instance
-        .initialize(
-          adConfigData: AdConfigData(
-            adFlag: AdFlag(
-              showAd: true,
-              showBanner: false,
-              showInterstitial: true,
-              showNative: true,
-              showOpenApp: true,
-              showRewarded: false,
-              showRewardedInterstitial: true,
-              // Package shows the app open ad on its own the instant it
-              // finishes preloading after this cold start -- no further
-              // call needed here.
-              showSplashAd: true,
-            ),
-            adIDs: AdIDS(
-              appOpenId: AdTestIds.appOpen,
-              bannerId: AdTestIds.banner,
-              nativeId: AdTestIds.native,
-              interstitialId: AdTestIds.interstitial,
-              rewardedId: AdTestIds.rewarded,
-              rewardedInterstitialId: AdTestIds.rewardedInterstitial,
-            ),
-            adCounter: AdCounter(nativeCounter: 0, interstitialCounter: 5),
-          ),
-        )
-        .then((_) {});
+    return _initFuture ??= _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final config = await _fetchAdConfig();
+
+    await PreloadGoogleAds.instance.initialize(
+      adConfigData: AdConfigData(
+        adFlag: config.toAdFlag(),
+        adIDs: config.toAdIDS(),
+        adCounter: config.toAdCounter(),
+      ),
+    );
+  }
+
+  /// Fetches this app's ad config from Firebase Remote Config, parsed into
+  /// an [AdRemoteConfig]. Falls back to [AdRemoteConfig.defaults] entirely
+  /// if the fetch fails outright (no network, Remote Config down, etc.),
+  /// and field-by-field via [AdRemoteConfig.fromJson] otherwise -- ad
+  /// behavior must never depend on Remote Config actually being reachable.
+  Future<AdRemoteConfig> _fetchAdConfig() async {
+    try {
+      final remoteConfig = FirebaseRemoteConfig.instance;
+      await remoteConfig.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(seconds: 10),
+          // Ad behavior isn't something that needs to change minute to
+          // minute -- this just keeps a misconfigured or chatty console
+          // change from re-fetching (and racing app startup) constantly.
+          minimumFetchInterval: const Duration(hours: 1),
+        ),
+      );
+      await remoteConfig.setDefaults({
+        _remoteConfigKey: jsonEncode(AdRemoteConfig.defaults.toJson()),
+      });
+      await remoteConfig.fetchAndActivate();
+
+      final raw = remoteConfig.getString(_remoteConfigKey);
+      if (raw.isEmpty) return AdRemoteConfig.defaults;
+      return AdRemoteConfig.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+        fallback: AdRemoteConfig.defaults,
+      );
+    } catch (_) {
+      return AdRemoteConfig.defaults;
+    }
   }
 
   /// Shows the preloaded rewarded interstitial ad, then always runs [then]
