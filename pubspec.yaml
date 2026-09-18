@@ -49,6 +49,7 @@ dependencies:
   preload_google_ads:
     path: preload_google_ads
   firebase_core: ^4.15.0
+  firebase_crashlytics: ^5.4.0
 
 
 dev_dependencies:

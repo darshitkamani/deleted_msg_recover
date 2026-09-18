@@ -36,9 +36,9 @@ class RecoverApp extends StatelessWidget {
   }
 }
 
-/// Shows a preloaded interstitial ad on every 3rd screen navigation, app
-/// wide -- see AdsService's `interstitialCounter: 3`, which is what actually
-/// makes it "every 3rd" (the package's own showInter() counts calls
+/// Shows a preloaded interstitial ad on every 5th screen navigation, app
+/// wide -- see AdsService's `interstitialCounter: 5`, which is what actually
+/// makes it "every 5th" (the package's own showInter() counts calls
 /// internally and only shows once that threshold is hit, then resets), so
 /// this observer's only job is to report each navigation.
 ///

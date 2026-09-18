@@ -12,6 +12,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
@@ -39,6 +40,18 @@ private const val TAG = "NotifCapture"
  */
 private const val REMOVAL_GRACE_MS = 4000L
 
+/** Logs a caught error locally and reports it to Crashlytics as a non-fatal, so an error
+ * that's now being degraded-instead-of-crashing is still visible remotely -- otherwise it
+ * would go from "crashes the app" to "invisible", not to "known about". */
+private fun reportNonFatal(op: String, t: Throwable) {
+    Log.e(TAG, "$op: ${t.message}", t)
+    try {
+        FirebaseCrashlytics.getInstance().recordException(t)
+    } catch (_: Throwable) {
+        // Crashlytics reporting itself must never become a new crash source.
+    }
+}
+
 class NotificationListener : NotificationListenerService() {
 
     private val handler = Handler(Looper.getMainLooper())
@@ -59,6 +72,11 @@ class NotificationListener : NotificationListenerService() {
         // not just the per-notification processing.
         Log.i(TAG, "onListenerConnected")
         bgExecutor.execute {
+            // Runs at most once per process -- see MessageStore.pruneOldDataOnce. Reconnects
+            // happen periodically over a long-lived, unattended install (OS rebinding the
+            // service, reboots, etc.), which is exactly the cadence this needs.
+            MessageStore.getInstance(applicationContext).pruneOldDataOnce()
+
             val notifications = try {
                 activeNotifications
             } catch (e: Exception) {
@@ -66,7 +84,7 @@ class NotificationListener : NotificationListenerService() {
                 null
             }
             Log.d(TAG, "Backlog on connect: ${notifications?.size ?: 0} active notification(s)")
-            notifications?.forEach { sbn -> handlePosted(sbn) }
+            notifications?.forEach { sbn -> safeHandlePosted(sbn) }
         }
     }
 
@@ -79,7 +97,26 @@ class NotificationListener : NotificationListenerService() {
             )
             dumpNotificationDetails(sbn)
         }
-        bgExecutor.execute { handlePosted(sbn) }
+        bgExecutor.execute { safeHandlePosted(sbn) }
+    }
+
+    /**
+     * Runs [handlePosted] with a top-level Throwable guard. This service shares the app's
+     * process (it isn't isolated via android:process), and every call here runs on
+     * [bgExecutor] -- a single-thread Executor invoked via execute(), not submit() -- so an
+     * uncaught exception or Error (an OutOfMemoryError, say, from decoding a huge embedded
+     * notification image) anywhere in this pipeline would otherwise kill the entire app
+     * process, not just this one notification. Over days of unattended background use, a
+     * single rare edge case (an odd notification shape, a storage hiccup) doing that
+     * repeatedly is exactly what produces the "app keeps stopping" dialog days later, with
+     * nothing else in the app ever having actually been open to see it happen.
+     */
+    private fun safeHandlePosted(sbn: StatusBarNotification) {
+        try {
+            handlePosted(sbn)
+        } catch (t: Throwable) {
+            reportNonFatal("handlePosted crashed for key=${sbn.key}, recovering", t)
+        }
     }
 
     /**
@@ -159,7 +196,13 @@ class NotificationListener : NotificationListenerService() {
         val notifKey = sbn.key
         val removedAt = System.currentTimeMillis()
         handler.postDelayed({
-            bgExecutor.execute { resolveRemoval(notifKey, removedAt) }
+            bgExecutor.execute {
+                try {
+                    resolveRemoval(notifKey, removedAt)
+                } catch (t: Throwable) {
+                    reportNonFatal("resolveRemoval crashed for key=$notifKey, recovering", t)
+                }
+            }
         }, REMOVAL_GRACE_MS)
     }
 
@@ -457,13 +500,19 @@ class NotificationListener : NotificationListenerService() {
 
     @Suppress("DEPRECATION")
     private fun extractPictureExtra(extras: Bundle, uniqueId: String): ExtractedMedia? {
+        // Catches Throwable, not just Exception, on both steps below: an embedded
+        // EXTRA_PICTURE bitmap is uncompressed and can be large enough (a high-res photo from
+        // some manufacturers' notification payloads) to throw OutOfMemoryError while decoding
+        // or compressing -- an Error, not an Exception, so it needs its own explicit guard
+        // here rather than relying on the caller only catching Exception.
         val bitmap = try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 extras.getParcelable(Notification.EXTRA_PICTURE, Bitmap::class.java)
             } else {
                 extras.getParcelable<Bitmap>(Notification.EXTRA_PICTURE)
             }
-        } catch (_: Exception) {
+        } catch (t: Throwable) {
+            reportNonFatal("extractPictureExtra: could not decode EXTRA_PICTURE", t)
             null
         } ?: return null
 
@@ -472,7 +521,8 @@ class NotificationListener : NotificationListenerService() {
             val outFile = File(dir, "$uniqueId.jpg")
             FileOutputStream(outFile).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out) }
             ExtractedMedia(outFile.absolutePath, "image", "image/jpeg")
-        } catch (_: Exception) {
+        } catch (t: Throwable) {
+            reportNonFatal("extractPictureExtra: could not compress/save bitmap", t)
             null
         }
     }

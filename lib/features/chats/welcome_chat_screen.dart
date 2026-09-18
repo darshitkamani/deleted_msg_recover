@@ -60,9 +60,7 @@ class WelcomeChatScreen extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: PreloadGoogleAds.instance.showNativeAd(
-              nativeADType: NativeADType.small,
-            ),
+            child: PreloadGoogleAds.instance.showNativeAd(),
           ),
         ],
       ),

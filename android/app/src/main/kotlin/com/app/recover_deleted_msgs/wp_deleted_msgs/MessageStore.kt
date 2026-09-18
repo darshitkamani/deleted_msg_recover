@@ -2,8 +2,31 @@ package com.app.recover_deleted_msgs.wp_deleted_msgs
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.SQLException
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import java.io.File
+
+// Covers SQLiteFullException (disk full), SQLiteDatabaseLockedException, and any other
+// SQLException this store's operations can throw -- see the catches below, which log and
+// degrade to a safe default instead of letting a storage/DB error propagate out of a store
+// method and crash whatever called it (most importantly NotificationListener's background
+// executor, where an uncaught exception kills the whole app process, not just that task).
+private const val TAG = "MessageStore"
+
+/** Logs a caught error locally and reports it to Crashlytics as a non-fatal, so a DB error
+ * that's now being degraded-instead-of-crashing is still visible remotely -- otherwise it
+ * would go from "crashes the app" to "invisible", not to "known about". */
+private fun reportNonFatal(op: String, e: Throwable) {
+    Log.e(TAG, "$op failed: ${e.message}", e)
+    try {
+        FirebaseCrashlytics.getInstance().recordException(e)
+    } catch (_: Throwable) {
+        // Crashlytics reporting itself must never become a new crash source.
+    }
+}
 
 data class RemovalResult(
     val chatKey: String,
@@ -41,6 +64,14 @@ class MessageStore private constructor(context: Context) :
 
         const val STATUS_ACTIVE = "active"
         const val STATUS_DELETED = "deleted"
+
+        // Messages (and their recovered media) older than this are pruned once per process --
+        // neither the messages table nor recovered_media/ had any retention at all before, so
+        // both grew forever across a long-lived install, and that unbounded growth is what
+        // eventually turns a rare DB/storage hiccup into a crash days into an idle run -- see
+        // pruneOldDataOnce. Six months is long enough that it shouldn't touch any realistic
+        // "let me check what got deleted" usage, while still keeping storage bounded.
+        private const val DEFAULT_RETENTION_DAYS = 180
 
         @Volatile
         private var instance: MessageStore? = null
@@ -110,18 +141,22 @@ class MessageStore private constructor(context: Context) :
     }
 
     fun upsertChat(chatKey: String, packageName: String, title: String, isGroup: Boolean) {
-        val db = writableDatabase
-        val values = ContentValues().apply {
-            put("chat_key", chatKey)
-            put("package", packageName)
-            put("title", title)
-            put("is_group", if (isGroup) 1 else 0)
+        try {
+            val db = writableDatabase
+            val values = ContentValues().apply {
+                put("chat_key", chatKey)
+                put("package", packageName)
+                put("title", title)
+                put("is_group", if (isGroup) 1 else 0)
+            }
+            db.insertWithOnConflict("chats", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+            db.execSQL(
+                "UPDATE chats SET title = ?, package = ?, is_group = ? WHERE chat_key = ?",
+                arrayOf(title, packageName, if (isGroup) 1 else 0, chatKey)
+            )
+        } catch (e: SQLException) {
+            reportNonFatal("upsertChat", e)
         }
-        db.insertWithOnConflict("chats", null, values, SQLiteDatabase.CONFLICT_IGNORE)
-        db.execSQL(
-            "UPDATE chats SET title = ?, package = ?, is_group = ? WHERE chat_key = ?",
-            arrayOf(title, packageName, if (isGroup) 1 else 0, chatKey)
-        )
     }
 
     fun insertMessage(
@@ -134,104 +169,122 @@ class MessageStore private constructor(context: Context) :
         mediaMime: String?,
         timestamp: Long
     ): InsertResult {
-        val db = writableDatabase
-        val values = ContentValues().apply {
-            put("chat_key", chatKey)
-            put("notif_key", notifKey)
-            put("sender", sender)
-            put("text", text)
-            put("media_path", mediaPath)
-            put("media_type", mediaType)
-            put("media_mime", mediaMime)
-            put("timestamp", timestamp)
-        }
-        val rowId = db.insertWithOnConflict("messages", null, values, SQLiteDatabase.CONFLICT_IGNORE)
-        if (rowId != -1L) return InsertResult(rowId, mediaBackfilled = false)
+        try {
+            val db = writableDatabase
+            val values = ContentValues().apply {
+                put("chat_key", chatKey)
+                put("notif_key", notifKey)
+                put("sender", sender)
+                put("text", text)
+                put("media_path", mediaPath)
+                put("media_type", mediaType)
+                put("media_mime", mediaMime)
+                put("timestamp", timestamp)
+            }
+            val rowId = db.insertWithOnConflict("messages", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+            if (rowId != -1L) return InsertResult(rowId, mediaBackfilled = false)
 
-        // A row for this (chat_key, timestamp, text) already exists -- this happens
-        // when the same notification gets reprocessed (e.g. app restart, or
-        // WhatsApp updating it in place). Media that failed to save before
-        // might now succeed -- backfill it.
-        var mediaBackfilled = false
-        db.rawQuery(
-            "SELECT id, media_path FROM messages WHERE chat_key = ? AND timestamp = ? AND text IS ?",
-            arrayOf(chatKey, timestamp.toString(), text)
-        ).use { cursor ->
-            if (cursor.moveToFirst()) {
-                val existingId = cursor.getLong(0)
-                val existingMediaPath = cursor.getString(1)
-                if (mediaPath != null && existingMediaPath == null) {
-                    val updateValues = ContentValues().apply {
-                        put("media_path", mediaPath)
-                        put("media_type", mediaType)
-                        put("media_mime", mediaMime)
+            // A row for this (chat_key, timestamp, text) already exists -- this happens
+            // when the same notification gets reprocessed (e.g. app restart, or
+            // WhatsApp updating it in place). Media that failed to save before
+            // might now succeed -- backfill it.
+            var mediaBackfilled = false
+            db.rawQuery(
+                "SELECT id, media_path FROM messages WHERE chat_key = ? AND timestamp = ? AND text IS ?",
+                arrayOf(chatKey, timestamp.toString(), text)
+            ).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val existingId = cursor.getLong(0)
+                    val existingMediaPath = cursor.getString(1)
+                    if (mediaPath != null && existingMediaPath == null) {
+                        val updateValues = ContentValues().apply {
+                            put("media_path", mediaPath)
+                            put("media_type", mediaType)
+                            put("media_mime", mediaMime)
+                        }
+                        db.update("messages", updateValues, "id = ?", arrayOf(existingId.toString()))
+                        mediaBackfilled = true
                     }
-                    db.update("messages", updateValues, "id = ?", arrayOf(existingId.toString()))
-                    mediaBackfilled = true
                 }
             }
+            return InsertResult(rowId, mediaBackfilled)
+        } catch (e: SQLException) {
+            reportNonFatal("insertMessage", e)
+            return InsertResult(-1L, mediaBackfilled = false)
         }
-        return InsertResult(rowId, mediaBackfilled)
     }
 
     /** Marks every not-yet-removed message belonging to [notifKey] as removed. */
     fun markRemoved(notifKey: String, removedAt: Long): List<RemovalResult> {
-        val db = writableDatabase
-        data class Row(
-            val id: Long,
-            val chatKey: String,
-            val ts: Long,
-            val text: String?,
-            val sender: String?,
-            val title: String
-        )
+        try {
+            val db = writableDatabase
+            data class Row(
+                val id: Long,
+                val chatKey: String,
+                val ts: Long,
+                val text: String?,
+                val sender: String?,
+                val title: String
+            )
 
-        val rows = mutableListOf<Row>()
-        db.rawQuery(
-            """
-            SELECT m.id, m.chat_key, m.timestamp, m.text, m.sender, c.title
-            FROM messages m JOIN chats c ON c.chat_key = m.chat_key
-            WHERE m.notif_key = ? AND m.removed_at IS NULL
-            """.trimIndent(),
-            arrayOf(notifKey)
-        ).use { cursor ->
-            while (cursor.moveToNext()) {
-                rows.add(
-                    Row(
-                        cursor.getLong(0),
-                        cursor.getString(1),
-                        cursor.getLong(2),
-                        cursor.getString(3),
-                        cursor.getString(4),
-                        cursor.getString(5)
+            val rows = mutableListOf<Row>()
+            db.rawQuery(
+                """
+                SELECT m.id, m.chat_key, m.timestamp, m.text, m.sender, c.title
+                FROM messages m JOIN chats c ON c.chat_key = m.chat_key
+                WHERE m.notif_key = ? AND m.removed_at IS NULL
+                """.trimIndent(),
+                arrayOf(notifKey)
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    rows.add(
+                        Row(
+                            cursor.getLong(0),
+                            cursor.getString(1),
+                            cursor.getLong(2),
+                            cursor.getString(3),
+                            cursor.getString(4),
+                            cursor.getString(5)
+                        )
                     )
-                )
+                }
             }
-        }
 
-        val results = mutableListOf<RemovalResult>()
-        for (row in rows) {
-            val values = ContentValues().apply {
-                put("removed_at", removedAt)
+            val results = mutableListOf<RemovalResult>()
+            for (row in rows) {
+                val values = ContentValues().apply {
+                    put("removed_at", removedAt)
+                }
+                db.update("messages", values, "id = ?", arrayOf(row.id.toString()))
+                results.add(RemovalResult(row.chatKey, row.title, row.text, row.sender))
             }
-            db.update("messages", values, "id = ?", arrayOf(row.id.toString()))
-            results.add(RemovalResult(row.chatKey, row.title, row.text, row.sender))
+            return results
+        } catch (e: SQLException) {
+            reportNonFatal("markRemoved", e)
+            return emptyList()
         }
-        return results
     }
 
     fun touchChatActivity(chatKey: String, atMillis: Long) {
-        writableDatabase.execSQL(
-            "UPDATE chats SET last_activity_at = ? WHERE chat_key = ?",
-            arrayOf(atMillis, chatKey)
-        )
+        try {
+            writableDatabase.execSQL(
+                "UPDATE chats SET last_activity_at = ? WHERE chat_key = ?",
+                arrayOf(atMillis, chatKey)
+            )
+        } catch (e: SQLException) {
+            reportNonFatal("touchChatActivity", e)
+        }
     }
 
     fun markChatOpened(chatKey: String) {
-        writableDatabase.execSQL(
-            "UPDATE chats SET last_opened_at = ? WHERE chat_key = ?",
-            arrayOf(System.currentTimeMillis(), chatKey)
-        )
+        try {
+            writableDatabase.execSQL(
+                "UPDATE chats SET last_opened_at = ? WHERE chat_key = ?",
+                arrayOf(System.currentTimeMillis(), chatKey)
+            )
+        } catch (e: SQLException) {
+            reportNonFatal("markChatOpened", e)
+        }
     }
 
     /** Guards [mergeDuplicateGroupChats] so it only ever scans once per process,
@@ -371,63 +424,78 @@ class MessageStore private constructor(context: Context) :
      * they must not be compared against either.
      */
     fun getWindow(chatKey: String, cap: Int): List<WindowEntry> {
-        val entries = mutableListOf<WindowEntry>()
-        readableDatabase.rawQuery(
-            """
-            SELECT id, timestamp, text, sender FROM messages
-            WHERE chat_key = ? AND status != ?
-            ORDER BY timestamp DESC, id DESC LIMIT ?
-            """.trimIndent(),
-            arrayOf(chatKey, STATUS_DELETED, cap.toString())
-        ).use { cursor ->
-            while (cursor.moveToNext()) {
-                entries.add(
-                    WindowEntry(
-                        timestamp = cursor.getLong(1),
-                        text = cursor.getString(2) ?: "",
-                        sender = cursor.getString(3),
-                        id = cursor.getLong(0)
+        try {
+            val entries = mutableListOf<WindowEntry>()
+            readableDatabase.rawQuery(
+                """
+                SELECT id, timestamp, text, sender FROM messages
+                WHERE chat_key = ? AND status != ?
+                ORDER BY timestamp DESC, id DESC LIMIT ?
+                """.trimIndent(),
+                arrayOf(chatKey, STATUS_DELETED, cap.toString())
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    entries.add(
+                        WindowEntry(
+                            timestamp = cursor.getLong(1),
+                            text = cursor.getString(2) ?: "",
+                            sender = cursor.getString(3),
+                            id = cursor.getLong(0)
+                        )
                     )
-                )
+                }
             }
+            return entries.asReversed()
+        } catch (e: SQLException) {
+            reportNonFatal("getWindow", e)
+            return emptyList()
         }
-        return entries.asReversed()
     }
 
     fun getActiveMessageCount(chatKey: String): Int {
-        readableDatabase.rawQuery(
-            "SELECT COUNT(*) FROM messages WHERE chat_key = ? AND status != ?",
-            arrayOf(chatKey, STATUS_DELETED)
-        ).use { cursor ->
-            return if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        try {
+            readableDatabase.rawQuery(
+                "SELECT COUNT(*) FROM messages WHERE chat_key = ? AND status != ?",
+                arrayOf(chatKey, STATUS_DELETED)
+            ).use { cursor ->
+                return if (cursor.moveToFirst()) cursor.getInt(0) else 0
+            }
+        } catch (e: SQLException) {
+            reportNonFatal("getActiveMessageCount", e)
+            return 0
         }
     }
 
     /** Applies a [ReconcileAction.Edit]: archives the old text and updates the row in place. */
     fun applyEdit(rowId: Long, newText: String, editedAt: Long): ChangeResult? {
-        val db = writableDatabase
-        val row = findRowForChange(db, rowId) ?: return null
+        try {
+            val db = writableDatabase
+            val row = findRowForChange(db, rowId) ?: return null
 
-        db.insertWithOnConflict(
-            "message_edits",
-            null,
-            ContentValues().apply {
-                put("message_id", rowId)
-                put("old_text", row.text)
-                put("changed_at", editedAt)
-            },
-            SQLiteDatabase.CONFLICT_IGNORE
-        )
-        db.update(
-            "messages",
-            ContentValues().apply {
-                put("text", newText)
-                put("edited_at", editedAt)
-            },
-            "id = ?",
-            arrayOf(rowId.toString())
-        )
-        return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
+            db.insertWithOnConflict(
+                "message_edits",
+                null,
+                ContentValues().apply {
+                    put("message_id", rowId)
+                    put("old_text", row.text)
+                    put("changed_at", editedAt)
+                },
+                SQLiteDatabase.CONFLICT_IGNORE
+            )
+            db.update(
+                "messages",
+                ContentValues().apply {
+                    put("text", newText)
+                    put("edited_at", editedAt)
+                },
+                "id = ?",
+                arrayOf(rowId.toString())
+            )
+            return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
+        } catch (e: SQLException) {
+            reportNonFatal("applyEdit", e)
+            return null
+        }
     }
 
     /**
@@ -436,42 +504,56 @@ class MessageStore private constructor(context: Context) :
      * left in place rather than overwritten with a placeholder or cleared.
      */
     fun applyDelete(rowId: Long, deletedAt: Long): ChangeResult? {
-        val db = writableDatabase
-        val row = findRowForChange(db, rowId) ?: return null
+        try {
+            val db = writableDatabase
+            val row = findRowForChange(db, rowId) ?: return null
 
-        db.update(
-            "messages",
-            ContentValues().apply {
-                put("status", STATUS_DELETED)
-                put("deleted_at", deletedAt)
-            },
-            "id = ?",
-            arrayOf(rowId.toString())
-        )
-        return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
+            db.update(
+                "messages",
+                ContentValues().apply {
+                    put("status", STATUS_DELETED)
+                    put("deleted_at", deletedAt)
+                },
+                "id = ?",
+                arrayOf(rowId.toString())
+            )
+            return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
+        } catch (e: SQLException) {
+            reportNonFatal("applyDelete", e)
+            return null
+        }
     }
 
     /** Fills in media for a row that matched as unchanged (Noop) but didn't have it yet --
      * mirrors the old insert-time backfill, just keyed by row id instead of a conflict. */
     fun backfillMedia(rowId: Long, mediaPath: String, mediaType: String, mediaMime: String) {
-        writableDatabase.update(
-            "messages",
-            ContentValues().apply {
-                put("media_path", mediaPath)
-                put("media_type", mediaType)
-                put("media_mime", mediaMime)
-            },
-            "id = ? AND media_path IS NULL",
-            arrayOf(rowId.toString())
-        )
+        try {
+            writableDatabase.update(
+                "messages",
+                ContentValues().apply {
+                    put("media_path", mediaPath)
+                    put("media_type", mediaType)
+                    put("media_mime", mediaMime)
+                },
+                "id = ? AND media_path IS NULL",
+                arrayOf(rowId.toString())
+            )
+        } catch (e: SQLException) {
+            reportNonFatal("backfillMedia", e)
+        }
     }
 
     fun hasMedia(rowId: Long): Boolean {
-        readableDatabase.rawQuery(
-            "SELECT media_path FROM messages WHERE id = ?",
-            arrayOf(rowId.toString())
-        ).use { cursor ->
-            return cursor.moveToFirst() && cursor.getString(0) != null
+        try {
+            readableDatabase.rawQuery(
+                "SELECT media_path FROM messages WHERE id = ?",
+                arrayOf(rowId.toString())
+            ).use { cursor ->
+                return cursor.moveToFirst() && cursor.getString(0) != null
+            }
+        } catch (e: SQLException) {
+            reportNonFatal("hasMedia", e)
+            return false
         }
     }
 
@@ -496,11 +578,88 @@ class MessageStore private constructor(context: Context) :
         }
     }
 
+    /** Guards [pruneOldData] so it only ever runs once per process, same pattern as
+     * [duplicateChatsMerged]. */
+    @Volatile
+    private var oldDataPruned = false
+
+    /**
+     * Deletes messages (and their edit history, and any recovered media file they reference)
+     * older than [retentionDays], so both this DB and internal storage stay bounded over a
+     * long-lived install instead of growing forever. Call opportunistically -- it's cheap to
+     * call and a no-op after the first successful call in a process.
+     */
+    fun pruneOldDataOnce(retentionDays: Int = DEFAULT_RETENTION_DAYS) {
+        if (oldDataPruned) return
+        synchronized(this) {
+            if (oldDataPruned) return
+            try {
+                pruneOldData(retentionDays)
+            } catch (e: SQLException) {
+                reportNonFatal("pruneOldData", e)
+            }
+            // Marked done even on failure -- runs at most once per process either way, so a
+            // DB error here shouldn't turn into a retry storm on every call site.
+            oldDataPruned = true
+        }
+    }
+
+    private fun pruneOldData(retentionDays: Int) {
+        val cutoff = System.currentTimeMillis() - retentionDays * 24L * 60 * 60 * 1000
+        val db = writableDatabase
+
+        val mediaPaths = mutableListOf<String>()
+        db.rawQuery(
+            "SELECT media_path FROM messages WHERE timestamp < ? AND media_path IS NOT NULL",
+            arrayOf(cutoff.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                cursor.getString(0)?.let { mediaPaths.add(it) }
+            }
+        }
+        if (mediaPaths.isEmpty()) {
+            db.rawQuery("SELECT COUNT(*) FROM messages WHERE timestamp < ?", arrayOf(cutoff.toString()))
+                .use { cursor -> if (!(cursor.moveToFirst() && cursor.getInt(0) > 0)) return }
+        }
+
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                "DELETE FROM message_edits WHERE message_id IN (SELECT id FROM messages WHERE timestamp < ?)",
+                arrayOf(cutoff.toString())
+            )
+            db.execSQL("DELETE FROM messages WHERE timestamp < ?", arrayOf(cutoff.toString()))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+
+        for (path in mediaPaths) {
+            try {
+                File(path).delete()
+            } catch (e: Exception) {
+                // Best-effort -- a stray file left behind isn't worth failing the prune over.
+                Log.w(TAG, "pruneOldData: could not delete media file $path: ${e.message}")
+            }
+        }
+        Log.i(
+            TAG,
+            "pruneOldData: removed messages older than $retentionDays day(s), " +
+                "${mediaPaths.size} media file(s) deleted"
+        )
+    }
+
     private fun mergeDuplicateGroupChatsOnce() {
         if (duplicateChatsMerged) return
         synchronized(this) {
             if (duplicateChatsMerged) return
-            mergeDuplicateGroupChats()
+            try {
+                mergeDuplicateGroupChats()
+            } catch (e: SQLException) {
+                reportNonFatal("mergeDuplicateGroupChats", e)
+            }
+            // Marked done even on failure -- this only ever runs once per process either
+            // way, so a DB error here shouldn't turn into a retry storm on every getChats().
             duplicateChatsMerged = true
         }
     }
@@ -604,9 +763,13 @@ class MessageStore private constructor(context: Context) :
     }
 
     fun clearAll() {
-        val db = writableDatabase
-        db.execSQL("DELETE FROM message_edits")
-        db.execSQL("DELETE FROM messages")
-        db.execSQL("DELETE FROM chats")
+        try {
+            val db = writableDatabase
+            db.execSQL("DELETE FROM message_edits")
+            db.execSQL("DELETE FROM messages")
+            db.execSQL("DELETE FROM chats")
+        } catch (e: SQLException) {
+            reportNonFatal("clearAll", e)
+        }
     }
 }

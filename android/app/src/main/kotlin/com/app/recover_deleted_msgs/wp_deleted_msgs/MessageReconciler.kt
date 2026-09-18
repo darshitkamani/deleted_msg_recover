@@ -3,10 +3,10 @@ package com.app.recover_deleted_msgs.wp_deleted_msgs
 /**
  * One message as it appears in a WhatsApp notification's messaging-style window.
  *
- * [id] is opaque to the reconciler -- matching is purely by timestamp/text, [id] is never
- * read or compared. It exists so a caller building [stored] from its own database can carry
- * the row id through untouched and read it back off the resulting action, to know exactly
- * which row to mutate even when two entries share a timestamp.
+ * [id] is opaque to the reconciler -- matching is purely by timestamp/sender/text, [id] is
+ * never read or compared. It exists so a caller building [stored] from its own database can
+ * carry the row id through untouched and read it back off the resulting action, to know
+ * exactly which row to mutate even when two entries share a timestamp.
  */
 data class WindowEntry(
     val timestamp: Long,
@@ -29,12 +29,20 @@ sealed class ReconcileAction {
  * Reconciles the message window from a new notification against the window we stored from
  * the previous one, for a single chat.
  *
- * Matching is by timestamp, but resolved by ordered consumption rather than a plain key
- * lookup: each incoming entry can only match the first not-yet-consumed stored entry with
- * the same timestamp, scanning forward from where the previous match left off. This is what
- * keeps a burst of messages sharing a timestamp from being misread as edits of each other --
- * the first same-timestamp message matches the first stored one, the second has nothing left
- * to match and is correctly treated as new.
+ * Matching is by timestamp *and* sender, but resolved by ordered consumption rather than a
+ * plain key lookup: each incoming entry can only match the first not-yet-consumed stored
+ * entry with the same timestamp and sender, scanning forward from where the previous match
+ * left off. This is what keeps a burst of messages sharing a timestamp from being misread as
+ * edits of each other -- the first same-timestamp message matches the first stored one, the
+ * second has nothing left to match and is correctly treated as new.
+ *
+ * Requiring [WindowEntry.sender] to also agree matters for group chats: several members can
+ * post around the same timestamp (WhatsApp's notification timestamps aren't fine-grained
+ * enough to rule this out), and without a sender check one member's still-intact message
+ * could be matched against a different member's incoming "this message was deleted"
+ * placeholder purely because both carry the same timestamp -- flagging the wrong person's
+ * message as deleted while the real deletion goes unnoticed. A `null` sender only matches
+ * another `null` sender (the 1:1-chat case, where sender isn't tracked at all).
  *
  * A stored entry with no corresponding incoming entry is either a deletion or an ordinary
  * scroll-out (WhatsApp's window is a FIFO capped at [windowCap] slots, so it can only ever
@@ -84,7 +92,8 @@ object MessageReconciler {
         var storedPtr = 0
 
         for (newEntry in incoming) {
-            val matchIndex = findFirstUnconsumedMatch(stored, consumed, storedPtr, newEntry.timestamp)
+            val matchIndex =
+                findFirstUnconsumedMatch(stored, consumed, storedPtr, newEntry.timestamp, newEntry.sender)
 
             if (matchIndex == -1) {
                 actions += ReconcileAction.Insert(newEntry)
@@ -137,10 +146,11 @@ object MessageReconciler {
         stored: List<WindowEntry>,
         consumed: BooleanArray,
         fromIndex: Int,
-        timestamp: Long
+        timestamp: Long,
+        sender: String?
     ): Int {
         for (i in fromIndex until stored.size) {
-            if (!consumed[i] && stored[i].timestamp == timestamp) return i
+            if (!consumed[i] && stored[i].timestamp == timestamp && stored[i].sender == sender) return i
         }
         return -1
     }

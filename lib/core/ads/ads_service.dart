@@ -40,7 +40,7 @@ class AdsService {
               rewardedId: AdTestIds.rewarded,
               rewardedInterstitialId: AdTestIds.rewardedInterstitial,
             ),
-            adCounter: AdCounter(nativeCounter: 0, interstitialCounter: 3),
+            adCounter: AdCounter(nativeCounter: 0, interstitialCounter: 5),
           ),
         )
         .then((_) {});

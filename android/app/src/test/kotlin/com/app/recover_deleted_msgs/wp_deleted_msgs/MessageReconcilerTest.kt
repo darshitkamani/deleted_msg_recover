@@ -232,6 +232,31 @@ class MessageReconcilerTest {
     }
 
     @Test
+    fun `group chat- same-timestamp placeholder from one sender does not delete another sender's message`() {
+        // Two different group members post at the same notification timestamp. Sender B's
+        // message then gets genuinely deleted (replaced with the placeholder) -- sender A's
+        // still-intact message at the same timestamp must not be the one flagged as deleted.
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(
+                WindowEntry(1000, "koi google ads expert hai kia", sender = "Bmonetizeads.in"),
+                WindowEntry(1000, "hi there", sender = "MD Ziarul Haque")
+            ),
+            incoming = listOf(
+                WindowEntry(1000, "koi google ads expert hai kia", sender = "Bmonetizeads.in"),
+                WindowEntry(1000, "This message was deleted", sender = "MD Ziarul Haque")
+            )
+        )
+
+        assertEquals(2, actions.size)
+        assertTrue(actions[0] is ReconcileAction.Noop)
+        assertEquals("koi google ads expert hai kia", (actions[0] as ReconcileAction.Noop).entry.text)
+
+        val delete = actions[1] as ReconcileAction.DeletedWithPlaceholder
+        assertEquals("MD Ziarul Haque", delete.previous.sender)
+        assertEquals("hi there", delete.previous.text)
+    }
+
+    @Test
     fun `multiple edits in the same window are each detected independently`() {
         val actions = MessageReconciler.reconcile(
             stored = listOf(

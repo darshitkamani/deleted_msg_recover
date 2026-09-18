@@ -7,6 +7,7 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 val keystoreProperties = Properties()
@@ -70,5 +71,11 @@ flutter {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // BoM pins every Firebase artifact's version together; only declare Crashlytics itself,
+    // the firebase_crashlytics Flutter plugin brings in firebase-common/-core transitively,
+    // but not as `api`, so recordException() calls made directly from this module's own
+    // Kotlin (NotificationListener.kt/MessageStore.kt) need this declared here explicitly.
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-crashlytics")
     testImplementation("junit:junit:4.13.2")
 }
