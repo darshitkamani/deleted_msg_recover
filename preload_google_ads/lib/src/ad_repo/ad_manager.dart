@@ -33,11 +33,18 @@ class AdManager {
     // Mobile Ads SDK initialized cleanly without forcing any splash ad on app startup.
     // Ads are loaded purely on-demand when requested by the application.
 
-    // Exception: when the host app opts into [AdFlag.showSplashAd], start
-    // loading the app open ad immediately so it's ready by the time the
-    // splash screen calls [setSplashAdCallback].
-    if (shouldShowSplashAd && !AppOpenAdManager.instance.isAdAvailable) {
-      AppOpenAdManager.instance.loadAd();
+    // Exception: when the host app opts into [AdFlag.showSplashAd], the app
+    // open ad is shown automatically, with no further call needed, the
+    // instant it finishes preloading after this cold start.
+    AppOpenAdManager.instance.armColdStartAutoShow();
+
+    // Separately, when [AdFlag.showOpenApp] is enabled, start listening for
+    // app-state transitions so a background-to-foreground resume also shows
+    // the (already preloaded) app open ad automatically -- without this,
+    // nothing ever reacts to a resume even though the ad keeps reloading in
+    // the background.
+    if (shouldShowOpenAppAd) {
+      LifeCycleManager.instance.getOpenAppAdvertise();
     }
   }
 

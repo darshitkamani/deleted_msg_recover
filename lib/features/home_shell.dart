@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
-import '../core/ads/ads_service.dart';
 import '../core/app_state.dart';
 import '../core/constants.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -19,7 +18,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
+class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
   // Which tabs have actually been selected at least once -- an unvisited
@@ -45,36 +44,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     DirectChatScreen.new,
   ];
 
-  // Shown (with retries -- see AdsService.showAppOpenAdWhenReady) once per
-  // cold start, not on every resume -- this is the app's home screen, not a
-  // splash gate, so there's no other single "app just launched" hook to
-  // hang it on. Stays true until a pause/resume cycle confirms the ad's own
-  // full-screen activity took over and came back, so we don't keep
-  // retrying (and risk a second ad) once it's actually been shown.
-  bool _awaitingAppOpenAd = true;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<AppState>().refreshData();
     });
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_awaitingAppOpenAd &&
-        (state == AppLifecycleState.paused ||
-            state == AppLifecycleState.resumed)) {
-      _awaitingAppOpenAd = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
   }
 
   void _selectTab(int index) {

@@ -44,6 +44,30 @@ class AppOpenAdManager extends BaseAdLoader {
   /// splash screen is never blocked indefinitely (e.g. no network).
   static const Duration _splashAdTimeout = Duration(seconds: 6);
 
+  /// True once [armColdStartAutoShow] has been called for this process and
+  /// the ad hasn't been auto-shown yet -- keeps the ad from being shown a
+  /// second time on a later, unrelated load (e.g. the reload that follows
+  /// a resume-time [showAdIfAvailable]).
+  bool _armedForColdStartAutoShow = false;
+
+  /// Arms automatic display of the app open ad the instant it finishes
+  /// preloading, with no further calls from the host app required. Called
+  /// once by [AdManager.initialize] when [AdFlag.showSplashAd] is enabled;
+  /// a no-op otherwise. If a load is already in flight or the ad is
+  /// already sitting loaded, this picks up on that rather than starting a
+  /// redundant request.
+  void armColdStartAutoShow() {
+    if (!shouldShowSplashAd) return;
+
+    _armedForColdStartAutoShow = true;
+
+    if (isAdAvailable) {
+      _showSplashAd();
+    } else if (!isLoading) {
+      loadAd();
+    }
+  }
+
   /// Registers [callback] to be invoked once the app open ad has been shown
   /// and dismissed on cold start. Fires immediately with `null` arguments
   /// if splash ads are disabled (see [AdFlag.showSplashAd]), or after
@@ -74,6 +98,7 @@ class AppOpenAdManager extends BaseAdLoader {
   /// pending [_splashAdCallback] once it is dismissed or fails to show.
   void _showSplashAd() {
     _splashTimeoutTimer?.cancel();
+    _armedForColdStartAutoShow = false;
 
     if (!isAdAvailable || _isShowingAd) {
       _finishSplash(null, null);
@@ -133,7 +158,9 @@ class AppOpenAdManager extends BaseAdLoader {
             AdStats.instance.openAppLoad.value++;
             _appOpenAd = ad;
             handleLoadSuccess();
-            if (_splashAdCallback != null) _showSplashAd();
+            if (_splashAdCallback != null || _armedForColdStartAutoShow) {
+              _showSplashAd();
+            }
           },
 
           /// Callback if the ad fails to load.
@@ -141,6 +168,10 @@ class AppOpenAdManager extends BaseAdLoader {
             AdStats.instance.openAppFailed.value++;
             _appOpenAd = null;
             handleFailureAndRetry(error, onRetry: () => loadAd());
+            // Left armed/pending -- handleFailureAndRetry schedules another
+            // load attempt, and a subsequent success should still trigger
+            // the splash ad. Only a registered callback needs telling about
+            // this particular failure so it isn't left hanging.
             if (_splashAdCallback != null) _finishSplash(null, error);
           },
         ),
@@ -228,6 +259,7 @@ class AppOpenAdManager extends BaseAdLoader {
     _appOpenAd?.dispose();
     _appOpenAd = null;
     loadTime = null;
+    _armedForColdStartAutoShow = false;
     _finishSplash(null, null);
     super.reset();
   }

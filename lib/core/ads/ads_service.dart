@@ -27,6 +27,9 @@ class AdsService {
               showOpenApp: true,
               showRewarded: true,
               showRewardedInterstitial: true,
+              // Package shows the app open ad on its own the instant it
+              // finishes preloading after this cold start -- no further
+              // call needed here.
               showSplashAd: true,
             ),
             adIDs: AdIDS(
