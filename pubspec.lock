@@ -528,9 +528,11 @@ packages:
   preload_google_ads:
     dependency: "direct main"
     description:
-      path: preload_google_ads
-      relative: true
-    source: path
+      path: "."
+      ref: main
+      resolved-ref: "7859e59aa50a70954c80bef37057d55c58446d9c"
+      url: "https://github.com/darshitkamani/preload_google_ads.git"
+    source: git
     version: "1.0.7"
   provider:
     dependency: "direct main"
