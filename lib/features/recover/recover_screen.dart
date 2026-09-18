@@ -240,7 +240,7 @@ class _RecoverHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _RecoveryPlusPill(label: plusLabel, onTap: onPlus),
+          // _RecoveryPlusPill(label: plusLabel, onTap: onPlus),
           const SizedBox(width: 4),
           Tooltip(
             message: l10n.navSettings,

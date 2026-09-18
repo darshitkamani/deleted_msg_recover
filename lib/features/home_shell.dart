@@ -53,7 +53,14 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   void _selectTab(int index) {
-    if (index != _index) {}
+    // Bottom-tab switches are an IndexedStack swap, not a Navigator push,
+    // so _InterstitialAdNavigatorObserver (app.dart) never sees them -- a
+    // user could flip between tabs indefinitely without ever nudging the
+    // interstitial counter. Feeding the same counter here closes that gap,
+    // only counting an actual tab change (not re-tapping the active tab).
+    if (index != _index) {
+      PreloadGoogleAds.instance.showInterstitialAd(callBack: (ad, error) {});
+    }
     setState(() {
       _index = index;
       _visitedTabs.add(index);
