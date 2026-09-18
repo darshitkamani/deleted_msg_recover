@@ -50,8 +50,14 @@ abstract class BaseNativeAdLoader extends BaseAdLoader {
             if (nativeAd != null) {
               ads.add(nativeAd);
             }
-            loadStats.value++;
+            // handleLoadSuccess() must run before the loadStats bump --
+            // ValueNotifier listeners (e.g. a native ad slot claiming this
+            // ad and immediately requesting the next one) fire synchronously
+            // off that increment, and need to see state already flipped to
+            // AdLoadState.ready rather than still AdLoadState.loading, or
+            // their reload gets rejected by prepareLoad()'s isLoading check.
             handleLoadSuccess();
+            loadStats.value++;
           },
           onAdImpression: (ad) {
             impStats.value++;

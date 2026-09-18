@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
-import '../../core/ads/ads_service.dart';
 import '../../core/app_state.dart';
 import '../../core/constants.dart';
 import '../../core/models/chat.dart';
