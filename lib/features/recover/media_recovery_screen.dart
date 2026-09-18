@@ -49,12 +49,13 @@ class _MediaRecoveryScreenState extends State<MediaRecoveryScreen> {
     MediaType.gif: 'gif',
   };
 
-  bool get _isGrid =>
-      widget.mediaTypes.every((t) =>
-          t == MediaType.image ||
-          t == MediaType.video ||
-          t == MediaType.sticker ||
-          t == MediaType.gif);
+  bool get _isGrid => widget.mediaTypes.every(
+    (t) =>
+        t == MediaType.image ||
+        t == MediaType.video ||
+        t == MediaType.sticker ||
+        t == MediaType.gif,
+  );
 
   @override
   void initState() {
@@ -95,13 +96,17 @@ class _MediaRecoveryScreenState extends State<MediaRecoveryScreen> {
   void _openItem(RecoveredMedia item) {
     if (item.mediaType == MediaType.video) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => VideoPlayerScreen(path: item.mediaPath)),
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerScreen(path: item.mediaPath),
+        ),
       );
     } else if (item.mediaType == MediaType.image ||
         item.mediaType == MediaType.sticker ||
         item.mediaType == MediaType.gif) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ImageViewerScreen(path: item.mediaPath)),
+        MaterialPageRoute(
+          builder: (_) => ImageViewerScreen(path: item.mediaPath),
+        ),
       );
     } else if (item.mediaType == MediaType.document) {
       _openFile(item);
@@ -109,7 +114,10 @@ class _MediaRecoveryScreenState extends State<MediaRecoveryScreen> {
   }
 
   Future<void> _openFile(RecoveredMedia item) async {
-    final ok = await NativeBridge.openFile(item.mediaPath, mime: item.mediaMime);
+    final ok = await NativeBridge.openFile(
+      item.mediaPath,
+      mime: item.mediaMime,
+    );
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).openFileFailed)),
@@ -181,7 +189,9 @@ class _EmptyState extends StatelessWidget {
             Text(
               text,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -256,7 +266,10 @@ class _MediaGrid extends StatelessWidget {
                           item.chatTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
@@ -282,7 +295,8 @@ class _MediaList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       itemCount: items.length,
-      itemBuilder: (context, index) => _MediaRow(item: items[index], onOpen: onOpen),
+      itemBuilder: (context, index) =>
+          _MediaRow(item: items[index], onOpen: onOpen),
     );
   }
 }
@@ -345,7 +359,9 @@ class _MediaRow extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.15,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

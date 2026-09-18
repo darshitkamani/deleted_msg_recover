@@ -5,18 +5,25 @@ class Country {
   final String name;
   final String dialCode;
 
-  const Country({required this.isoCode, required this.name, required this.dialCode});
+  const Country({
+    required this.isoCode,
+    required this.name,
+    required this.dialCode,
+  });
 
   /// Unicode regional-indicator flag emoji derived from the ISO code (each
   /// letter maps to a regional-indicator symbol) -- no image assets needed.
   String get flagEmoji {
-    return isoCode.toUpperCase().codeUnits
+    return isoCode
+        .toUpperCase()
+        .codeUnits
         .map((c) => String.fromCharCode(0x1F1E6 + (c - 'A'.codeUnitAt(0))))
         .join();
   }
 
   @override
-  bool operator ==(Object other) => other is Country && other.isoCode == isoCode;
+  bool operator ==(Object other) =>
+      other is Country && other.isoCode == isoCode;
 
   @override
   int get hashCode => isoCode.hashCode;
@@ -142,4 +149,8 @@ const List<Country> countries = [
   Country(isoCode: 'ZW', name: 'Zimbabwe', dialCode: '263'),
 ];
 
-const Country defaultCountry = Country(isoCode: 'IN', name: 'India', dialCode: '91');
+const Country defaultCountry = Country(
+  isoCode: 'IN',
+  name: 'India',
+  dialCode: '91',
+);

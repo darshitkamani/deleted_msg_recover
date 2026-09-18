@@ -79,6 +79,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get getStartedButton => 'Get started';
 
   @override
+  String get appTourTitle => 'Here\'s your app';
+
+  @override
+  String get appTourSubtitle => 'A quick look at what each tab does.';
+
+  @override
+  String get appTourFeatureRecoverTitle => 'Recover';
+
+  @override
+  String get appTourFeatureRecoverDescription =>
+      'See every deleted message, right where it happened.';
+
+  @override
+  String get appTourFeatureChatsTitle => 'Chats';
+
+  @override
+  String get appTourFeatureChatsDescription =>
+      'Every captured conversation, organized like WhatsApp itself.';
+
+  @override
+  String get appTourFeatureStatusesTitle => 'Statuses';
+
+  @override
+  String get appTourFeatureStatusesDescription =>
+      'Save statuses before they expire and disappear.';
+
+  @override
+  String get appTourFeatureDirectChatTitle => 'Direct';
+
+  @override
+  String get appTourFeatureDirectChatDescription =>
+      'Jump straight into a single chat\'s recovered history.';
+
+  @override
+  String get appTourFeatureSettingsTitle => 'Settings';
+
+  @override
+  String get appTourFeatureSettingsDescription =>
+      'Manage monitored apps, permissions, and language.';
+
+  @override
+  String get appTourContinueButton => 'Continue';
+
+  @override
+  String get splashTaglineDetecting => 'Detecting deleted messages...';
+
+  @override
+  String get splashTaglineRecovering => 'Recovering instantly...';
+
+  @override
+  String get splashTaglineTracking => 'Tracking edits & new messages...';
+
+  @override
   String get navChats => 'Chats';
 
   @override
@@ -107,6 +160,64 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recoverPlusBadge => 'Recovery+';
+
+  @override
+  String get recoverPermissionBannerTitle => 'Notification access needed';
+
+  @override
+  String get recoverPermissionBannerBody =>
+      'Turn this on so deleted messages can actually be caught.';
+
+  @override
+  String get recoverPermissionBannerAction => 'Enable now';
+
+  @override
+  String get recoverRecentActivityTitle => 'Recent activity';
+
+  @override
+  String get recoverSeeAll => 'See all';
+
+  @override
+  String get recoverEmptyTitle => 'Nothing recovered yet';
+
+  @override
+  String get recoverEmptyBody =>
+      'Deleted and edited messages will show up here as soon as they\'re captured.';
+
+  @override
+  String get recoverStatsMonitored => 'Monitored chats';
+
+  @override
+  String get recoverStatsCaptured => 'Messages captured';
+
+  @override
+  String get exitAppTitle => 'Leave already?';
+
+  @override
+  String get exitAppBody =>
+      'Your recovered messages stay saved right here. Take a quick look below before you go.';
+
+  @override
+  String get exitAppSponsoredLabel => 'Sponsored';
+
+  @override
+  String get exitAppBackButton => 'Back';
+
+  @override
+  String get exitAppCloseButton => 'Close app';
+
+  @override
+  String get exitChatTitle => 'Leave this chat?';
+
+  @override
+  String get exitChatBody =>
+      'Your recovered messages stay saved right here. Take a quick look below before you go.';
+
+  @override
+  String get exitChatBackButton => 'Stay';
+
+  @override
+  String get exitChatLeaveButton => 'Leave chat';
 
   @override
   String get recoverChatRecoveryHeader => 'Chat Recovery';

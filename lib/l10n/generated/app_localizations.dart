@@ -224,6 +224,102 @@ abstract class AppLocalizations {
   /// **'Get started'**
   String get getStartedButton;
 
+  /// No description provided for @appTourTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Here\'s your app'**
+  String get appTourTitle;
+
+  /// No description provided for @appTourSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A quick look at what each tab does.'**
+  String get appTourSubtitle;
+
+  /// No description provided for @appTourFeatureRecoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recover'**
+  String get appTourFeatureRecoverTitle;
+
+  /// No description provided for @appTourFeatureRecoverDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'See every deleted message, right where it happened.'**
+  String get appTourFeatureRecoverDescription;
+
+  /// No description provided for @appTourFeatureChatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chats'**
+  String get appTourFeatureChatsTitle;
+
+  /// No description provided for @appTourFeatureChatsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Every captured conversation, organized like WhatsApp itself.'**
+  String get appTourFeatureChatsDescription;
+
+  /// No description provided for @appTourFeatureStatusesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statuses'**
+  String get appTourFeatureStatusesTitle;
+
+  /// No description provided for @appTourFeatureStatusesDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Save statuses before they expire and disappear.'**
+  String get appTourFeatureStatusesDescription;
+
+  /// No description provided for @appTourFeatureDirectChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct'**
+  String get appTourFeatureDirectChatTitle;
+
+  /// No description provided for @appTourFeatureDirectChatDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump straight into a single chat\'s recovered history.'**
+  String get appTourFeatureDirectChatDescription;
+
+  /// No description provided for @appTourFeatureSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get appTourFeatureSettingsTitle;
+
+  /// No description provided for @appTourFeatureSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage monitored apps, permissions, and language.'**
+  String get appTourFeatureSettingsDescription;
+
+  /// No description provided for @appTourContinueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get appTourContinueButton;
+
+  /// No description provided for @splashTaglineDetecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Detecting deleted messages...'**
+  String get splashTaglineDetecting;
+
+  /// No description provided for @splashTaglineRecovering.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovering instantly...'**
+  String get splashTaglineRecovering;
+
+  /// No description provided for @splashTaglineTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking edits & new messages...'**
+  String get splashTaglineTracking;
+
   /// No description provided for @navChats.
   ///
   /// In en, this message translates to:
@@ -283,6 +379,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recovery+'**
   String get recoverPlusBadge;
+
+  /// No description provided for @recoverPermissionBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification access needed'**
+  String get recoverPermissionBannerTitle;
+
+  /// No description provided for @recoverPermissionBannerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this on so deleted messages can actually be caught.'**
+  String get recoverPermissionBannerBody;
+
+  /// No description provided for @recoverPermissionBannerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable now'**
+  String get recoverPermissionBannerAction;
+
+  /// No description provided for @recoverRecentActivityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get recoverRecentActivityTitle;
+
+  /// No description provided for @recoverSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get recoverSeeAll;
+
+  /// No description provided for @recoverEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing recovered yet'**
+  String get recoverEmptyTitle;
+
+  /// No description provided for @recoverEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted and edited messages will show up here as soon as they\'re captured.'**
+  String get recoverEmptyBody;
+
+  /// No description provided for @recoverStatsMonitored.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitored chats'**
+  String get recoverStatsMonitored;
+
+  /// No description provided for @recoverStatsCaptured.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages captured'**
+  String get recoverStatsCaptured;
+
+  /// No description provided for @exitAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave already?'**
+  String get exitAppTitle;
+
+  /// No description provided for @exitAppBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your recovered messages stay saved right here. Take a quick look below before you go.'**
+  String get exitAppBody;
+
+  /// No description provided for @exitAppSponsoredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sponsored'**
+  String get exitAppSponsoredLabel;
+
+  /// No description provided for @exitAppBackButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get exitAppBackButton;
+
+  /// No description provided for @exitAppCloseButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Close app'**
+  String get exitAppCloseButton;
+
+  /// No description provided for @exitChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this chat?'**
+  String get exitChatTitle;
+
+  /// No description provided for @exitChatBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your recovered messages stay saved right here. Take a quick look below before you go.'**
+  String get exitChatBody;
+
+  /// No description provided for @exitChatBackButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay'**
+  String get exitChatBackButton;
+
+  /// No description provided for @exitChatLeaveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave chat'**
+  String get exitChatLeaveButton;
 
   /// No description provided for @recoverChatRecoveryHeader.
   ///

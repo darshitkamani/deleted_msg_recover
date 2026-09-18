@@ -15,7 +15,11 @@ class IosUnsupportedScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.block, size: 56, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.block,
+                size: 56,
+                color: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(height: 16),
               Text(
                 l10n.iosUnsupportedTitle,

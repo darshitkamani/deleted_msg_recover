@@ -32,7 +32,10 @@ Future<bool?> showAppConfirmDialog(
       danger: danger,
     ),
     transitionBuilder: (context, animation, _, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutBack);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutBack,
+      );
       return BackdropFilter(
         filter: ImageFilter.blur(
           sigmaX: 4 * animation.value,
@@ -105,7 +108,10 @@ class _AppConfirmDialog extends StatelessWidget {
                     end: Alignment.bottomRight,
                     colors: [accent, accentDark],
                   ),
-                  border: Border.all(color: scheme.surfaceContainerHigh, width: 5),
+                  border: Border.all(
+                    color: scheme.surfaceContainerHigh,
+                    width: 5,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: accent.withValues(alpha: 0.45),
@@ -147,7 +153,10 @@ class _AppConfirmDialog extends StatelessWidget {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -179,7 +188,10 @@ class _AppConfirmDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       onTap: () => Navigator.of(context).pop(true),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 12,
+                        ),
                         child: Text(
                           confirmLabel,
                           style: const TextStyle(

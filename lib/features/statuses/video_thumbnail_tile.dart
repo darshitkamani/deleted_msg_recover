@@ -68,7 +68,10 @@ class _VideoThumbnailTileState extends State<VideoThumbnailTile> {
             child: SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white54,
+              ),
             ),
           ),
         Center(
@@ -78,7 +81,11 @@ class _VideoThumbnailTileState extends State<VideoThumbnailTile> {
               color: Colors.black.withValues(alpha: 0.35),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+            child: const Icon(
+              Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 40,
+            ),
           ),
         ),
       ],

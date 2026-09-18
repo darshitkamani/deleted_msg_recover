@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
+import '../../core/ads/ads_service.dart';
 import '../../core/app_state.dart';
 import '../../core/constants.dart';
+import '../../core/models/chat.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../chats/chat_detail_screen.dart';
 import '../chats/chats_list_screen.dart';
 import '../paywall/paywall_screen.dart';
 
@@ -16,6 +21,13 @@ class RecoverScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final appState = context.watch<AppState>();
+    final recentChats = [...appState.chats]
+      ..sort((a, b) => b.lastTimestamp.compareTo(a.lastTimestamp));
+    final capturedCount = appState.chats.fold<int>(
+      0,
+      (sum, c) => sum + c.totalCount,
+    );
 
     return SafeArea(
       bottom: false,
@@ -25,9 +37,9 @@ class RecoverScreen extends StatelessWidget {
             title: l10n.recoverTitle,
             subtitle: l10n.recoverTagline,
             plusLabel: l10n.recoverPlusBadge,
-            onPlus: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PaywallScreen()),
-            ),
+            onPlus: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const PaywallScreen())),
             onSettings: () =>
                 context.read<AppState>().goToTab(homeShellSettingsTabIndex),
           ),
@@ -72,6 +84,80 @@ class RecoverScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Container(
+                  constraints: const BoxConstraints(minHeight: 100),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: PreloadGoogleAds.instance.showNativeAd(
+                    // preloader: AdsService.instance.recoverAdPreloader,
+                  ),
+                ),
+
+                if (!appState.notificationAccessGranted) ...[
+                  const SizedBox(height: 20),
+                  _PermissionBanner(
+                    title: l10n.recoverPermissionBannerTitle,
+                    body: l10n.recoverPermissionBannerBody,
+                    actionLabel: l10n.recoverPermissionBannerAction,
+                    onTap: appState.requestNotificationAccess,
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.forum_rounded,
+                        value: '${appState.chats.length}',
+                        label: l10n.recoverStatsMonitored,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.mark_chat_read_rounded,
+                        value: '$capturedCount',
+                        label: l10n.recoverStatsCaptured,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.recoverRecentActivityTitle,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (recentChats.isNotEmpty)
+                      TextButton(
+                        onPressed: () => context.read<AppState>().goToTab(1),
+                        child: Text(l10n.recoverSeeAll),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                if (recentChats.isEmpty)
+                  _EmptyActivityCard(
+                    title: l10n.recoverEmptyTitle,
+                    body: l10n.recoverEmptyBody,
+                  )
+                else
+                  for (final chat in recentChats.take(3))
+                    _RecentActivityTile(
+                      chat: chat,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ChatDetailScreen(chat: chat),
+                        ),
+                      ),
+                    ),
               ],
             ),
           ),
@@ -123,136 +209,57 @@ class _RecoverHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
-    final deep = Color.lerp(scheme.primary, Colors.black, 0.25)!;
-    final teal = Color.lerp(scheme.primary, Colors.cyan, 0.35)!;
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.primary.withValues(alpha: 0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+      color: scheme.primary,
+      padding: const EdgeInsets.fromLTRB(20, 18, 16, 18),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _RecoveryPlusPill(label: plusLabel, onTap: onPlus),
+          const SizedBox(width: 4),
+          Tooltip(
+            message: l10n.navSettings,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onSettings,
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(
+                  Icons.settings_rounded,
+                  size: 22,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [teal, scheme.primary, deep],
-                  ),
-                ),
-              ),
-            ),
-            // Decorative watermark + soft glows -- purely visual texture so
-            // the banner reads as designed rather than a flat color block.
-            Positioned(
-              right: -30,
-              top: -34,
-              child: Transform.rotate(
-                angle: -0.35,
-                child: Icon(
-                  Icons.forum_rounded,
-                  size: 150,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -40,
-              bottom: -50,
-              child: Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 60,
-              bottom: -20,
-              child: Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.07),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.85),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Tooltip(
-                        message: l10n.navSettings,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: onSettings,
-                          child: const Padding(
-                            padding: EdgeInsets.all(4),
-                            child: Icon(Icons.settings_rounded, size: 20, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _RecoveryPlusPill(label: plusLabel, onTap: onPlus),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -273,16 +280,16 @@ class _RecoveryPlusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.orange.shade400, Colors.deepOrange.shade400],
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
             label,
-            style: theme.textTheme.labelMedium?.copyWith(
+            style: theme.textTheme.labelSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
             ),
@@ -290,6 +297,308 @@ class _RecoveryPlusPill extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Warns that notification access -- the one permission the whole app
+/// depends on -- isn't granted yet, right on the landing screen rather than
+/// only inside Settings, since without it nothing ever gets recovered.
+class _PermissionBanner extends StatelessWidget {
+  final String title;
+  final String body;
+  final String actionLabel;
+  final VoidCallback onTap;
+
+  const _PermissionBanner({
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final amber = Colors.amber.shade800;
+
+    return Material(
+      color: Colors.amber.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.notifications_off_rounded, color: amber, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: amber,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(body, style: theme.textTheme.bodySmall),
+                    const SizedBox(height: 8),
+                    Text(
+                      actionLabel,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: amber,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _StatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: scheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown in place of the recent-activity list before any chat has ever been
+/// captured -- the landing screen's emptiest moment, so it gets an explicit
+/// explanation rather than just trailing off into blank space.
+class _EmptyActivityCard extends StatelessWidget {
+  final String title;
+  final String body;
+
+  const _EmptyActivityCard({required this.title, required this.body});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.inbox_rounded,
+            size: 34,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact preview row for one chat in the landing screen's recent-activity
+/// list -- a smaller cousin of ChatsListScreen's own tile, with an extra
+/// deleted/edited badge so the landing screen shows off what this app
+/// actually caught, not just a plain chat list.
+class _RecentActivityTile extends StatelessWidget {
+  final Chat chat;
+  final VoidCallback onTap;
+
+  const _RecentActivityTile({required this.chat, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final time = chat.lastTimestamp > 0
+        ? _formatTime(chat.lastTimestamp, l10n)
+        : '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    chat.isGroup ? Icons.group_rounded : Icons.person_rounded,
+                    size: 18,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        chat.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (chat.lastIsDeleted)
+                            _Badge(
+                              color: Colors.redAccent,
+                              icon: Icons.delete_outline_rounded,
+                            )
+                          else if (chat.lastIsEdited)
+                            _Badge(
+                              color: Colors.orange.shade600,
+                              icon: Icons.edit_rounded,
+                            ),
+                          if (chat.lastIsDeleted || chat.lastIsEdited)
+                            const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              chat.lastText?.isNotEmpty == true
+                                  ? chat.lastText!
+                                  : '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  time,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _formatTime(int timestampMs, AppLocalizations l10n) {
+    final date = DateTime.fromMillisecondsSinceEpoch(timestampMs);
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterday =
+        date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day;
+    if (isToday) return DateFormat.Hm().format(date);
+    if (isYesterday) return l10n.dateYesterday;
+    return DateFormat('MMM d').format(date);
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+
+  const _Badge({required this.color, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(icon, size: 13, color: color);
   }
 }
 

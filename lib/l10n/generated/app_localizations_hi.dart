@@ -79,6 +79,59 @@ class AppLocalizationsHi extends AppLocalizations {
   String get getStartedButton => 'शुरू करें';
 
   @override
+  String get appTourTitle => 'आपका ऐप';
+
+  @override
+  String get appTourSubtitle => 'हर टैब क्या करता है, एक नज़र में।';
+
+  @override
+  String get appTourFeatureRecoverTitle => 'रिकवर';
+
+  @override
+  String get appTourFeatureRecoverDescription =>
+      'हर डिलीट किया गया मैसेज, वहीं जहाँ वह हुआ।';
+
+  @override
+  String get appTourFeatureChatsTitle => 'चैट्स';
+
+  @override
+  String get appTourFeatureChatsDescription =>
+      'हर कैप्चर की गई बातचीत, व्हाट्सएप की तरह व्यवस्थित।';
+
+  @override
+  String get appTourFeatureStatusesTitle => 'स्टेटस';
+
+  @override
+  String get appTourFeatureStatusesDescription =>
+      'स्टेटस के गायब होने से पहले उन्हें सेव करें।';
+
+  @override
+  String get appTourFeatureDirectChatTitle => 'डायरेक्ट';
+
+  @override
+  String get appTourFeatureDirectChatDescription =>
+      'सीधे किसी एक चैट की रिकवर हिस्ट्री में जाएं।';
+
+  @override
+  String get appTourFeatureSettingsTitle => 'सेटिंग्स';
+
+  @override
+  String get appTourFeatureSettingsDescription =>
+      'मॉनिटर किए गए ऐप्स, अनुमतियां और भाषा प्रबंधित करें।';
+
+  @override
+  String get appTourContinueButton => 'जारी रखें';
+
+  @override
+  String get splashTaglineDetecting => 'डिलीट मैसेज ढूंढे जा रहे हैं...';
+
+  @override
+  String get splashTaglineRecovering => 'तुरंत रिकवर किया जा रहा है...';
+
+  @override
+  String get splashTaglineTracking => 'एडिट और नए मैसेज ट्रैक हो रहे हैं...';
+
+  @override
   String get navChats => 'चैट्स';
 
   @override
@@ -107,6 +160,64 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get recoverPlusBadge => 'Recovery+';
+
+  @override
+  String get recoverPermissionBannerTitle => 'Notification access needed';
+
+  @override
+  String get recoverPermissionBannerBody =>
+      'Turn this on so deleted messages can actually be caught.';
+
+  @override
+  String get recoverPermissionBannerAction => 'Enable now';
+
+  @override
+  String get recoverRecentActivityTitle => 'Recent activity';
+
+  @override
+  String get recoverSeeAll => 'See all';
+
+  @override
+  String get recoverEmptyTitle => 'Nothing recovered yet';
+
+  @override
+  String get recoverEmptyBody =>
+      'Deleted and edited messages will show up here as soon as they\'re captured.';
+
+  @override
+  String get recoverStatsMonitored => 'Monitored chats';
+
+  @override
+  String get recoverStatsCaptured => 'Messages captured';
+
+  @override
+  String get exitAppTitle => 'Leave already?';
+
+  @override
+  String get exitAppBody =>
+      'Your recovered messages stay saved right here. Take a quick look below before you go.';
+
+  @override
+  String get exitAppSponsoredLabel => 'Sponsored';
+
+  @override
+  String get exitAppBackButton => 'Back';
+
+  @override
+  String get exitAppCloseButton => 'Close app';
+
+  @override
+  String get exitChatTitle => 'Leave this chat?';
+
+  @override
+  String get exitChatBody =>
+      'Your recovered messages stay saved right here. Take a quick look below before you go.';
+
+  @override
+  String get exitChatBackButton => 'Stay';
+
+  @override
+  String get exitChatLeaveButton => 'Leave chat';
 
   @override
   String get recoverChatRecoveryHeader => 'Chat Recovery';

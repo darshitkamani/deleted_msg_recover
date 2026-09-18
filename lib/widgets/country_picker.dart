@@ -37,12 +37,12 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       _filtered = trimmed.isEmpty
           ? countries
           : countries
-              .where(
-                (c) =>
-                    c.name.toLowerCase().contains(trimmed) ||
-                    c.dialCode.contains(trimmed),
-              )
-              .toList();
+                .where(
+                  (c) =>
+                      c.name.toLowerCase().contains(trimmed) ||
+                      c.dialCode.contains(trimmed),
+                )
+                .toList();
     });
   }
 

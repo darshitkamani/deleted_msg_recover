@@ -39,7 +39,9 @@ class ErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               l10n.errorStateTitle,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(

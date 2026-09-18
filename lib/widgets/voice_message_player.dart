@@ -109,7 +109,11 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.mic_off_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.mic_off_rounded,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 8),
           Text('Voice message', style: theme.textTheme.bodyMedium),
         ],
@@ -124,7 +128,8 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
     final screenWidth = MediaQuery.of(context).size.width;
     final bubbleContentWidth = screenWidth * 0.8 - _bubbleHorizontalPadding;
     final waveWidth =
-        ((bubbleContentWidth - _buttonSize - _buttonGap) * _widthFraction).clamp(60.0, 500.0);
+        ((bubbleContentWidth - _buttonSize - _buttonGap) * _widthFraction)
+            .clamp(60.0, 500.0);
 
     if (_waveWidth == null) {
       _waveWidth = waveWidth;
@@ -147,7 +152,9 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
             ),
             child: _ready
                 ? Icon(
-                    _playerState.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    _playerState.isPlaying
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
                     color: theme.colorScheme.primary,
                     size: 20,
                   )
@@ -172,7 +179,9 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
                 waveformType: WaveformType.fitWidth,
                 enableSeekGesture: true,
                 playerWaveStyle: PlayerWaveStyle(
-                  fixedWaveColor: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
+                  fixedWaveColor: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.35,
+                  ),
                   liveWaveColor: theme.colorScheme.primary,
                   spacing: _waveSpacing,
                   waveThickness: 2.5,
@@ -185,8 +194,9 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
               padding: const EdgeInsets.only(left: 2, top: 2),
               child: Text(
                 _format(label),
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],

@@ -61,7 +61,9 @@ class PermissionStatusCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              granted ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+              granted
+                  ? Icons.check_circle_rounded
+                  : Icons.error_outline_rounded,
               color: color,
               size: 20,
             ),

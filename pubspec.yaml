@@ -45,8 +45,10 @@ dependencies:
   video_player: ^2.9.5
   chewie: ^1.11.3
   video_thumbnail: ^0.5.6
-  
   # in_app_purchase: ^3.3.0
+  preload_google_ads:
+    path: preload_google_ads
+  firebase_core: ^4.15.0
 
 
 dev_dependencies:

@@ -16,7 +16,8 @@ class SettingsScreen extends StatelessWidget {
     final appState = context.watch<AppState>();
     final l10n = AppLocalizations.of(context);
     final currentLanguage =
-        appState.locale?.languageCode ?? Localizations.localeOf(context).languageCode;
+        appState.locale?.languageCode ??
+        Localizations.localeOf(context).languageCode;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -221,7 +222,11 @@ class _BackgroundReliabilityCard extends StatelessWidget {
                   color: accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.battery_alert_rounded, size: 18, color: accent),
+                child: Icon(
+                  Icons.battery_alert_rounded,
+                  size: 18,
+                  color: accent,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -276,7 +281,9 @@ class _RowDivider extends StatelessWidget {
     return Divider(
       height: 1,
       indent: 60,
-      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+      color: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.4),
     );
   }
 }
@@ -341,10 +348,7 @@ class _SwitchRow extends StatelessWidget {
             _RowIcon(icon: icon, color: iconColor),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
+              child: Text(title, style: Theme.of(context).textTheme.bodyLarge),
             ),
             Switch(value: value, onChanged: onChanged),
           ],
@@ -460,4 +464,3 @@ class _ExplainerRow extends StatelessWidget {
     );
   }
 }
-

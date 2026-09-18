@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "415036222213",
+    "project_id": "deleted-messages-recover-2263e",
+    "storage_bucket": "deleted-messages-recover-2263e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:415036222213:android:0c505ad28c9243fdd6256c",
+        "android_client_info": {
+          "package_name": "com.app.recover_deleted_msgs.wp_deleted_msgs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAH-iTl2-N74Jcl-GZq0FsgJWSYvIgT0KM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

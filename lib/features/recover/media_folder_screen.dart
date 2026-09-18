@@ -161,7 +161,11 @@ class _MediaFolderScreenState extends State<MediaFolderScreen> {
       await _refresh();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).mediaFolderAccessDeniedMessage)),
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).mediaFolderAccessDeniedMessage,
+          ),
+        ),
       );
     }
     return granted;
@@ -248,15 +252,26 @@ class _MediaFolderScreenState extends State<MediaFolderScreen> {
                 : (_hasAccess ?? false)
                 ? (_items.isEmpty
                       ? (_syncing
-                            ? _ScanningNotice(text: l10n.mediaFolderScanningState)
+                            ? _ScanningNotice(
+                                text: l10n.mediaFolderScanningState,
+                              )
                             : _EmptyMediaFolder(onViewGuide: _openGuide))
                       : RefreshIndicator(
                           onRefresh: _sync,
                           child: _isGrid
-                              ? _MediaFolderGrid(items: _items, onOpen: _openItem)
-                              : _MediaFolderList(items: _items, onOpen: _openItem),
+                              ? _MediaFolderGrid(
+                                  items: _items,
+                                  onOpen: _openItem,
+                                )
+                              : _MediaFolderList(
+                                  items: _items,
+                                  onOpen: _openItem,
+                                ),
                         ))
-                : _FolderAccessRequest(folderHint: _folderHint, onGrant: _requestAccess),
+                : _FolderAccessRequest(
+                    folderHint: _folderHint,
+                    onGrant: _requestAccess,
+                  ),
           ),
         ],
       ),
@@ -296,7 +311,9 @@ class _FolderAccessRequest extends StatelessWidget {
           Text(
             l10n.mediaFolderAccessTitle,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -327,7 +344,9 @@ class _FolderAccessRequest extends StatelessWidget {
                   const SizedBox(height: 4),
                   SelectableText(
                     folderHint,
-                    style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ],
               ),
@@ -404,7 +423,9 @@ class _EmptyMediaFolder extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.4,
+                ),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -425,7 +446,9 @@ class _EmptyMediaFolder extends StatelessWidget {
               onPressed: onViewGuide,
               style: FilledButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
               ),
               child: Text(l10n.mediaFolderViewGuide),
             ),
@@ -465,11 +488,14 @@ class _MediaFolderGrid extends StatelessWidget {
         // it back down on every scroll frame is what makes a grid feel
         // laggy on a low-end device, so ask the decoder for something close
         // to what's actually painted instead.
-        final cacheWidth = (220 * MediaQuery.of(context).devicePixelRatio).round();
+        final cacheWidth = (220 * MediaQuery.of(context).devicePixelRatio)
+            .round();
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4)),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(18),
@@ -509,7 +535,8 @@ class _MediaFolderList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       itemCount: items.length,
-      itemBuilder: (context, index) => _FileRow(item: items[index], onOpen: onOpen),
+      itemBuilder: (context, index) =>
+          _FileRow(item: items[index], onOpen: onOpen),
     );
   }
 }

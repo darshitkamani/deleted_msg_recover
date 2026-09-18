@@ -19,14 +19,16 @@ class NativeBridge {
   static Stream<Map<dynamic, dynamic>>? _events;
 
   static Stream<Map<dynamic, dynamic>> get events {
-    _events ??= _eventChannel
-        .receiveBroadcastStream()
-        .map((event) => event as Map<dynamic, dynamic>);
+    _events ??= _eventChannel.receiveBroadcastStream().map(
+      (event) => event as Map<dynamic, dynamic>,
+    );
     return _events!;
   }
 
   static Future<bool> isNotificationAccessGranted() async {
-    final result = await _methodChannel.invokeMethod<bool>('isNotificationAccessGranted');
+    final result = await _methodChannel.invokeMethod<bool>(
+      'isNotificationAccessGranted',
+    );
     return result ?? false;
   }
 
@@ -35,7 +37,9 @@ class NativeBridge {
   }
 
   static Future<bool> isIgnoringBatteryOptimizations() async {
-    final result = await _methodChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations');
+    final result = await _methodChannel.invokeMethod<bool>(
+      'isIgnoringBatteryOptimizations',
+    );
     return result ?? false;
   }
 
@@ -51,8 +55,10 @@ class NativeBridge {
   }
 
   static Future<List<Message>> getMessages(String chatKey) async {
-    final result = await _methodChannel
-        .invokeMethod<List<dynamic>>('getMessages', {'chatKey': chatKey});
+    final result = await _methodChannel.invokeMethod<List<dynamic>>(
+      'getMessages',
+      {'chatKey': chatKey},
+    );
     return (result ?? [])
         .map((e) => Message.fromMap(e as Map<dynamic, dynamic>))
         .toList();
@@ -84,51 +90,69 @@ class NativeBridge {
   }
 
   static Future<Set<String>> getMonitoredApps() async {
-    final result = await _methodChannel.invokeMethod<List<dynamic>>('getMonitoredApps');
+    final result = await _methodChannel.invokeMethod<List<dynamic>>(
+      'getMonitoredApps',
+    );
     return (result ?? []).map((e) => e as String).toSet();
   }
 
   static Future<void> setMonitoredApps(Set<String> apps) {
-    return _methodChannel.invokeMethod('setMonitoredApps', {'apps': apps.toList()});
+    return _methodChannel.invokeMethod('setMonitoredApps', {
+      'apps': apps.toList(),
+    });
   }
 
   static Future<bool> openFile(String path, {String? mime}) async {
-    final result = await _methodChannel
-        .invokeMethod<bool>('openFile', {'path': path, 'mime': mime});
+    final result = await _methodChannel.invokeMethod<bool>('openFile', {
+      'path': path,
+      'mime': mime,
+    });
     return result ?? false;
   }
 
   static Future<bool> hasStatusAccess(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<bool>('hasStatusAccess', {'package': package});
+    final result = await _methodChannel.invokeMethod<bool>('hasStatusAccess', {
+      'package': package,
+    });
     return result ?? false;
   }
 
   static Future<bool> requestStatusAccess(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<bool>('requestStatusAccess', {'package': package});
+    final result = await _methodChannel.invokeMethod<bool>(
+      'requestStatusAccess',
+      {'package': package},
+    );
     return result ?? false;
   }
 
   static Future<List<StatusItem>> listStatuses(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<List<dynamic>>('listStatuses', {'package': package});
+    final result = await _methodChannel.invokeMethod<List<dynamic>>(
+      'listStatuses',
+      {'package': package},
+    );
     return (result ?? [])
         .map((e) => StatusItem.fromMap(e as Map<dynamic, dynamic>))
         .toList();
   }
 
   static Future<String> statusFolderHint(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<String>('statusFolderHint', {'package': package});
+    final result = await _methodChannel.invokeMethod<String>(
+      'statusFolderHint',
+      {'package': package},
+    );
     return result ?? '';
   }
 
-  static Future<bool> downloadMedia(String path, {required bool isVideo, String? mime}) async {
-    final result = await _methodChannel.invokeMethod<bool>(
-      'downloadMedia',
-      {'path': path, 'isVideo': isVideo, 'mime': mime},
-    );
+  static Future<bool> downloadMedia(
+    String path, {
+    required bool isVideo,
+    String? mime,
+  }) async {
+    final result = await _methodChannel.invokeMethod<bool>('downloadMedia', {
+      'path': path,
+      'isVideo': isVideo,
+      'mime': mime,
+    });
     return result ?? false;
   }
 
@@ -137,21 +161,27 @@ class NativeBridge {
   }
 
   static Future<bool> openApp(String package) async {
-    final result = await _methodChannel.invokeMethod<bool>('openApp', {'package': package});
+    final result = await _methodChannel.invokeMethod<bool>('openApp', {
+      'package': package,
+    });
     return result ?? false;
   }
 
   /// Whether the user has already granted access to [package]'s Media
   /// folder -- one grant covers every [listMediaFolder] kind.
   static Future<bool> hasMediaFolderAccess(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<bool>('hasMediaFolderAccess', {'package': package});
+    final result = await _methodChannel.invokeMethod<bool>(
+      'hasMediaFolderAccess',
+      {'package': package},
+    );
     return result ?? false;
   }
 
   static Future<bool> requestMediaFolderAccess(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<bool>('requestMediaFolderAccess', {'package': package});
+    final result = await _methodChannel.invokeMethod<bool>(
+      'requestMediaFolderAccess',
+      {'package': package},
+    );
     return result ?? false;
   }
 
@@ -159,7 +189,10 @@ class NativeBridge {
   /// 'stickersGifs') and [package] -- a fast local listing only, so it's
   /// safe to call for a screen's first paint. Call [syncMediaFolder]
   /// separately (and re-call this after) to actually scan for new files.
-  static Future<List<MediaFolderItem>> listMediaFolder(String kind, String package) async {
+  static Future<List<MediaFolderItem>> listMediaFolder(
+    String kind,
+    String package,
+  ) async {
     final result = await _methodChannel.invokeMethod<List<dynamic>>(
       'listMediaFolder',
       {'kind': kind, 'package': package},
@@ -174,12 +207,17 @@ class NativeBridge {
   /// a while on a large folder or slow device, so callers should run this
   /// in the background rather than blocking a screen on it.
   static Future<void> syncMediaFolder(String kind, String package) {
-    return _methodChannel.invokeMethod('syncMediaFolder', {'kind': kind, 'package': package});
+    return _methodChannel.invokeMethod('syncMediaFolder', {
+      'kind': kind,
+      'package': package,
+    });
   }
 
   static Future<String> mediaFolderHint(String package) async {
-    final result = await _methodChannel
-        .invokeMethod<String>('mediaFolderHint', {'package': package});
+    final result = await _methodChannel.invokeMethod<String>(
+      'mediaFolderHint',
+      {'package': package},
+    );
     return result ?? '';
   }
 }

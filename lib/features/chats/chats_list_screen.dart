@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
@@ -45,6 +46,14 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             ],
           ),
         ),
+        // Small native ad, pinned right above the welcome chat tile (the
+        // always-first "row" in this list) rather than scrolling away as
+        // part of the list content -- same fixed-slot treatment as the
+        // small native ad in ChatDetailScreen.
+        PreloadGoogleAds.instance.showNativeAd(
+          nativeADType: NativeADType.small,
+        ),
+
         Expanded(
           child: RefreshIndicator(
             onRefresh: appState.refreshData,
@@ -132,9 +141,9 @@ class _WelcomeChatTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const WelcomeChatScreen()),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const WelcomeChatScreen())),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
@@ -188,7 +197,11 @@ class _WelcomeChatTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Icon(Icons.done_all_rounded, size: 16, color: Colors.orange.shade600),
+                    Icon(
+                      Icons.done_all_rounded,
+                      size: 16,
+                      color: Colors.orange.shade600,
+                    ),
                   ],
                 ),
               ],

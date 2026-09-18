@@ -87,7 +87,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.orange.shade400, Colors.deepOrange.shade400],
+                      colors: [
+                        Colors.orange.shade400,
+                        Colors.deepOrange.shade400,
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(26),
                   ),
@@ -118,7 +121,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
               Center(
                 child: Text(
                   l10n.paywallDisclaimer,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
@@ -138,7 +144,11 @@ class _FeatureRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 18),
+        Icon(
+          Icons.check_circle_rounded,
+          color: Colors.green.shade400,
+          size: 18,
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -181,7 +191,9 @@ class _PlanCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: selected ? Colors.green.shade400 : Colors.white.withValues(alpha: 0.14),
+              color: selected
+                  ? Colors.green.shade400
+                  : Colors.white.withValues(alpha: 0.14),
               width: selected ? 2 : 1,
             ),
           ),
@@ -191,7 +203,10 @@ class _PlanCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor,
                     borderRadius: BorderRadius.circular(20),
@@ -220,7 +235,10 @@ class _PlanCard extends StatelessWidget {
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),

@@ -11,7 +11,8 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBindingObserver {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with WidgetsBindingObserver {
   final _controller = PageController();
   int _page = 0;
   static const _pageCount = 3;
@@ -40,12 +41,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
 
   void _advance() {
     if (_page == _pageCount - 1) return;
-    _controller.nextPage(duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+    _controller.nextPage(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _onNextPressed() {
     final appState = context.read<AppState>();
-    if (_page == _notificationAccessPage && !appState.notificationAccessGranted) {
+    if (_page == _notificationAccessPage &&
+        !appState.notificationAccessGranted) {
       appState.requestNotificationAccess();
       return;
     }
@@ -122,7 +127,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
                     )
                   else
                     FilledButton(
-                      onPressed: appState.notificationAccessGranted ? _onGetStartedPressed : null,
+                      onPressed: appState.notificationAccessGranted
+                          ? _onGetStartedPressed
+                          : null,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Text(l10n.getStartedButton),
@@ -183,20 +190,31 @@ class _IntroSlide extends StatelessWidget {
           Container(
             width: 104,
             height: 104,
-            decoration: BoxDecoration(color: scheme.primaryContainer, shape: BoxShape.circle),
-            child: Icon(Icons.forum_rounded, size: 48, color: scheme.onPrimaryContainer),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.forum_rounded,
+              size: 48,
+              color: scheme.onPrimaryContainer,
+            ),
           ),
           const SizedBox(height: 24),
           Text(
             l10n.onboardingIntroTitle,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
             l10n.onboardingIntroDescription,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 32),
           _FeatureRow(
@@ -240,7 +258,10 @@ class _FeatureRow extends StatelessWidget {
         Container(
           width: 40,
           height: 40,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
           child: Icon(icon, size: 20, color: color),
         ),
         const SizedBox(width: 14),
@@ -248,11 +269,18 @@ class _FeatureRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
                 description,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -301,7 +329,9 @@ class _PermissionSlide extends StatelessWidget {
             width: 112,
             height: 112,
             decoration: BoxDecoration(
-              color: granted ? green.withValues(alpha: 0.15) : theme.colorScheme.primaryContainer,
+              color: granted
+                  ? green.withValues(alpha: 0.15)
+                  : theme.colorScheme.primaryContainer,
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -329,7 +359,9 @@ class _PermissionSlide extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -359,7 +391,10 @@ class _PermissionSlide extends StatelessWidget {
             FilledButton(
               onPressed: onAction,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 child: Text(actionLabel),
               ),
             ),

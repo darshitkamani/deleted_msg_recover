@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
@@ -27,24 +28,41 @@ class WelcomeChatScreen extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
       ),
-      backgroundColor: isDark ? const Color(0xFF0B141A) : const Color(0xFFECE5DD),
+      backgroundColor: isDark
+          ? const Color(0xFF0B141A)
+          : const Color(0xFFECE5DD),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         children: [
-          _DateLabel(text: DateFormat.yMMMd().format(DateTime.now())),
-          _GreetingBubble(text: l10n.welcomeChatGreeting),
-          _ChecklistBubble(
-            intro: l10n.welcomeChatIntro,
-            features: [l10n.welcomeChatFeatureRestore, l10n.welcomeChatFeatureUnseen],
-            linkLabel: l10n.welcomeChatSeeHowToUse,
-            onTapLink: () {
-              // Jump straight to Settings -- that's where notification
-              // access, battery exclusion, and background reliability
-              // actually get turned on, so "how to use" leads directly to
-              // the actionable screen rather than a separate read-only one.
-              context.read<AppState>().goToTab(homeShellSettingsTabIndex);
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              children: [
+                _DateLabel(text: DateFormat.yMMMd().format(DateTime.now())),
+                _GreetingBubble(text: l10n.welcomeChatGreeting),
+                _ChecklistBubble(
+                  intro: l10n.welcomeChatIntro,
+                  features: [
+                    l10n.welcomeChatFeatureRestore,
+                    l10n.welcomeChatFeatureUnseen,
+                  ],
+                  linkLabel: l10n.welcomeChatSeeHowToUse,
+                  onTapLink: () {
+                    // Jump straight to Settings -- that's where notification
+                    // access, battery exclusion, and background reliability
+                    // actually get turned on, so "how to use" leads directly to
+                    // the actionable screen rather than a separate read-only one.
+                    context.read<AppState>().goToTab(homeShellSettingsTabIndex);
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: PreloadGoogleAds.instance.showNativeAd(
+              nativeADType: NativeADType.small,
+            ),
           ),
         ],
       ),
@@ -189,7 +207,10 @@ class _ChecklistBubble extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 4),
-              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
               InkWell(
                 onTap: onTapLink,
                 child: Padding(

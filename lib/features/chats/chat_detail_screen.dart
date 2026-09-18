@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
+import '../../core/ads/ads_service.dart';
 import '../../core/app_state.dart';
 import '../../core/models/chat.dart';
 import '../../core/models/message.dart';
@@ -137,110 +139,156 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() => _unseenNewMessages = 0);
   }
 
+  /// One more native-ad impression plus a confirmation before actually
+  /// leaving the chat, mirroring _ExitAppDialog in home_shell.dart -- shown
+  /// for both the app bar back button and the iOS edge-swipe gesture, since
+  /// PopScope intercepts both the same way.
+  Future<void> _confirmExit(BuildContext context) async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ExitChatDialog(),
+    );
+    if (shouldExit == true && context.mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.chat.title),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Tooltip(
-              message: AppLocalizations.of(context).noReadReceiptsExplanation,
-              child: IconButton(
-                icon: const Icon(Icons.visibility_off_outlined, size: 18),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        AppLocalizations.of(context).noReadReceiptsExplanation,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _confirmExit(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.chat.title),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Tooltip(
+                message: AppLocalizations.of(context).noReadReceiptsExplanation,
+                child: IconButton(
+                  icon: const Icon(Icons.visibility_off_outlined, size: 18),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          AppLocalizations.of(
+                            context,
+                          ).noReadReceiptsExplanation,
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-      backgroundColor: isDark
-          ? const Color(0xFF0B141A)
-          : const Color(0xFFECE5DD),
-      body: Stack(
-        children: [
-          Builder(
-            builder: (context) {
-              if (_error != null) {
-                return ErrorState(
-                  error: _error!,
-                  onRetry: () => _loadMessages(context.read<AppState>()),
-                );
-              }
-              final messages = _messages;
-              if (messages == null) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (messages.isEmpty) {
-                return Center(
-                  child: Text(AppLocalizations.of(context).chatDetailEmpty),
-                );
-              }
-              // Built oldest-first for the date-divider logic, then
-              // reversed: with reverse: true the ListView anchors index 0
-              // at the bottom, so index 0 must be the newest item. That
-              // also means the list opens already showing the newest
-              // message -- no post-frame scroll needed on first load.
-              final items = _buildTimeline(
-                context,
-                messages,
-              ).reversed.toList();
-
-              if (_jumpToBottomOnNextBuild) {
-                _jumpToBottomOnNextBuild = false;
-                WidgetsBinding.instance.addPostFrameCallback(
-                  (_) => _scrollToBottom(animated: false),
-                );
-              }
-
-              return ListView.builder(
-                controller: _scrollController,
-                reverse: true,
-                padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
-                itemCount: items.length,
-                itemBuilder: (context, index) => items[index],
-              );
-            },
-          ),
-          if (_unseenNewMessages > 0)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 16 + MediaQuery.of(context).padding.bottom,
-              child: Center(
-                child: Dismissible(
-                  key: ValueKey('newMessageBanner_$_unseenNewMessages'),
-                  direction: DismissDirection.horizontal,
-                  onDismissed: (_) => setState(() => _unseenNewMessages = 0),
-                  child: _NewMessageBanner(
-                    count: _unseenNewMessages,
-                    onTap: () => _scrollToBottom(),
-                  ),
+                    );
+                  },
                 ),
               ),
-            )
-          else if (_showScrollToBottom)
-            Positioned(
-              right: 16,
-              bottom: 16 + MediaQuery.of(context).padding.bottom,
-              child: FloatingActionButton.small(
-                heroTag: 'scrollToBottom',
-                onPressed: () => _scrollToBottom(),
-                child: const Icon(Icons.keyboard_arrow_down),
+            ),
+          ],
+        ),
+        backgroundColor: isDark
+            ? const Color(0xFF0B141A)
+            : const Color(0xFFECE5DD),
+        body: Column(
+          children: [
+            // PreloadGoogleAds.instance.showNativeAd(
+            //   nativeADType: NativeADType.small,
+            // ),
+            Container(
+              constraints: const BoxConstraints(minHeight: 100),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: PreloadGoogleAds.instance.showNativeAd(
+                nativeADType: NativeADType.small,
               ),
             ),
-        ],
+            Expanded(
+              child: Stack(
+                children: [
+                  Builder(
+                    builder: (context) {
+                      if (_error != null) {
+                        return ErrorState(
+                          error: _error!,
+                          onRetry: () =>
+                              _loadMessages(context.read<AppState>()),
+                        );
+                      }
+                      final messages = _messages;
+                      if (messages == null) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (messages.isEmpty) {
+                        return Center(
+                          child: Text(
+                            AppLocalizations.of(context).chatDetailEmpty,
+                          ),
+                        );
+                      }
+                      // Built oldest-first for the date-divider logic, then
+                      // reversed: with reverse: true the ListView anchors index 0
+                      // at the bottom, so index 0 must be the newest item. That
+                      // also means the list opens already showing the newest
+                      // message -- no post-frame scroll needed on first load.
+                      final items = _buildTimeline(
+                        context,
+                        messages,
+                      ).reversed.toList();
+
+                      if (_jumpToBottomOnNextBuild) {
+                        _jumpToBottomOnNextBuild = false;
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _scrollToBottom(animated: false),
+                        );
+                      }
+
+                      return ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) => items[index],
+                      );
+                    },
+                  ),
+                  if (_unseenNewMessages > 0)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 16 + MediaQuery.of(context).padding.bottom,
+                      child: Center(
+                        child: Dismissible(
+                          key: ValueKey('newMessageBanner_$_unseenNewMessages'),
+                          direction: DismissDirection.horizontal,
+                          onDismissed: (_) =>
+                              setState(() => _unseenNewMessages = 0),
+                          child: _NewMessageBanner(
+                            count: _unseenNewMessages,
+                            onTap: () => _scrollToBottom(),
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (_showScrollToBottom)
+                    Positioned(
+                      right: 16,
+                      bottom: 16 + MediaQuery.of(context).padding.bottom,
+                      child: FloatingActionButton.small(
+                        heroTag: 'scrollToBottom',
+                        onPressed: () => _scrollToBottom(),
+                        child: const Icon(Icons.keyboard_arrow_down),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -258,6 +306,94 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       items.add(MessageBubble(message: message));
     }
     return items;
+  }
+}
+
+/// Exit-confirmation dialog shown instead of letting back/swipe leave the
+/// chat outright -- a native ad plus an explicit choice between staying and
+/// actually leaving, mirroring _ExitAppDialog in home_shell.dart.
+class _ExitChatDialog extends StatelessWidget {
+  const _ExitChatDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return AlertDialog(
+      contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      title: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.waving_hand_rounded,
+              color: scheme.onPrimaryContainer,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              l10n.exitChatTitle,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.exitChatBody,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              l10n.exitAppSponsoredLabel,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              constraints: const BoxConstraints(minHeight: 100),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: scheme.outlineVariant),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: PreloadGoogleAds.instance.showNativeAd(),
+            ),
+          ],
+        ),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      actions: [
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.exitChatBackButton),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l10n.exitChatLeaveButton),
+        ),
+      ],
+    );
   }
 }
 

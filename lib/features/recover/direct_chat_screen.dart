@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:preload_google_ads/preload_google_ads.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/models/country.dart';
@@ -37,7 +38,9 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     final digits = _numberController.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.isEmpty) return null;
     final message = _messageController.text;
-    final query = message.isEmpty ? '' : '?text=${Uri.encodeComponent(message)}';
+    final query = message.isEmpty
+        ? ''
+        : '?text=${Uri.encodeComponent(message)}';
     return 'https://wa.me/${_country.dialCode}$digits$query';
   }
 
@@ -89,64 +92,87 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.all(20),
       children: [
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        Padding(
+          padding: const EdgeInsets.all(20),
+
+          child: Column(
             children: [
-              _CountryCodeButton(country: _country, onTap: _pickCountry),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _numberController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: l10n.directChatNumberLabel,
-                    border: _outlineBorder(theme.colorScheme.outlineVariant),
-                    enabledBorder: _outlineBorder(theme.colorScheme.outlineVariant),
-                    focusedBorder: _outlineBorder(theme.colorScheme.primary, width: 2),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _CountryCodeButton(country: _country, onTap: _pickCountry),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _numberController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          hintText: l10n.directChatNumberLabel,
+                          border: _outlineBorder(
+                            theme.colorScheme.outlineVariant,
+                          ),
+                          enabledBorder: _outlineBorder(
+                            theme.colorScheme.outlineVariant,
+                          ),
+                          focusedBorder: _outlineBorder(
+                            theme.colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _messageController,
+                minLines: 4,
+                maxLines: 8,
+                decoration: InputDecoration(
+                  hintText: l10n.directChatMessageLabel,
+                  border: _outlineBorder(theme.colorScheme.outlineVariant),
+                  enabledBorder: _outlineBorder(
+                    theme.colorScheme.outlineVariant,
+                  ),
+                  focusedBorder: _outlineBorder(
+                    theme.colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _send,
+                icon: const Icon(Icons.send_rounded),
+                label: Text(l10n.directChatSendAction),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _copyLink,
+                icon: const Icon(Icons.copy_rounded),
+                label: Text(l10n.directChatCopyLinkAction),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _messageController,
-          minLines: 4,
-          maxLines: 8,
-          decoration: InputDecoration(
-            hintText: l10n.directChatMessageLabel,
-            border: _outlineBorder(theme.colorScheme.outlineVariant),
-            enabledBorder: _outlineBorder(theme.colorScheme.outlineVariant),
-            focusedBorder: _outlineBorder(theme.colorScheme.primary, width: 2),
-          ),
-        ),
-        const SizedBox(height: 20),
-        FilledButton.icon(
-          onPressed: _send,
-          icon: const Icon(Icons.send_rounded),
-          label: Text(l10n.directChatSendAction),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton.icon(
-          onPressed: _copyLink,
-          icon: const Icon(Icons.copy_rounded),
-          label: Text(l10n.directChatCopyLinkAction),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: PreloadGoogleAds.instance.showNativeAd(),
         ),
       ],
     );
@@ -176,7 +202,10 @@ class _CountryCodeButton extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: theme.colorScheme.outlineVariant, width: 1.4),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant,
+              width: 1.4,
+            ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 10),
           alignment: Alignment.center,
@@ -187,7 +216,9 @@ class _CountryCodeButton extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 '+${country.dialCode}',
-                style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),

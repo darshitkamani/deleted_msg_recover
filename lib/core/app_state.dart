@@ -11,6 +11,7 @@ import 'native_bridge.dart';
 
 const _localeCodePrefKey = 'locale_code';
 const _onboardingCompletePrefKey = 'onboarding_complete';
+const _appTourCompletePrefKey = 'app_tour_complete';
 
 /// Central app state: permission status, monitored apps, cached chats, and
 /// the user's chosen display language. Refreshes itself when the native
@@ -31,6 +32,15 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
 
   Locale? locale;
   bool onboardingComplete = false;
+  bool appTourComplete = false;
+
+  /// True once the fast, prefs-only loads below (locale + onboarding
+  /// status) are done -- the signal [_RootRouter] waits on before it can
+  /// decide between the splash, onboarding, and home screens. Deliberately
+  /// not gated on the slower native calls further down (permissions,
+  /// monitored apps, chats), which keep loading in the background and
+  /// notify their own listeners when done.
+  bool ready = false;
 
   /// Set by a pushed screen (e.g. the welcome chat's "See how to use" link)
   /// that wants [HomeShell] to switch its bottom-nav tab once the screen
@@ -53,6 +63,8 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> init() async {
     await _loadLocale();
     await _loadOnboardingComplete();
+    ready = true;
+    notifyListeners();
     if (!isSupportedPlatform) return;
     // Each step runs independently -- one throwing (permissions, monitored
     // apps) must not stop the others (crucially refreshData and the event
@@ -90,6 +102,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _loadOnboardingComplete() async {
     final prefs = await SharedPreferences.getInstance();
     onboardingComplete = prefs.getBool(_onboardingCompletePrefKey) ?? false;
+    appTourComplete = prefs.getBool(_appTourCompletePrefKey) ?? false;
     notifyListeners();
   }
 
@@ -102,6 +115,17 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardingCompletePrefKey, true);
+  }
+
+  /// Called once the user dismisses [AppTourScreen] (taps "Continue"), right
+  /// after onboarding -- the point [_RootRouter] treats as safe to show
+  /// [HomeShell]. Persisted like onboarding so the tour, like onboarding, is
+  /// only ever shown to a given install once.
+  Future<void> completeAppTour() async {
+    appTourComplete = true;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_appTourCompletePrefKey, true);
   }
 
   Future<void> _loadLocale() async {
@@ -126,8 +150,10 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> refreshPermissions() async {
     if (!isSupportedPlatform) return;
-    notificationAccessGranted = await NativeBridge.isNotificationAccessGranted();
-    ignoringBatteryOptimizations = await NativeBridge.isIgnoringBatteryOptimizations();
+    notificationAccessGranted =
+        await NativeBridge.isNotificationAccessGranted();
+    ignoringBatteryOptimizations =
+        await NativeBridge.isIgnoringBatteryOptimizations();
     notifyListeners();
   }
 

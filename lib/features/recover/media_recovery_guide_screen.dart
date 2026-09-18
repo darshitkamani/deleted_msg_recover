@@ -20,7 +20,8 @@ class MediaRecoveryGuideScreen extends StatefulWidget {
   });
 
   @override
-  State<MediaRecoveryGuideScreen> createState() => _MediaRecoveryGuideScreenState();
+  State<MediaRecoveryGuideScreen> createState() =>
+      _MediaRecoveryGuideScreenState();
 }
 
 class _MediaRecoveryGuideScreenState extends State<MediaRecoveryGuideScreen> {
@@ -129,7 +130,9 @@ class _MediaRecoveryGuideScreenState extends State<MediaRecoveryGuideScreen> {
               children: [
                 Text(
                   l10n.mediaGuideAutoDownloadTitle,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
