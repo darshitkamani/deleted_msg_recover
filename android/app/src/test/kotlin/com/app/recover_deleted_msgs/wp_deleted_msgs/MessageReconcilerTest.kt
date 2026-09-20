@@ -75,8 +75,7 @@ class MessageReconcilerTest {
                 WindowEntry(4000, "four"),
                 WindowEntry(6000, "six"),
                 WindowEntry(7000, "seven")
-            ),
-            priorTotalMessageCount = 7
+            )
         )
 
         val silentDeletes = actions.filterIsInstance<ReconcileAction.DeletedSilently>()
@@ -88,8 +87,7 @@ class MessageReconcilerTest {
     fun `oldest message falling off a full window is scroll-out, not a delete`() {
         val actions = MessageReconciler.reconcile(
             stored = (1..7).map { WindowEntry(it * 1000L, "msg$it") },
-            incoming = (2..8).map { WindowEntry(it * 1000L, "msg$it") },
-            priorTotalMessageCount = 7
+            incoming = (2..8).map { WindowEntry(it * 1000L, "msg$it") }
         )
 
         assertTrue(actions.none { it is ReconcileAction.DeletedSilently })
@@ -98,9 +96,10 @@ class MessageReconcilerTest {
     }
 
     @Test
-    fun `leading message missing before the window ever filled up is a delete`() {
-        // chat only ever had 3 messages -- nothing should have evicted msg 1 on its own,
-        // so its disappearance can only be a genuine deletion, not capacity-driven scrolling.
+    fun `leading message missing from a short chat is not a delete`() {
+        // The user dismissed/read the notification after msg 1, so the next window starts at
+        // msg 2 -- indistinguishable from msg 1 being deleted, and mislabelling a message that
+        // still exists as "deleted" is the worse mistake, so nothing is inferred.
         val actions = MessageReconciler.reconcile(
             stored = listOf(
                 WindowEntry(1000, "one"),
@@ -111,13 +110,10 @@ class MessageReconcilerTest {
                 WindowEntry(2000, "two"),
                 WindowEntry(3000, "three"),
                 WindowEntry(4000, "four")
-            ),
-            priorTotalMessageCount = 3
+            )
         )
 
-        val silentDeletes = actions.filterIsInstance<ReconcileAction.DeletedSilently>()
-        assertEquals(1, silentDeletes.size)
-        assertEquals("one", silentDeletes[0].previous.text)
+        assertTrue(actions.none { it is ReconcileAction.DeletedSilently })
     }
 
     @Test
@@ -128,8 +124,7 @@ class MessageReconcilerTest {
         // actually deleted.
         val actions = MessageReconciler.reconcile(
             stored = (1..7).map { WindowEntry(it * 1000L, "msg$it") },
-            incoming = listOf(WindowEntry(9000L, "brand new message")),
-            priorTotalMessageCount = 7
+            incoming = listOf(WindowEntry(9000L, "brand new message"))
         )
 
         assertTrue(actions.none { it is ReconcileAction.DeletedSilently })
@@ -139,12 +134,10 @@ class MessageReconcilerTest {
 
     @Test
     fun `zero overlap infers no deletions even when the chat never filled the window`() {
-        // Same read-clear reset, but for a short chat that never reached the window cap --
-        // the ambiguous leading-edge count check must not override the zero-overlap guard.
+        // Same read-clear reset, but for a short chat that never reached the window cap.
         val actions = MessageReconciler.reconcile(
             stored = listOf(WindowEntry(1000, "one"), WindowEntry(2000, "two")),
-            incoming = listOf(WindowEntry(5000, "three")),
-            priorTotalMessageCount = 2
+            incoming = listOf(WindowEntry(5000, "three"))
         )
 
         assertTrue(actions.none { it is ReconcileAction.DeletedSilently })
@@ -155,8 +148,7 @@ class MessageReconcilerTest {
         val actions = MessageReconciler.reconcile(
             stored = (1..7).map { WindowEntry(it * 1000L, "msg$it") },
             // msg1 scrolls out normally, msg3 is deleted, msg8 is new
-            incoming = listOf(2, 4, 5, 6, 7, 8).map { WindowEntry(it * 1000L, "msg$it") },
-            priorTotalMessageCount = 7
+            incoming = listOf(2, 4, 5, 6, 7, 8).map { WindowEntry(it * 1000L, "msg$it") }
         )
 
         val silentDeletes = actions.filterIsInstance<ReconcileAction.DeletedSilently>()

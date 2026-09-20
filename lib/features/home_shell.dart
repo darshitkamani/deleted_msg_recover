@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
+import '../core/ads/ads_service.dart';
 import '../core/app_state.dart';
 import '../core/constants.dart';
 import '../l10n/generated/app_localizations.dart';
@@ -61,7 +62,7 @@ class _HomeShellState extends State<HomeShell> {
     // interstitial counter. Feeding the same counter here closes that gap,
     // only counting an actual tab change (not re-tapping the active tab).
     if (index != _index) {
-      PreloadGoogleAds.instance.showInterstitialAd(callBack: (ad, error) {});
+      AdsService.instance.showInterstitialOnNavigation();
     }
     setState(() {
       _index = index;

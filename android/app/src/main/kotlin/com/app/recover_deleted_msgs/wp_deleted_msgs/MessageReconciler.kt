@@ -52,9 +52,11 @@ sealed class ReconcileAction {
  *    impossible under FIFO eviction -- the older one should have been evicted first, not
  *    this one -- so this one was deleted. This case is unambiguous regardless of history.
  *  - If this entry is part of the unbroken leading (oldest) run with nothing older ever
- *    surviving past it, that alone is also consistent with ordinary scrolling. It is only
- *    treated as a deletion when [priorTotalMessageCount] shows the window had not yet
- *    reached [windowCap] -- i.e. there was no capacity reason for anything to fall off.
+ *    surviving past it, that is indistinguishable from ordinary scrolling -- and from the
+ *    user dismissing/reading the notification in WhatsApp, which also drops the oldest
+ *    entries while the newer ones stay. It is never treated as a deletion: mislabelling a
+ *    message that still exists as "deleted" is worse than missing the rare oldest-message
+ *    deletion (a real deletion normally arrives as an in-place placeholder anyway).
  *  - If NOTHING in the incoming window matches anything stored at all, no deletions are
  *    inferred, period -- regardless of [priorTotalMessageCount]. WhatsApp's window holds
  *    unread messages, not "the last N ever": reading or clearing the notification (in
@@ -62,10 +64,9 @@ sealed class ReconcileAction {
  *    looks identical to "every previous message vanished." Without at least one shared
  *    message anchoring the two windows together, there is no way to tell a real mass
  *    deletion apart from an ordinary read/clear, so we don't guess.
- *  - The one case this cannot resolve even with overlap: the oldest message of an
- *    already-full window being deleted looks identical to it simply scrolling out, because
- *    there's nothing older to compare against. That's an information limit of
- *    window-sniffing, not a bug.
+ *  - The one case this cannot resolve even with overlap: the oldest message of the window
+ *    being deleted looks identical to it simply scrolling out, because there's nothing older
+ *    to compare against. That's an information limit of window-sniffing, not a bug.
  *
  * Contract callers can rely on: the first `incoming.size` entries of the returned list are
  * in the same order as [incoming] -- exactly one action per incoming entry, so `actions[i]`
@@ -83,9 +84,7 @@ object MessageReconciler {
 
     fun reconcile(
         stored: List<WindowEntry>,
-        incoming: List<WindowEntry>,
-        priorTotalMessageCount: Int = Int.MAX_VALUE,
-        windowCap: Int = DEFAULT_WINDOW_CAP
+        incoming: List<WindowEntry>
     ): List<ReconcileAction> {
         val consumed = BooleanArray(stored.size)
         val actions = mutableListOf<ReconcileAction>()
@@ -111,16 +110,14 @@ object MessageReconciler {
             }
         }
 
-        actions += silentlyDeletedActions(stored, consumed, priorTotalMessageCount, windowCap)
+        actions += silentlyDeletedActions(stored, consumed)
 
         return actions
     }
 
     private fun silentlyDeletedActions(
         stored: List<WindowEntry>,
-        consumed: BooleanArray,
-        priorTotalMessageCount: Int,
-        windowCap: Int
+        consumed: BooleanArray
     ): List<ReconcileAction.DeletedSilently> {
         if (!consumed.any { it }) {
             // Zero overlap with the previous window -- almost certainly a read/clear reset
@@ -129,14 +126,12 @@ object MessageReconciler {
             return emptyList()
         }
 
-        val firstConsumedIndex = consumed.indexOfFirst { it }.let { if (it == -1) stored.size else it }
-        val windowWasFull = priorTotalMessageCount >= windowCap
+        val firstConsumedIndex = consumed.indexOfFirst { it }
 
         val result = mutableListOf<ReconcileAction.DeletedSilently>()
         for (i in stored.indices) {
             if (consumed[i]) continue
-            val isUnbrokenLeadingEdge = i < firstConsumedIndex
-            if (isUnbrokenLeadingEdge && windowWasFull) continue // ordinary scroll-out, not a deletion
+            if (i < firstConsumedIndex) continue // leading edge: scroll-out/dismissal, not a deletion
             result += ReconcileAction.DeletedSilently(stored[i])
         }
         return result

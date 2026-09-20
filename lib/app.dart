@@ -53,7 +53,7 @@ class _InterstitialAdNavigatorObserver extends NavigatorObserver {
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
     if (route is PageRoute) {
-      PreloadGoogleAds.instance.showInterstitialAd(callBack: (ad, error) {});
+      AdsService.instance.showInterstitialOnNavigation();
     }
   }
 }
@@ -136,7 +136,7 @@ class _RootRouterState extends State<_RootRouter> {
     if (!appState.isSupportedPlatform) {
       return const IosUnsupportedScreen();
     }
-    if (!appState.ready || !_splashMinTimeElapsed) {
+    if (!appState.ready || !appState.accessChecked || !_splashMinTimeElapsed) {
       return const SplashScreen();
     }
     if (!appState.onboardingComplete) {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
+import 'package:provider/provider.dart';
 
+import '../../core/app_state.dart';
 import '../../core/constants.dart';
 import '../../core/models/edited_deleted_message.dart';
 import '../../core/models/media_type.dart';
@@ -28,6 +30,7 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
   bool _loading = true;
   Object? _error;
   List<EditedDeletedMessage> _items = [];
+  int? _seenRevision;
 
   @override
   void initState() {
@@ -35,11 +38,28 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
     _load();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This tab is built once and then kept alive by HomeShell's IndexedStack,
+    // so without this it would keep showing whatever it loaded on first
+    // visit -- new deletions would only appear after a manual pull-to-refresh.
+    // AppState bumps dataRevision on every native message event and app
+    // resume; reload quietly (no spinner) whenever it moves.
+    final revision = context.watch<AppState>().dataRevision;
+    if (_seenRevision != null && revision != _seenRevision) {
+      _load(silent: true);
+    }
+    _seenRevision = revision;
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final items = await NativeBridge.getEditedOrDeletedMessages(
         package: _package,
@@ -47,10 +67,13 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
       if (!mounted) return;
       setState(() {
         _items = items;
+        _error = null;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+      // A failed background reload keeps showing the last good list.
+      if (silent) return;
       setState(() {
         _error = e;
         _loading = false;

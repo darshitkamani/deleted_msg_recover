@@ -505,20 +505,6 @@ class MessageStore private constructor(context: Context) :
         }
     }
 
-    fun getActiveMessageCount(chatKey: String): Int {
-        try {
-            readableDatabase.rawQuery(
-                "SELECT COUNT(*) FROM messages WHERE chat_key = ? AND status != ?",
-                arrayOf(chatKey, STATUS_DELETED)
-            ).use { cursor ->
-                return if (cursor.moveToFirst()) cursor.getInt(0) else 0
-            }
-        } catch (e: SQLException) {
-            reportNonFatal("getActiveMessageCount", e)
-            return 0
-        }
-    }
-
     /** Applies a [ReconcileAction.Edit]: archives the old text and updates the row in place. */
     fun applyEdit(rowId: Long, newText: String, editedAt: Long): ChangeResult? {
         try {

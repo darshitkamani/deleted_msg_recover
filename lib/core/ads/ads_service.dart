@@ -20,6 +20,13 @@ class AdsService {
 
   Future<void>? _initFuture;
 
+  /// True once [PreloadGoogleAds.initialize] has finished with the fetched
+  /// config. Until then the package is still on its built-in defaults --
+  /// Google's *test* ad unit ids, every format enabled, interstitial counter
+  /// 0 -- so anything that reaches an ad call before this flips would load a
+  /// test ad and keep it queued even after the real ids arrive.
+  bool _ready = false;
+
   /// Firebase Remote Config key holding this app's ad flags/counters/ad
   /// unit ids as a single JSON object (see [AdRemoteConfig]) -- lets the ad
   /// mix be tuned from the Firebase console without an app update. A
@@ -42,6 +49,7 @@ class AdsService {
         adCounter: config.toAdCounter(),
       ),
     );
+    _ready = true;
   }
 
   /// Fetches this app's ad config from Firebase Remote Config, parsed into
@@ -75,6 +83,16 @@ class AdsService {
     } catch (_) {
       return AdRemoteConfig.defaults;
     }
+  }
+
+  /// Reports one screen navigation / tab change to the interstitial counter,
+  /// showing the ad when the counter says it's due. A no-op until [init] has
+  /// completed -- the app's very first route push (fired while Remote Config
+  /// is still being fetched) would otherwise make the package load an
+  /// interstitial with its default *test* ad unit id; see [_ready].
+  void showInterstitialOnNavigation() {
+    if (!_ready) return;
+    PreloadGoogleAds.instance.showInterstitialAd(callBack: (ad, error) {});
   }
 
   /// Shows the preloaded rewarded interstitial ad, then always runs [then]

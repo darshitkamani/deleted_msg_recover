@@ -42,6 +42,17 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   /// notify their own listeners when done.
   bool ready = false;
 
+  /// True once the first notification-access check has finished (whether it
+  /// succeeded or threw). [_RootRouter] waits on it so a persisted
+  /// "onboarding complete" flag can be overridden by the real permission
+  /// state before any post-onboarding screen is shown.
+  bool accessChecked = false;
+
+  /// Bumped every time [refreshData] finishes -- which also runs on every
+  /// native message event and app resume. Screens that keep their own copy
+  /// of native data (e.g. the Deleted tab) watch it to know when to reload.
+  int dataRevision = 0;
+
   /// Set by a pushed screen (e.g. the welcome chat's "See how to use" link)
   /// that wants [HomeShell] to switch its bottom-nav tab once the screen
   /// pops back to it. `null` once consumed.
@@ -70,6 +81,15 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     // apps) must not stop the others (crucially refreshData and the event
     // subscription) from ever running at all.
     await _guard(refreshPermissions);
+    // A persisted "onboarding complete" flag can outlive the permission it
+    // was earned with -- e.g. Android Auto Backup restoring app prefs on a
+    // fresh install, where notification access is not granted, or access
+    // revoked later in system settings. Without access the app can't capture
+    // anything, so onboarding (which asks for it) has to run again. Only the
+    // in-memory flag is reset; "Get started" persists it again.
+    if (!notificationAccessGranted) onboardingComplete = false;
+    accessChecked = true;
+    notifyListeners();
     await _guard(refreshMonitoredApps);
     await refreshData();
     _eventSub ??= NativeBridge.events.listen((_) => refreshData());
@@ -189,6 +209,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       chatsError = e;
     }
     loading = false;
+    dataRevision++;
     notifyListeners();
   }
 

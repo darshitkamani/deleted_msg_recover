@@ -307,11 +307,9 @@ class NotificationListener : NotificationListenerService() {
         }
 
         val stored = store.getWindow(chatKey, MessageReconciler.DEFAULT_WINDOW_CAP)
-        val priorTotalMessageCount = store.getActiveMessageCount(chatKey)
         val actions = MessageReconciler.reconcile(
             stored = stored,
-            incoming = incoming.map { it.second },
-            priorTotalMessageCount = priorTotalMessageCount
+            incoming = incoming.map { it.second }
         )
 
         var inserted = false
