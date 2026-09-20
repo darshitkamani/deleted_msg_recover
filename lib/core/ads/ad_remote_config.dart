@@ -114,6 +114,29 @@ class AdRemoteConfig {
     );
   }
 
+  /// Same flags and counters, but with Google's official test ad unit ids
+  /// in every slot -- used in debug builds so development never requests
+  /// (or gets counted against) the real ad units. Every slot gets an id, so
+  /// which formats are actually on is decided purely by the show* flags.
+  AdRemoteConfig withTestIds() => AdRemoteConfig(
+        showAd: showAd,
+        showBanner: showBanner,
+        showInterstitial: showInterstitial,
+        showNative: showNative,
+        showOpenApp: showOpenApp,
+        showRewarded: showRewarded,
+        showRewardedInterstitial: showRewardedInterstitial,
+        showSplashAd: showSplashAd,
+        nativeCounter: nativeCounter,
+        interstitialCounter: interstitialCounter,
+        appOpenId: AdTestIds.appOpen,
+        bannerId: AdTestIds.banner,
+        nativeId: AdTestIds.native,
+        interstitialId: AdTestIds.interstitial,
+        rewardedId: AdTestIds.rewarded,
+        rewardedInterstitialId: AdTestIds.rewardedInterstitial,
+      );
+
   /// Serializes back to the same shape [fromJson] reads -- used to seed
   /// Remote Config's own pre-fetch default (see AdsService) from
   /// [defaults], so that literal JSON only has to be written once.

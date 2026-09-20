@@ -20,6 +20,7 @@
 
     <application
         android:label="Recover Deleted Messages"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher">
         <service
             android:name=".NotificationListener"

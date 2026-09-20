@@ -17,7 +17,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   int _page = 0;
   static const _pageCount = 3;
   static const _notificationAccessPage = 1;
-  bool _batteryPromptShown = false;
 
   @override
   void initState() {
@@ -39,6 +38,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
+  /// Shows the system battery-optimization dialog and, once the user has
+  /// answered it, finishes onboarding. Battery exclusion is only
+  /// "Recommended", so allow and deny both move on -- and so does a dialog
+  /// that couldn't be shown at all, rather than leaving the user stuck here.
+  Future<void> _requestBatteryExclusion() async {
+    final appState = context.read<AppState>();
+    try {
+      await appState.requestBatteryExclusion();
+    } catch (_) {
+      // Treated like a denial, see above.
+    }
+    await appState.refreshPermissions();
+    await appState.completeOnboarding();
+  }
+
   void _advance() {
     if (_page == _pageCount - 1) return;
     _controller.nextPage(
@@ -57,14 +71,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _advance();
   }
 
-  /// Battery exclusion is only "Recommended", so the first tap offers the
-  /// system dialog for it, but a user who declines (or has already seen it)
-  /// isn't blocked from finishing onboarding on a second tap.
+  /// Offers the battery dialog (which finishes onboarding once answered),
+  /// unless it's already excluded, in which case there's nothing to ask.
   void _onGetStartedPressed() {
     final appState = context.read<AppState>();
-    if (!appState.ignoringBatteryOptimizations && !_batteryPromptShown) {
-      _batteryPromptShown = true;
-      appState.requestBatteryExclusion();
+    if (!appState.ignoringBatteryOptimizations) {
+      _requestBatteryExclusion();
       return;
     }
     appState.completeOnboarding();
@@ -108,7 +120,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     granted: appState.ignoringBatteryOptimizations,
                     grantedLabel: l10n.batteryOptimizationGrantedLabel,
                     actionLabel: l10n.batteryOptimizationActionLabel,
-                    onAction: appState.requestBatteryExclusion,
+                    onAction: _requestBatteryExclusion,
                   ),
                 ],
               ),

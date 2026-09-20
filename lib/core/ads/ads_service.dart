@@ -9,10 +9,11 @@ import 'ad_remote_config.dart';
 /// callers just call [init] whenever they know it's safe to; the network
 /// round trip only actually happens once per process.
 ///
-/// Triggered as soon as [_RootRouter] mounts (see app.dart), i.e. right when
-/// the splash screen first appears -- well before any ad-showing screen is
-/// reached -- so the SDK and its preloaded native ad are already warm by the
-/// time the user works through onboarding/app-tour and lands on HomeShell.
+/// Triggered by [_RootRouter] (see app.dart): during the splash for a user
+/// whose onboarding/app tour is already done, or once the app tour page is
+/// shown for a user whose setup is still pending -- either way well before any
+/// ad-showing screen is reached, so the SDK and its preloaded native ad are
+/// already warm by the time the user lands on HomeShell.
 class AdsService {
   AdsService._();
 
@@ -40,7 +41,11 @@ class AdsService {
   }
 
   Future<void> _initialize() async {
-    final config = await _fetchAdConfig();
+    final fetched = await _fetchAdConfig();
+    // Debug builds keep Remote Config's flags and counters but never its ad
+    // unit ids -- those are always Google's test ids, so development can't
+    // hit the real ad units.
+    final config = kDebugMode ? fetched.withTestIds() : fetched;
 
     await PreloadGoogleAds.instance.initialize(
       adConfigData: AdConfigData(

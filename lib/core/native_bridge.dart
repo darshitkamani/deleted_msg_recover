@@ -44,8 +44,13 @@ class NativeBridge {
     return result ?? false;
   }
 
-  static Future<void> requestIgnoreBatteryOptimizations() {
-    return _methodChannel.invokeMethod('requestIgnoreBatteryOptimizations');
+  /// Shows the system battery-optimization dialog; completes once it's
+  /// dismissed, with whether the user allowed it.
+  static Future<bool> requestIgnoreBatteryOptimizations() async {
+    final result = await _methodChannel.invokeMethod<bool>(
+      'requestIgnoreBatteryOptimizations',
+    );
+    return result ?? false;
   }
 
   static Future<List<Chat>> getChats() async {

@@ -5,8 +5,9 @@ import '../../l10n/generated/app_localizations.dart';
 /// Shown exactly once, right after onboarding finishes and before the user
 /// ever lands on [HomeShell] -- a one-screen "here's what each tab does"
 /// primer, distinct from onboarding's permission asks. See [_RootRouter] in
-/// app.dart: this is also the point ads get initialized (via [onContinue]),
-/// so a first-run user sees this explainer before anything ad-related loads.
+/// app.dart: for a user whose setup is still pending, this page appearing is
+/// also the point ads get initialized, so a first-run user sees onboarding
+/// before anything ad-related loads.
 class AppTourScreen extends StatelessWidget {
   final VoidCallback onContinue;
 

@@ -67,6 +67,39 @@ class _RootRouter extends StatefulWidget {
 
 class _RootRouterState extends State<_RootRouter> {
   bool _splashMinTimeElapsed = false;
+  bool _adsInitStarted = false;
+
+  /// Starts [AdsService.init] (idempotent, guarded here so the follow-up
+  /// reload below only runs once) at the right moment for this user:
+  ///  - Setup already finished (onboarding + app tour): as soon as the
+  ///    persisted flags and permission state are known, i.e. during the
+  ///    splash -- the SDK is warm long before HomeShell.
+  ///  - Setup still pending (first run, or onboarding re-run because
+  ///    notification access is missing): not during the splash or the
+  ///    onboarding permission steps, only once the app tour page is on
+  ///    screen, so a first-run user isn't hit with ad loading before then.
+  ///    That still leaves the whole tour to warm up before HomeShell.
+  void _maybeInitAds(AppState appState) {
+    if (_adsInitStarted || !appState.ready || !appState.accessChecked) return;
+    final setupPending =
+        !appState.onboardingComplete || !appState.appTourComplete;
+    final onTourPage =
+        appState.onboardingComplete &&
+        !appState.appTourComplete &&
+        _splashMinTimeElapsed;
+    if (setupPending && !onTourPage) return;
+
+    _adsInitStarted = true;
+    AdsService.instance.init().then((_) {
+      // Warms up the rewarded interstitial (shown before a status
+      // download/share -- see StatusesScreen) along with anything else not
+      // already loading, so it's more likely to already be sitting ready by
+      // the time the user actually taps download/share, instead of only
+      // starting that request on the very first tap and showing nothing for
+      // it.
+      PreloadGoogleAds.instance.reloadUnloadedAds();
+    });
+  }
 
   @override
   void initState() {
@@ -79,37 +112,6 @@ class _RootRouterState extends State<_RootRouter> {
     Future.delayed(splashDuration, () {
       if (mounted) setState(() => _splashMinTimeElapsed = true);
     });
-    // Kicked off right away so the SDK is already warm by the time the user
-    // reaches HomeShell, instead of only starting that network round trip
-    // once onboarding/app-tour are behind them. AdsService.init() is
-    // idempotent, so this is safe even though the splash itself never shows
-    // an ad.
-    //
-    // AdsService.init() also starts exitDialogAdPreloader loading as part of
-    // its own chain -- that's the ad every exit-confirmation dialog in the
-    // app shows (see AdsService.exitDialogAdPreloader's doc comment), and
-    // its load/fail is also exactly what the splash gate below is waiting
-    // to react to. There's deliberately no separate "probe" load here
-    // anymore: that would just be a second, wasted medium native ad request
-    // duplicating one this app is already making for a real reason.
-    AdsService.instance.init().then((_) {
-      // Warms up the rewarded interstitial (shown before a status
-      // download/share -- see StatusesScreen) along with anything else not
-      // already loading, so it's more likely to already be sitting ready by
-      // the time the user actually taps download/share, instead of only
-      // starting that request on the very first tap and showing nothing for
-      // it.
-      PreloadGoogleAds.instance.reloadUnloadedAds();
-    });
-
-    // Held here (rather than gating only on AppState.ready) so the very
-    // first medium native ad slot the user reaches -- RecoverScreen's --
-    // already has an ad sitting in the preload queue instead of rendering
-    // empty for a beat. Leaves as soon as this attempt is settled one way
-    // or the other -- loaded, or failed -- rather than only reacting to
-    // success and otherwise always sitting through the full timeout below
-    // even when the ad has clearly already failed (e.g. no network).
-
     // Checked from app launch, not just once HomeShell is reached -- an
     // "immediate" (blocking) update is meant to gate the whole app as soon
     // as possible, not only once the user has clicked through onboarding.
@@ -132,6 +134,7 @@ class _RootRouterState extends State<_RootRouter> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
+    if (appState.isSupportedPlatform) _maybeInitAds(appState);
 
     if (!appState.isSupportedPlatform) {
       return const IosUnsupportedScreen();

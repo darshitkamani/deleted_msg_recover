@@ -33,6 +33,7 @@ private const val METHOD_CHANNEL = "recover/native"
 private const val EVENT_CHANNEL = "recover/events"
 private const val REQUEST_STATUS_FOLDER = 4201
 private const val REQUEST_MEDIA_FOLDER = 4202
+private const val REQUEST_BATTERY_OPTIMIZATION = 4203
 
 class MainActivity : FlutterActivity() {
 
@@ -40,6 +41,7 @@ class MainActivity : FlutterActivity() {
     private var pendingStatusPackage: String? = null
     private var pendingMediaResult: MethodChannel.Result? = null
     private var pendingMediaPackage: String? = null
+    private var pendingBatteryResult: MethodChannel.Result? = null
     private val bgExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -65,10 +67,7 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         }
                         "isIgnoringBatteryOptimizations" -> result.success(isIgnoringBatteryOptimizations())
-                        "requestIgnoreBatteryOptimizations" -> {
-                            requestIgnoreBatteryOptimizations()
-                            result.success(null)
-                        }
+                        "requestIgnoreBatteryOptimizations" -> requestIgnoreBatteryOptimizations(result)
                         // Chats/messages queries run several correlated subqueries
                         // per row -- fast normally, but slow enough to ANR on the
                         // main thread once a backlog of messages piles up (e.g.
@@ -290,11 +289,24 @@ class MainActivity : FlutterActivity() {
         return pm.isIgnoringBatteryOptimizations(packageName)
     }
 
-    private fun requestIgnoreBatteryOptimizations() {
+    /**
+     * Shows the system "allow this app to ignore battery optimization" dialog and completes
+     * [result] with whether the user allowed it once the dialog is dismissed (false if they
+     * denied it, or if the dialog couldn't be shown at all).
+     */
+    private fun requestIgnoreBatteryOptimizations(result: MethodChannel.Result) {
+        // A second request while one is still open supersedes it.
+        pendingBatteryResult?.success(false)
+        pendingBatteryResult = result
         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
             data = Uri.parse("package:$packageName")
         }
-        startActivity(intent)
+        try {
+            startActivityForResult(intent, REQUEST_BATTERY_OPTIMIZATION)
+        } catch (_: Exception) {
+            pendingBatteryResult = null
+            result.success(false)
+        }
     }
 
     /**
@@ -583,6 +595,11 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
+            REQUEST_BATTERY_OPTIMIZATION -> {
+                val result = pendingBatteryResult
+                pendingBatteryResult = null
+                result?.success(resultCode == RESULT_OK)
+            }
             REQUEST_STATUS_FOLDER -> {
                 val result = pendingStatusResult
                 val pkg = pendingStatusPackage

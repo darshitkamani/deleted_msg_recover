@@ -230,7 +230,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     return NativeBridge.openNotificationAccessSettings();
   }
 
-  Future<void> requestBatteryExclusion() {
+  Future<bool> requestBatteryExclusion() {
     return NativeBridge.requestIgnoreBatteryOptimizations();
   }
 
