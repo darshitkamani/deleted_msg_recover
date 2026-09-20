@@ -444,6 +444,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusDownloadFailed => 'Couldn\'t save this file';
 
   @override
+  String get adLoadingTitle => 'Just a moment…';
+
+  @override
+  String get adLoadingDownloadBody =>
+      'A short ad is loading, then your status will be saved to your gallery.';
+
+  @override
+  String get adLoadingShareBody =>
+      'A short ad is loading, then your status will be ready to share.';
+
+  @override
   String get appWhatsApp => 'WhatsApp';
 
   @override

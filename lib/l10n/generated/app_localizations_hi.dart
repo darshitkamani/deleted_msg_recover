@@ -444,6 +444,17 @@ class AppLocalizationsHi extends AppLocalizations {
   String get statusDownloadFailed => 'यह फ़ाइल सेव नहीं हो सकी';
 
   @override
+  String get adLoadingTitle => 'बस एक पल…';
+
+  @override
+  String get adLoadingDownloadBody =>
+      'एक छोटा विज्ञापन लोड हो रहा है, फिर आपका स्टेटस गैलरी में सेव हो जाएगा।';
+
+  @override
+  String get adLoadingShareBody =>
+      'एक छोटा विज्ञापन लोड हो रहा है, फिर आपका स्टेटस शेयर के लिए तैयार होगा।';
+
+  @override
   String get appWhatsApp => 'व्हाट्सएप';
 
   @override

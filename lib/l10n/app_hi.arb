@@ -68,6 +68,9 @@
   "statusShareTooltip": "शेयर करें",
   "statusDownloadSuccess": "गैलरी में सेव हो गया",
   "statusDownloadFailed": "यह फ़ाइल सेव नहीं हो सकी",
+  "adLoadingTitle": "बस एक पल…",
+  "adLoadingDownloadBody": "एक छोटा विज्ञापन लोड हो रहा है, फिर आपका स्टेटस गैलरी में सेव हो जाएगा।",
+  "adLoadingShareBody": "एक छोटा विज्ञापन लोड हो रहा है, फिर आपका स्टेटस शेयर के लिए तैयार होगा।",
 
   "appWhatsApp": "व्हाट्सएप",
   "appWhatsAppBusiness": "व्हाट्सएप बिजनेस",

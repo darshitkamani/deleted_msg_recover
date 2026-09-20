@@ -914,6 +914,24 @@ abstract class AppLocalizations {
   /// **'Couldn\'t save this file'**
   String get statusDownloadFailed;
 
+  /// No description provided for @adLoadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Just a moment…'**
+  String get adLoadingTitle;
+
+  /// No description provided for @adLoadingDownloadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A short ad is loading, then your status will be saved to your gallery.'**
+  String get adLoadingDownloadBody;
+
+  /// No description provided for @adLoadingShareBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A short ad is loading, then your status will be ready to share.'**
+  String get adLoadingShareBody;
+
   /// No description provided for @appWhatsApp.
   ///
   /// In en, this message translates to:

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../widgets/ad_loading_dialog.dart';
 import '../../core/ads/ads_service.dart';
 import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -25,7 +26,11 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   void _download() {
     if (_downloading) return;
     setState(() => _downloading = true);
-    AdsService.instance.showRewardedInterThen(_runDownload);
+    AdsService.instance.showRewardedInterThen(
+      context,
+      AdLoadingAction.download,
+      _runDownload,
+    );
   }
 
   Future<void> _runDownload() async {
@@ -51,6 +56,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
 
   void _share() {
     AdsService.instance.showRewardedInterThen(
+      context,
+      AdLoadingAction.share,
       () => SharePlus.instance.share(ShareParams(files: [XFile(widget.path)])),
     );
   }

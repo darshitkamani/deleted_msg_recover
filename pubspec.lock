@@ -530,7 +530,7 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: "7859e59aa50a70954c80bef37057d55c58446d9c"
+      resolved-ref: "7e7ca5166c99babb9dec85e537cdcb7d5f2a66f5"
       url: "https://github.com/darshitkamani/preload_google_ads.git"
     source: git
     version: "1.0.7"

@@ -154,6 +154,9 @@
   "statusShareTooltip": "Share",
   "statusDownloadSuccess": "Saved to gallery",
   "statusDownloadFailed": "Couldn't save this file",
+  "adLoadingTitle": "Just a moment…",
+  "adLoadingDownloadBody": "A short ad is loading, then your status will be saved to your gallery.",
+  "adLoadingShareBody": "A short ad is loading, then your status will be ready to share.",
 
   "appWhatsApp": "WhatsApp",
   "appWhatsAppBusiness": "WhatsApp Business",

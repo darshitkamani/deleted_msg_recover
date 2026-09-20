@@ -91,12 +91,9 @@ class _RootRouterState extends State<_RootRouter> {
 
     _adsInitStarted = true;
     AdsService.instance.init().then((_) {
-      // Warms up the rewarded interstitial (shown before a status
-      // download/share -- see StatusesScreen) along with anything else not
-      // already loading, so it's more likely to already be sitting ready by
-      // the time the user actually taps download/share, instead of only
-      // starting that request on the very first tap and showing nothing for
-      // it.
+      // Warms up the one format the package still preloads (native) if it
+      // isn't already loading. Interstitial, rewarded interstitial and app
+      // open are not part of this -- AdsService loads those on demand.
       PreloadGoogleAds.instance.reloadUnloadedAds();
     });
   }

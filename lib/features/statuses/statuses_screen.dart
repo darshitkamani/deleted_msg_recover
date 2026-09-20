@@ -9,6 +9,7 @@ import '../../core/constants.dart';
 import '../../core/models/status_item.dart';
 import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/ad_loading_dialog.dart';
 import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/error_state.dart';
 import 'image_viewer_screen.dart';
@@ -501,7 +502,11 @@ class _StatusTileState extends State<_StatusTile> {
   void _download() {
     if (_downloading) return;
     setState(() => _downloading = true);
-    AdsService.instance.showRewardedInterThen(_runDownload);
+    AdsService.instance.showRewardedInterThen(
+      context,
+      AdLoadingAction.download,
+      _runDownload,
+    );
   }
 
   Future<void> _runDownload() async {
@@ -530,6 +535,8 @@ class _StatusTileState extends State<_StatusTile> {
 
   void _share() {
     AdsService.instance.showRewardedInterThen(
+      context,
+      AdLoadingAction.share,
       () => SharePlus.instance.share(
         ShareParams(files: [XFile(widget.item.path)]),
       ),

@@ -169,16 +169,37 @@ class AdRemoteConfig {
   AdFlag toAdFlag() => AdFlag(
         showAd: showAd,
         showBanner: showBanner && bannerId != null,
-        showInterstitial: showInterstitial && interstitialId != null,
+        // Interstitial and rewarded interstitial use the package's on-demand
+        // classes (see AdsService) so they load when needed -- turned off
+        // here so the package's own loaders never preload them.
+        showInterstitial: false,
         showNative: showNative && nativeId != null,
-        // showOpenApp and showSplashAd both drive the same app-open ad
-        // slot/id, so both are gated on the same appOpenId.
-        showOpenApp: showOpenApp && appOpenId != null,
+        // App open also uses the package's on-demand class (see AdsService),
+        // so both of its package-side triggers stay off.
+        showOpenApp: false,
         showRewarded: showRewarded && rewardedId != null,
-        showRewardedInterstitial:
-            showRewardedInterstitial && rewardedInterstitialId != null,
-        showSplashAd: showSplashAd && appOpenId != null,
+        showRewardedInterstitial: false,
+        showSplashAd: false,
       );
+
+  /// Whether the app's own interstitial (see AdsService) should run: same
+  /// "no id means off" rule as [toAdFlag].
+  bool get interstitialEnabled =>
+      showAd && showInterstitial && interstitialId != null;
+
+  /// Whether an app open ad should be requested on a cold start (the old
+  /// "splash" ad): same "no id means off" rule as [toAdFlag].
+  bool get appOpenOnLaunchEnabled =>
+      showAd && showSplashAd && appOpenId != null;
+
+  /// Whether an app open ad should be requested every time the app returns
+  /// from the background.
+  bool get appOpenOnResumeEnabled =>
+      showAd && showOpenApp && appOpenId != null;
+
+  /// Whether the app's own on-demand rewarded interstitial should run.
+  bool get rewardedInterstitialEnabled =>
+      showAd && showRewardedInterstitial && rewardedInterstitialId != null;
 
   AdCounter toAdCounter() => AdCounter(
         nativeCounter: nativeCounter,

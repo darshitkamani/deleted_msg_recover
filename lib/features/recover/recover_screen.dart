@@ -83,15 +83,8 @@ class RecoverScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  constraints: const BoxConstraints(minHeight: 100),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: PreloadGoogleAds.instance.showNativeAd(
-                    // preloader: AdsService.instance.recoverAdPreloader,
-                  ),
+                PreloadGoogleAds.instance.showNativeAd(
+                  // preloader: AdsService.instance.recoverAdPreloader,
                 ),
 
                 if (!appState.notificationAccessGranted) ...[
