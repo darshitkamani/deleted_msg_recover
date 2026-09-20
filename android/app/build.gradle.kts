@@ -37,8 +37,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 6
-        versionName = "1.5.0"
+        versionCode = 7
+        versionName = "1.6.0"
         manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
@@ -53,12 +53,13 @@ android {
 
     buildTypes {
         release {
-            // TODO: swap in this app's real AdMob App ID before a production
-            // release -- currently Google's official test App ID, same as debug.
-            manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
+            // This app's real (live) AdMob App ID -- release builds only.
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-6501275341238792~3554974848"
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
+            // Google's official test App ID, paired with the test ad unit ids
+            // AdsService forces in debug builds.
             manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
         }
     }

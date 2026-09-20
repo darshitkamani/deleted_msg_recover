@@ -63,10 +63,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <!-- AdMob App ID: dynamic placeholder (${admobAppId}) switched by
-             build type in build.gradle.kts. Debug/release both currently use
-             Google's official test App ID; swap the release value for this
-             app's real AdMob App ID before a production release, or ad
-             requests will fail. -->
+             build type in build.gradle.kts -- Google's official test App ID
+             for debug, this app's live App ID for release. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="${admobAppId}" />
