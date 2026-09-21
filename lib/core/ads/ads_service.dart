@@ -5,6 +5,7 @@ import 'package:preload_google_ads/preload_google_ads.dart';
 
 import '../../widgets/ad_loading_dialog.dart';
 import 'ad_remote_config.dart';
+import 'native_ad_sizing.dart';
 
 /// Thin, idempotent wrapper around [PreloadGoogleAds.instance.initialize] --
 /// callers just call [init] whenever they know it's safe to; the network
@@ -64,6 +65,7 @@ class AdsService {
         adIDs: config.toAdIDS(),
         adCounter: config.toAdCounter(),
         nativeRetryLimit: _nativeRetryLimit,
+        nativeADLayout: _nativeAdLayout(),
       ),
     );
 
@@ -88,6 +90,49 @@ class AdsService {
         appOpen.loadAndShow(timeout: const Duration(seconds: 6));
       }
     }
+  }
+
+  /// Sizes the native ad slots to fit the ad drawn in them -- the package's fixed caps clip the
+  /// bottom (the install button) on wider phones and leave a gap on others; see
+  /// [NativeAdHeights].
+  ///
+  /// Must run before the first native ad slot is built, i.e. from `main()`, NOT from [init]:
+  /// a slot reads its height once, when it is created, and the home screen shows without
+  /// waiting for [init] (which does a Remote Config fetch first). A slot created in that
+  /// window would keep the package's default height for good. Until [init] hands the package
+  /// its own config, the package falls back to a shared default style -- this sizes that one.
+  static void applyNativeAdSizing() {
+    _fitNativeSlots(NativeADStyle.instance.customStyle);
+  }
+
+  /// The layout [init] passes the package. Sized the same way, so the two never disagree.
+  /// Everything else about it (border, padding, margin, colors) is left to the package's own
+  /// defaults, which [NativeADLayout] fills in for anything not passed.
+  NativeADLayout _nativeAdLayout() {
+    final style = CustomNativeADStyle();
+    _fitNativeSlots(style);
+    return NativeADLayout(customNativeADStyle: style);
+  }
+
+  static void _fitNativeSlots(CustomNativeADStyle style) {
+    final view = WidgetsBinding.instance.platformDispatcher.views.firstOrNull;
+    final smallestWidthDp = view == null
+        ? 360.0
+        : view.physicalSize.shortestSide / view.devicePixelRatio;
+    final heights = NativeAdHeights.forSmallestWidthDp(smallestWidthDp);
+
+    // The style's constructor ignores any constraints it's handed and always uses the
+    // package's fixed ones, so they have to be assigned afterwards. Width limits are kept.
+    // Min and max are set together: the package's own minimum (210 / 57) would otherwise
+    // exceed a maximum that now fits the content exactly.
+    style.mediumBoxConstrain = style.mediumBoxConstrain.copyWith(
+      minHeight: heights.medium,
+      maxHeight: heights.medium,
+    );
+    style.smallBoxConstrain = style.smallBoxConstrain.copyWith(
+      minHeight: heights.small,
+      maxHeight: heights.small,
+    );
   }
 
   /// Fetches this app's ad config from Firebase Remote Config, parsed into

@@ -3,6 +3,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:preload_google_ads/preload_google_ads.dart';
 
 import 'app.dart';
+import 'core/ads/ads_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -22,5 +23,7 @@ void main() async {
   await MobileAds.instance.updateRequestConfiguration(
     RequestConfiguration(testDeviceIds: ['B4037EE73E605DACD92FC5BBF15EEA8A']),
   );
+  // Before runApp, so it's in place before any native ad slot can be built.
+  AdsService.applyNativeAdSizing();
   runApp(const RecoverApp());
 }
