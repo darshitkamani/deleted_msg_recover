@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
