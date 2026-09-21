@@ -483,8 +483,14 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onPause() {
+        AppVisibility.isForeground = false
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        AppVisibility.isForeground = true
         // Nudges the system to reconnect the notification listener if it
         // was silently unbound (e.g. after the process was killed and later
         // restarted by Android without rebinding it) -- harmless no-op if

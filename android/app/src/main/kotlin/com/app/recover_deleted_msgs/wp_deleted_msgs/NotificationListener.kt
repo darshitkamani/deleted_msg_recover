@@ -1,12 +1,15 @@
 package com.app.recover_deleted_msgs.wp_deleted_msgs
 
+import android.app.KeyguardManager
 import android.app.Notification
+import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
@@ -195,10 +198,14 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "removed pkg=$pkg key=${sbn.key} reason=${describeReason(reason)}")
         val notifKey = sbn.key
         val removedAt = System.currentTimeMillis()
+        val isAppCancel = reason == NotificationListenerService.REASON_APP_CANCEL
+        // Sampled now, not after the grace period below: what matters is whether the user
+        // could have been reading it in WhatsApp at the moment it was cancelled.
+        val couldBeReadingHere = couldBeReadingOnThisPhone()
         handler.postDelayed({
             bgExecutor.execute {
                 try {
-                    resolveRemoval(notifKey, removedAt)
+                    resolveRemoval(notifKey, removedAt, isAppCancel, couldBeReadingHere)
                 } catch (t: Throwable) {
                     reportNonFatal("resolveRemoval crashed for key=$notifKey, recovering", t)
                 }
@@ -206,7 +213,41 @@ class NotificationListener : NotificationListenerService() {
         }, REMOVAL_GRACE_MS)
     }
 
-    private fun resolveRemoval(notifKey: String, removedAt: Long) {
+    /**
+     * True when the screen is on and unlocked with this app off screen -- i.e. WhatsApp itself
+     * might have been open. Anything we can't determine counts as "could be", so an unknown
+     * never turns into a deletion.
+     */
+    private fun couldBeReadingOnThisPhone(): Boolean {
+        val screenOn = (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
+        val locked = (getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked ?: false
+        return screenOn && !locked && !AppVisibility.isForeground
+    }
+
+    /** Whether some active WhatsApp notification still shows this exact message -- meaning
+     * WhatsApp just re-issued it under a new key rather than removing it. */
+    private fun isStillShownInActiveNotification(r: RemovalResult): Boolean {
+        return try {
+            (activeNotifications ?: emptyArray()).any { active ->
+                val pkg = active.packageName
+                (pkg == PKG_WHATSAPP || pkg == PKG_WHATSAPP_BUSINESS) &&
+                    NotificationCompat.MessagingStyle
+                        .extractMessagingStyleFromNotification(active.notification)
+                        ?.messages.orEmpty()
+                        .any { it.timestamp == r.timestamp && it.text?.toString() == r.text }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not check active notifications: ${e.message}")
+            true // can't tell -- assume it's still there, so this is never called a deletion
+        }
+    }
+
+    private fun resolveRemoval(
+        notifKey: String,
+        removedAt: Long,
+        isAppCancel: Boolean,
+        couldBeReadingHere: Boolean
+    ) {
         val store = MessageStore.getInstance(applicationContext)
         val results = store.markRemoved(notifKey, removedAt)
         Log.d(TAG, "resolveRemoval key=$notifKey -> ${results.size} chat(s) affected")
@@ -219,6 +260,31 @@ class NotificationListener : NotificationListenerService() {
                     "chatTitle" to r.chatTitle,
                     "text" to r.text
                 )
+            )
+        }
+
+        // A chat's only unread message being deleted never reaches the reconciler: WhatsApp has
+        // nothing left to re-post, so it just cancels the notification. See RemovalClassifier.
+        val candidates = results.filter { !it.alreadyDeleted }
+        val stillShown = candidates.size == 1 && isStillShownInActiveNotification(candidates[0])
+        val isDeletion = RemovalClassifier.isLikelyDeletion(
+            isAppCancel = isAppCancel,
+            couldBeReadingOnThisPhone = couldBeReadingHere,
+            unreadMessagesInNotification = candidates.size,
+            stillShownInAnotherNotification = stillShown
+        )
+        if (isDeletion) {
+            val r = candidates[0]
+            applyDeletion(
+                store, r.chatKey, r.chatTitle,
+                WindowEntry(r.timestamp, r.text ?: "", r.sender, r.id),
+                "CANCELLED"
+            )
+        } else if (candidates.size == 1) {
+            Log.d(
+                TAG,
+                "resolveRemoval key=$notifKey: single message cancelled but NOT treated as deleted " +
+                    "(appCancel=$isAppCancel couldBeReadingHere=$couldBeReadingHere stillShown=$stillShown)"
             )
         }
     }

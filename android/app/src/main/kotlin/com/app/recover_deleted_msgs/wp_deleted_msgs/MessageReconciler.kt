@@ -91,11 +91,25 @@ object MessageReconciler {
         var storedPtr = 0
 
         for (newEntry in incoming) {
-            val matchIndex =
+            val isPlaceholder = isDeletionPlaceholder(newEntry.text)
+            var matchIndex =
                 findFirstUnconsumedMatch(stored, consumed, storedPtr, newEntry.timestamp, newEntry.sender)
 
+            // A deletion placeholder's Person can come through without a name (or a different
+            // one) than the original message had, so requiring the sender to agree would make
+            // it miss the very message it replaces. Fall back to the timestamp alone, but only
+            // when exactly one stored message could be meant -- that keeps the group-chat
+            // protection above from being thrown away.
+            if (matchIndex == -1 && isPlaceholder) {
+                matchIndex = findUniqueTimestampMatch(stored, consumed, storedPtr, newEntry.timestamp)
+            }
+
             if (matchIndex == -1) {
-                actions += ReconcileAction.Insert(newEntry)
+                // A placeholder that matches nothing is never a real message: recording it
+                // would put "This message was deleted" in the chat as if someone had typed it.
+                // The message it replaced is simply left unconsumed, so the gap check below
+                // still flags that one as deleted when there's overlap to anchor on.
+                actions += if (isPlaceholder) ReconcileAction.Noop(newEntry) else ReconcileAction.Insert(newEntry)
                 continue
             }
 
@@ -150,6 +164,30 @@ object MessageReconciler {
         return -1
     }
 
-    private fun isDeletionPlaceholder(text: String): Boolean =
-        text.trim().lowercase() in DELETION_PLACEHOLDERS
+    private fun findUniqueTimestampMatch(
+        stored: List<WindowEntry>,
+        consumed: BooleanArray,
+        fromIndex: Int,
+        timestamp: Long
+    ): Int {
+        var found = -1
+        for (i in fromIndex until stored.size) {
+            if (consumed[i] || stored[i].timestamp != timestamp) continue
+            if (found != -1) return -1 // ambiguous -- don't guess which one was meant
+            found = i
+        }
+        return found
+    }
+
+    /**
+     * Compared after stripping everything that isn't a letter, digit or space, so a leading
+     * emoji ("🚫 This message was deleted") or trailing punctuation doesn't stop it matching.
+     */
+    private fun isDeletionPlaceholder(text: String): Boolean {
+        val normalized = text.lowercase()
+            .filter { it.isLetterOrDigit() || it.isWhitespace() }
+            .trim()
+            .replace(Regex("\\s+"), " ")
+        return normalized in DELETION_PLACEHOLDERS
+    }
 }

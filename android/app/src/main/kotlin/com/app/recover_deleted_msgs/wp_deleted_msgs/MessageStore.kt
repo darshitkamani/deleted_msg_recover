@@ -32,7 +32,10 @@ data class RemovalResult(
     val chatKey: String,
     val chatTitle: String,
     val text: String?,
-    val sender: String?
+    val sender: String?,
+    val id: Long,
+    val timestamp: Long,
+    val alreadyDeleted: Boolean
 )
 
 /** [mediaBackfilled] is true when media was added to an already-stored row
@@ -224,13 +227,14 @@ class MessageStore private constructor(context: Context) :
                 val ts: Long,
                 val text: String?,
                 val sender: String?,
-                val title: String
+                val title: String,
+                val status: String
             )
 
             val rows = mutableListOf<Row>()
             db.rawQuery(
                 """
-                SELECT m.id, m.chat_key, m.timestamp, m.text, m.sender, c.title
+                SELECT m.id, m.chat_key, m.timestamp, m.text, m.sender, c.title, m.status
                 FROM messages m JOIN chats c ON c.chat_key = m.chat_key
                 WHERE m.notif_key = ? AND m.removed_at IS NULL
                 """.trimIndent(),
@@ -244,7 +248,8 @@ class MessageStore private constructor(context: Context) :
                             cursor.getLong(2),
                             cursor.getString(3),
                             cursor.getString(4),
-                            cursor.getString(5)
+                            cursor.getString(5),
+                            cursor.getString(6)
                         )
                     )
                 }
@@ -256,7 +261,12 @@ class MessageStore private constructor(context: Context) :
                     put("removed_at", removedAt)
                 }
                 db.update("messages", values, "id = ?", arrayOf(row.id.toString()))
-                results.add(RemovalResult(row.chatKey, row.title, row.text, row.sender))
+                results.add(
+                    RemovalResult(
+                        row.chatKey, row.title, row.text, row.sender,
+                        row.id, row.ts, row.status == STATUS_DELETED
+                    )
+                )
             }
             return results
         } catch (e: SQLException) {
