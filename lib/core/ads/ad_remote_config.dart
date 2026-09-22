@@ -16,6 +16,13 @@ class AdRemoteConfig {
   final int nativeCounter;
   final int interstitialCounter;
 
+  /// Shows the floating "Ad Metrics Lab" debug overlay (live load/impression/
+  /// failed counters per ad format) on every screen, including release
+  /// builds -- gated purely by this remote flag rather than [kDebugMode] so
+  /// it can be turned on for a build already in production without a new
+  /// release, e.g. to diagnose a fill-rate drop. Defaults to off.
+  final bool showAdMetricsLab;
+
   // Nullable, with no literal default and no test-id fallback -- a missing
   // id means that ad format simply doesn't load, see [toAdFlag]/[toAdIDS].
   final String? appOpenId;
@@ -42,6 +49,7 @@ class AdRemoteConfig {
     this.interstitialId,
     this.rewardedId,
     this.rewardedInterstitialId,
+    this.showAdMetricsLab = false,
   });
 
   /// Mirrors exactly what used to be hardcoded in AdsService before Remote
@@ -61,6 +69,7 @@ class AdRemoteConfig {
     showSplashAd: true,
     nativeCounter: 0,
     interstitialCounter: 5,
+    showAdMetricsLab: false,
   );
 
   /// Parses Remote Config's fetched JSON, falling back to [fallback]
@@ -111,6 +120,7 @@ class AdRemoteConfig {
       rewardedId: stringOrNull('rewardedId') ?? fallback.rewardedId,
       rewardedInterstitialId: stringOrNull('rewardedInterstitialId') ??
           fallback.rewardedInterstitialId,
+      showAdMetricsLab: boolOr('showAdMetricsLab', fallback.showAdMetricsLab),
     );
   }
 
@@ -129,6 +139,7 @@ class AdRemoteConfig {
         showSplashAd: showSplashAd,
         nativeCounter: nativeCounter,
         interstitialCounter: interstitialCounter,
+        showAdMetricsLab: showAdMetricsLab,
         appOpenId: AdTestIds.appOpen,
         bannerId: AdTestIds.banner,
         nativeId: AdTestIds.native,
@@ -151,6 +162,7 @@ class AdRemoteConfig {
         'showSplashAd': showSplashAd,
         'nativeCounter': nativeCounter,
         'interstitialCounter': interstitialCounter,
+        'showAdMetricsLab': showAdMetricsLab,
         if (appOpenId != null) 'appOpenId': appOpenId,
         if (bannerId != null) 'bannerId': bannerId,
         if (nativeId != null) 'nativeId': nativeId,

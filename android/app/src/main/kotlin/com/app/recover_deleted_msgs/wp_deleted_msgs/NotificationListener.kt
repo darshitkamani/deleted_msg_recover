@@ -18,6 +18,7 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /** A media attachment recovered from a notification, ready to store. */
@@ -42,6 +43,7 @@ private const val TAG = "NotifCapture"
  * window, we treat the "removal" as churn, not a deletion.
  */
 private const val REMOVAL_GRACE_MS = 4000L
+private const val CAPTURE_TTL_MS = 60_000L
 
 /** Logs a caught error locally and reports it to Crashlytics as a non-fatal, so an error
  * that's now being degraded-instead-of-crashing is still visible remotely -- otherwise it
@@ -224,23 +226,45 @@ class NotificationListener : NotificationListenerService() {
         return screenOn && !locked && !AppVisibility.isForeground
     }
 
-    /** Whether some active WhatsApp notification still shows this exact message -- meaning
-     * WhatsApp just re-issued it under a new key rather than removing it. */
-    private fun isStillShownInActiveNotification(r: RemovalResult): Boolean {
-        return try {
-            (activeNotifications ?: emptyArray()).any { active ->
-                val pkg = active.packageName
-                (pkg == PKG_WHATSAPP || pkg == PKG_WHATSAPP_BUSINESS) &&
-                    NotificationCompat.MessagingStyle
-                        .extractMessagingStyleFromNotification(active.notification)
-                        ?.messages.orEmpty()
-                        .any { it.timestamp == r.timestamp && it.text?.toString() == r.text }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not check active notifications: ${e.message}")
-            true // can't tell -- assume it's still there, so this is never called a deletion
-        }
+    /**
+     * When each newly inserted row was first captured, so a removal can tell a message that was
+     * in the cancelled notification from one that arrived after it. Kept in memory on purpose --
+     * the window that matters is [REMOVAL_GRACE_MS], and a row missing from here (e.g. after a
+     * process restart) is treated as having been in the notification, the conservative reading.
+     */
+    private val recentCaptures = ConcurrentHashMap<Long, Long>()
+
+    private fun noteCapture(rowId: Long) {
+        val now = System.currentTimeMillis()
+        recentCaptures[rowId] = now
+        recentCaptures.values.removeAll { now - it > CAPTURE_TTL_MS }
     }
+
+    /** The WhatsApp notifications currently showing, or null when the system won't say. */
+    private fun activeWhatsAppNotifications(): List<StatusBarNotification>? = try {
+        (activeNotifications ?: emptyArray()).filter {
+            it.packageName == PKG_WHATSAPP || it.packageName == PKG_WHATSAPP_BUSINESS
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Could not check active notifications: ${e.message}")
+        null
+    }
+
+    /**
+     * Key of the active notification that still shows this exact message, or null if none does.
+     * Non-null means WhatsApp re-issued it -- under the same key or a new one -- rather than
+     * removing it. A notification that can't be read counts as showing it, so an unknown is
+     * never turned into a deletion.
+     */
+    private fun keyStillShowing(r: RemovalResult, active: List<StatusBarNotification>): String? =
+        active.firstOrNull { sbn ->
+            runCatching {
+                NotificationCompat.MessagingStyle
+                    .extractMessagingStyleFromNotification(sbn.notification)
+                    ?.messages.orEmpty()
+                    .any { it.timestamp == r.timestamp && it.text?.toString() == r.text }
+            }.getOrDefault(true)
+        }?.key
 
     private fun resolveRemoval(
         notifKey: String,
@@ -248,10 +272,33 @@ class NotificationListener : NotificationListenerService() {
         isAppCancel: Boolean,
         couldBeReadingHere: Boolean
     ) {
+        // Can't see what's on screen, so can't tell a removal from a re-post. Leave the rows
+        // alone -- a later cancel of the same key will still find them.
+        val active = activeWhatsAppNotifications()
+        if (active == null) {
+            Log.d(TAG, "resolveRemoval key=$notifKey: active notifications unreadable, skipping")
+            return
+        }
         val store = MessageStore.getInstance(applicationContext)
         val results = store.markRemoved(notifKey, removedAt)
         Log.d(TAG, "resolveRemoval key=$notifKey -> ${results.size} chat(s) affected")
-        for (r in results) {
+
+        // WhatsApp often cancels and immediately re-posts a conversation, frequently under the
+        // very same key, so the key alone can't say whether a message went away. Each message
+        // is judged by whether it is still on screen (the re-post was already reconciled during
+        // REMOVAL_GRACE_MS) and by whether it was even in the cancelled notification.
+        val decision = RemovalClassifier.resolve(
+            results = results,
+            isAppCancel = isAppCancel,
+            couldBeReadingOnThisPhone = couldBeReadingHere,
+            capturedAfterCancel = { (recentCaptures[it.id] ?: Long.MIN_VALUE) > removedAt }, // a tie counts as "was there"
+            shownIn = { keyStillShowing(it, active) }
+        )
+
+        // Still on screen: not removed, so undo the mark rather than reporting it.
+        for ((r, liveKey) in decision.stillActive) store.markStillActive(r.id, liveKey)
+
+        for (r in decision.gone) {
             Log.i(TAG, "Message => REMOVE chat=\"${r.chatTitle}\" text=${r.text?.take(60)}")
             EventBridge.emit(
                 mapOf(
@@ -265,26 +312,19 @@ class NotificationListener : NotificationListenerService() {
 
         // A chat's only unread message being deleted never reaches the reconciler: WhatsApp has
         // nothing left to re-post, so it just cancels the notification. See RemovalClassifier.
-        val candidates = results.filter { !it.alreadyDeleted }
-        val stillShown = candidates.size == 1 && isStillShownInActiveNotification(candidates[0])
-        val isDeletion = RemovalClassifier.isLikelyDeletion(
-            isAppCancel = isAppCancel,
-            couldBeReadingOnThisPhone = couldBeReadingHere,
-            unreadMessagesInNotification = candidates.size,
-            stillShownInAnotherNotification = stillShown
-        )
-        if (isDeletion) {
-            val r = candidates[0]
+        val deleted = decision.deletion
+        if (deleted != null) {
             applyDeletion(
-                store, r.chatKey, r.chatTitle,
-                WindowEntry(r.timestamp, r.text ?: "", r.sender, r.id),
+                store, deleted.chatKey, deleted.chatTitle,
+                WindowEntry(deleted.timestamp, deleted.text ?: "", deleted.sender, deleted.id),
                 "CANCELLED"
             )
-        } else if (candidates.size == 1) {
+        } else {
             Log.d(
                 TAG,
-                "resolveRemoval key=$notifKey: single message cancelled but NOT treated as deleted " +
-                    "(appCancel=$isAppCancel couldBeReadingHere=$couldBeReadingHere stillShown=$stillShown)"
+                "resolveRemoval key=$notifKey: not treated as deleted " +
+                    "(appCancel=$isAppCancel couldBeReadingHere=$couldBeReadingHere " +
+                    "rows=${results.size} stillShown=${decision.stillActive.size})"
             )
         }
     }
@@ -404,7 +444,10 @@ class NotificationListener : NotificationListenerService() {
                         "Message => INSERT chat=\"$title\" from=${entry.sender} text=${entry.text.take(60)}" +
                             (if (media != null) " media=${media.type}" else "")
                     )
-                    if (result.rowId != -1L) inserted = true
+                    if (result.rowId != -1L) {
+                        inserted = true
+                        noteCapture(result.rowId)
+                    }
                 }
 
                 is ReconcileAction.Edit -> {
@@ -414,6 +457,7 @@ class NotificationListener : NotificationListenerService() {
                         continue
                     }
                     store.applyEdit(rowId, action.updated.text, System.currentTimeMillis())
+                    store.markStillActive(rowId, sbn.key)
                     Log.i(
                         TAG,
                         "Message => EDIT chat=\"$title\" \"${action.previous.text.take(40)}\" -> \"${action.updated.text.take(40)}\""
@@ -438,7 +482,8 @@ class NotificationListener : NotificationListenerService() {
                 is ReconcileAction.Noop -> {
                     // Text is unchanged, but media may not have been available on first capture
                     // (e.g. a sticker mid-download) and could be ready now.
-                    val rowId = entry.id ?: continue
+                    val rowId = action.entry.id ?: continue
+                    store.markStillActive(rowId, sbn.key)
                     if (store.hasMedia(rowId)) continue
                     val uniqueId = safeFileId("${sbn.key}_${msg.timestamp}")
                     var media = extractMessageMedia(msg, uniqueId)

@@ -199,6 +199,7 @@ class MessageStore private constructor(context: Context) :
                 if (cursor.moveToFirst()) {
                     val existingId = cursor.getLong(0)
                     val existingMediaPath = cursor.getString(1)
+                    markStillActive(existingId, notifKey)
                     if (mediaPath != null && existingMediaPath == null) {
                         val updateValues = ContentValues().apply {
                             put("media_path", mediaPath)
@@ -272,6 +273,25 @@ class MessageStore private constructor(context: Context) :
         } catch (e: SQLException) {
             reportNonFatal("markRemoved", e)
             return emptyList()
+        }
+    }
+
+    /**
+     * Records that the message in [rowId] is in a live notification again. A cancel-and-re-post
+     * of the same conversation sets `removed_at` on rows that are in fact still unread, and a
+     * later re-post can move them under a new key; without this they'd be miscounted by
+     * [markRemoved], making a multi-message notification look like it holds a lone message --
+     * which the removal classifier reads as a deletion.
+     */
+    fun markStillActive(rowId: Long, notifKey: String) {
+        try {
+            writableDatabase.execSQL(
+                "UPDATE messages SET removed_at = NULL, notif_key = ? " +
+                    "WHERE id = ? AND (removed_at IS NOT NULL OR notif_key != ?)",
+                arrayOf(notifKey, rowId, notifKey)
+            )
+        } catch (e: SQLException) {
+            reportNonFatal("markStillActive", e)
         }
     }
 

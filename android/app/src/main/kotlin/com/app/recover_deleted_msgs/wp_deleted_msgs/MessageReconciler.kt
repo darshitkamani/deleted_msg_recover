@@ -22,6 +22,7 @@ sealed class ReconcileAction {
     data class DeletedWithPlaceholder(val previous: WindowEntry, val placeholder: WindowEntry) : ReconcileAction()
     /** The message vanished from the window entirely, with no placeholder -- see [MessageReconciler.reconcile]. */
     data class DeletedSilently(val previous: WindowEntry) : ReconcileAction()
+    /** Unchanged. When it matched a stored row, [entry] carries that row's [WindowEntry.id]. */
     data class Noop(val entry: WindowEntry) : ReconcileAction()
 }
 
@@ -118,7 +119,7 @@ object MessageReconciler {
             val previous = stored[matchIndex]
 
             actions += when {
-                previous.text == newEntry.text -> ReconcileAction.Noop(newEntry)
+                previous.text == newEntry.text -> ReconcileAction.Noop(newEntry.copy(id = previous.id))
                 isDeletionPlaceholder(newEntry.text) -> ReconcileAction.DeletedWithPlaceholder(previous, newEntry)
                 else -> ReconcileAction.Edit(previous, newEntry)
             }

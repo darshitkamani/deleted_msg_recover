@@ -23,6 +23,17 @@ class AdsService {
 
   Future<void>? _initFuture;
 
+  /// Whether the package's "Ad Metrics Lab" floating debug overlay
+  /// (PreloadGoogleAds.showAdCounter) should be shown -- purely remote-config
+  /// driven (see [AdRemoteConfig.showAdMetricsLab]), not [kDebugMode], so it
+  /// can be switched on for a live release build without shipping an update.
+  /// Stays false until [init] resolves the real fetched value; a
+  /// [ValueNotifier] (rather than a plain getter) so app.dart's MaterialApp
+  /// builder -- which sits well above wherever [init] happens to be kicked
+  /// off from -- can react the moment the fetch finishes, instead of only on
+  /// its own next unrelated rebuild.
+  final ValueNotifier<bool> showAdMetricsLab = ValueNotifier(false);
+
   /// The interstitial, rewarded interstitial and app open ad, all from the
   /// package's on-demand classes (loaded when needed, not preloaded). Null until [init]
   /// has finished with the fetched config -- and for good if that format is
@@ -58,6 +69,7 @@ class AdsService {
     // unit ids -- those are always Google's test ids, so development can't
     // hit the real ad units.
     final config = kDebugMode ? fetched.withTestIds() : fetched;
+    showAdMetricsLab.value = config.showAdMetricsLab;
 
     await PreloadGoogleAds.instance.initialize(
       adConfigData: AdConfigData(

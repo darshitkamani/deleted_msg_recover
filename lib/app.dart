@@ -31,6 +31,29 @@ class RecoverApp extends StatelessWidget {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           navigatorObservers: [_InterstitialAdNavigatorObserver()],
+          // Draws the package's own "Ad Metrics Lab" floating debug overlay
+          // (PreloadGoogleAds.showAdCounter) above every screen, gated
+          // purely by AdsService.showAdMetricsLab (which mirrors the
+          // `showAdMetricsLab` remote config flag) via showInRelease --
+          // the package itself still refuses to render in release unless
+          // that's passed true, so this is the only thing that can turn it
+          // on in a live release build, and only remotely. A
+          // ValueListenableBuilder (rather than reading .value once here)
+          // because this builder isn't guaranteed to re-run at the moment
+          // AdsService.init() resolves the fetched flag.
+          builder: (context, child) => Stack(
+            children: [
+              if (child != null) child,
+              ValueListenableBuilder<bool>(
+                valueListenable: AdsService.instance.showAdMetricsLab,
+                builder: (context, showAdMetricsLab, _) =>
+                    PreloadGoogleAds.instance.showAdCounter(
+                  showCounter: showAdMetricsLab,
+                  showInRelease: showAdMetricsLab,
+                ),
+              ),
+            ],
+          ),
           home: const _RootRouter(),
         ),
       ),

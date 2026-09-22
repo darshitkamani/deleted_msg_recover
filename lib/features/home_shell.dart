@@ -208,7 +208,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ],
         ),
-        floatingActionButton: PreloadGoogleAds.instance.showAdCounter(),
+        // floatingActionButton: PreloadGoogleAds.instance.showAdCounter(),
       ),
     );
   }

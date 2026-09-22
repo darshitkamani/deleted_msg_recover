@@ -268,4 +268,14 @@ class MessageReconcilerTest {
         assertTrue(actions[1] is ReconcileAction.Edit)
         assertTrue(actions[2] is ReconcileAction.Noop)
     }
+
+    @Test
+    fun `noop carries the stored row id so the caller can refresh that row`() {
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(WindowEntry(1000, "hey", sender = "Alice", id = 7)),
+            incoming = listOf(WindowEntry(1000, "hey", sender = "Alice"))
+        )
+
+        assertEquals(7L, (actions[0] as ReconcileAction.Noop).entry.id)
+    }
 }
