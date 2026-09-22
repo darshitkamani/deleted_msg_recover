@@ -372,17 +372,46 @@ class _DeletedFeedRow extends StatelessWidget {
                 ),
               ],
             ),
-            // Not shown for a deleted message -- what it was edited *to*
-            // doesn't matter once it's also gone; the deleted tag above
-            // already covers that.
-            if (item.isEdited && !item.isDeleted)
+            // Shown unconditionally, matching ChatDetailScreen's message
+            // bubble: both what it originally said (above, as the main
+            // content) and what it was later edited to need to be visible
+            // at once, even for a message that was also deleted. Styled
+            // the same quote-block way -- a left accent bar with a label
+            // above the text, rather than one italic sentence with the
+            // new text embedded in quotes.
+            if (item.isEdited)
               Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  l10n.editedToExplanation(item.text ?? ''),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
+                padding: const EdgeInsets.only(top: 10),
+                child: Container(
+                  padding: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.4,
+                        ),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.editedToLabel,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.text ?? '',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
