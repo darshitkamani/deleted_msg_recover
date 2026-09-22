@@ -119,6 +119,7 @@
   "noReadReceiptsExplanation": "यहाँ यह चैट देखने से व्हाट्सएप पर रीड रिसीट (ब्लू टिक) नहीं भेजी जाती।",
   "editedBadge": "एडिट किया गया",
   "deletedMessageLabel": "यह मैसेज डिलीट कर दिया गया था",
+  "editedToLabel": "इसमें एडिट किया गया",
   "editedToExplanation": "इस मैसेज को बाद में एडिट करके यह किया गया: \"{newText}\"",
   "@editedToExplanation": {
     "placeholders": {

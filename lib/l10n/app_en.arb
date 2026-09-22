@@ -205,6 +205,7 @@
   "noReadReceiptsExplanation": "Viewing this chat here doesn't send a read receipt (blue tick) on WhatsApp.",
   "editedBadge": "Edited",
   "deletedMessageLabel": "This message was deleted",
+  "editedToLabel": "Edited to",
   "editedToExplanation": "This message was later edited to: \"{newText}\"",
   "@editedToExplanation": {
     "placeholders": {

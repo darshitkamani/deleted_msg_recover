@@ -87,6 +87,7 @@ object RemovalClassifier {
         unreadMessagesInNotification: Int,
         stillShownInAnotherNotification: Boolean
     ): Boolean =
+            isAppCancel &&
             !couldBeReadingOnThisPhone &&
             unreadMessagesInNotification == 1 &&
             !stillShownInAnotherNotification

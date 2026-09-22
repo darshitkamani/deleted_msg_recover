@@ -554,6 +554,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get deletedMessageLabel => 'यह मैसेज डिलीट कर दिया गया था';
 
   @override
+  String get editedToLabel => 'इसमें एडिट किया गया';
+
+  @override
   String editedToExplanation(String newText) {
     return 'इस मैसेज को बाद में एडिट करके यह किया गया: \"$newText\"';
   }

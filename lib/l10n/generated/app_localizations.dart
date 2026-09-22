@@ -1088,6 +1088,12 @@ abstract class AppLocalizations {
   /// **'This message was deleted'**
   String get deletedMessageLabel;
 
+  /// No description provided for @editedToLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edited to'**
+  String get editedToLabel;
+
   /// No description provided for @editedToExplanation.
   ///
   /// In en, this message translates to:

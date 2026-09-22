@@ -312,6 +312,7 @@ class MessageBubble extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(8, 2, 60, 2),
           padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
           constraints: BoxConstraints(
+            minWidth: 250,
             maxWidth: MediaQuery.of(context).size.width * 0.8,
           ),
           decoration: BoxDecoration(
@@ -367,6 +368,9 @@ class MessageBubble extends StatelessWidget {
                       icon: Icons.edit_outlined,
                       label: AppLocalizations.of(context).editedBadge,
                       color: theme.colorScheme.onSurfaceVariant,
+                      labelStyle: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 if (message.hasMedia)
@@ -387,17 +391,44 @@ class MessageBubble extends StatelessWidget {
                   ),
                 // Shown unconditionally, not behind a tap -- both what it
                 // originally said (above, as the main bubble content) and
-                // what it currently says need to be visible at once.
+                // what it currently says need to be visible at once. Styled
+                // as a quote-like block (left accent bar, label above text)
+                // rather than one long italic sentence, so it reads as a
+                // distinct "current version" rather than blending into the
+                // original message text above it.
                 if (message.isEdited)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(2, 0, 2, 4),
-                    child: Text(
-                      AppLocalizations.of(
-                        context,
-                      ).editedToExplanation(message.text ?? ''),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
+                    padding: const EdgeInsets.fromLTRB(2, 10, 2, 4),
+                    child: Container(
+                      padding: const EdgeInsets.only(left: 8),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.4,
+                            ),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppLocalizations.of(context).editedToLabel,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          _LinkifiedText(
+                            message.text ?? '',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -546,10 +577,17 @@ class _StatusTag extends StatelessWidget {
   final String label;
   final Color color;
 
+  /// Overrides the label's default (labelSmall/italic) styling -- used to
+  /// make the "edited msg" tag read in the same font style as the message
+  /// body itself, rather than the smaller caption-like style the deleted
+  /// tag keeps.
+  final TextStyle? labelStyle;
+
   const _StatusTag({
     required this.icon,
     required this.label,
     required this.color,
+    this.labelStyle,
   });
 
   @override
@@ -562,10 +600,12 @@ class _StatusTag extends StatelessWidget {
         const SizedBox(width: 3),
         Text(
           label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: color,
-            fontStyle: FontStyle.italic,
-          ),
+          style:
+              labelStyle ??
+              theme.textTheme.labelSmall?.copyWith(
+                color: color,
+                fontStyle: FontStyle.italic,
+              ),
         ),
       ],
     );
