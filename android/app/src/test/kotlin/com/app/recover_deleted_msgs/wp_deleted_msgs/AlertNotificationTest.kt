@@ -9,6 +9,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /** The "message deleted / edited" alerts this app posts itself, driven through the real listener. */
@@ -86,5 +87,19 @@ class AlertNotificationTest {
 
         assertEquals(1, h.eventsOfType("deleted").size)
         assertTrue(h.postedAlerts().isEmpty())
+    }
+
+    @Test
+    fun `unseen badge counts deletions and edits after the seen time, each message once`() {
+        val store = MessageStore.getInstance(RuntimeEnvironment.getApplication())
+        h.post(1, listOf(a, b))
+        val seenAt = System.currentTimeMillis()
+        Thread.sleep(5)
+        assertEquals(0, store.countChangesSince(seenAt))
+
+        h.post(1, listOf(a, Msg("B: how are you doing", b.timestamp))) // edit b
+        h.post(1, listOf(Msg("B: how are you doing", b.timestamp))) // a: leading edge, not a deletion
+        assertEquals(1, store.countChangesSince(seenAt))
+        assertEquals(0, store.countChangesSince(System.currentTimeMillis() + 1))
     }
 }

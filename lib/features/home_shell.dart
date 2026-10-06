@@ -68,6 +68,9 @@ class _HomeShellState extends State<HomeShell> {
       _index = index;
       _visitedTabs.add(index);
     });
+    context.read<AppState>().setDeletedTabVisible(
+      index == homeShellDeletedTabIndex,
+    );
   }
 
   /// Shown in place of the previous "back on the home screen just kills the
@@ -96,6 +99,9 @@ class _HomeShellState extends State<HomeShell> {
             _index = pendingTab;
             _visitedTabs.add(pendingTab);
           });
+          appState.setDeletedTabVisible(
+            pendingTab == homeShellDeletedTabIndex,
+          );
         }
       });
     }
@@ -200,9 +206,10 @@ class _HomeShellState extends State<HomeShell> {
                   label: l10n.navDirectChat,
                 ),
                 _NavItem(
-                  targetIndex: 5,
+                  targetIndex: homeShellDeletedTabIndex,
                   icon: Icons.delete_sweep_rounded,
                   label: l10n.navDeleted,
+                  badgeCount: appState.unseenDeletedCount,
                 ),
               ],
             ),
@@ -308,10 +315,14 @@ class _NavItem {
   final IconData icon;
   final String label;
 
+  /// Unseen items behind this tab; shown as a count badge when > 0.
+  final int badgeCount;
+
   const _NavItem({
     required this.targetIndex,
     required this.icon,
     required this.label,
+    this.badgeCount = 0,
   });
 }
 
@@ -400,7 +411,14 @@ class _BottomNavButton extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(item.icon, color: color, size: 22),
+              Badge(
+                isLabelVisible: item.badgeCount > 0,
+                label: Text(
+                  item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
+                ),
+                backgroundColor: Colors.redAccent,
+                child: Icon(item.icon, color: color, size: 22),
+              ),
               const SizedBox(height: 4),
               Text(
                 item.label,

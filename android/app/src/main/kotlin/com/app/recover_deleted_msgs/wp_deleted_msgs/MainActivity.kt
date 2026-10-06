@@ -97,6 +97,10 @@ class MainActivity : FlutterActivity() {
                             val pkg = call.argument<String>("package")
                             runInBackground(result) { store.getEditedOrDeletedMessages(pkg) }
                         }
+                        "countChangesSince" -> {
+                            val since = call.argument<Number>("since")?.toLong() ?: 0L
+                            runInBackground(result) { store.countChangesSince(since) }
+                        }
                         "markChatOpened" -> {
                             val chatKey = call.argument<String>("chatKey")
                             if (chatKey == null) {

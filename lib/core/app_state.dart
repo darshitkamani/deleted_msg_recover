@@ -12,6 +12,7 @@ import 'native_bridge.dart';
 const _localeCodePrefKey = 'locale_code';
 const _onboardingCompletePrefKey = 'onboarding_complete';
 const _appTourCompletePrefKey = 'app_tour_complete';
+const _deletedSeenAtPrefKey = 'deleted_feed_seen_at';
 
 /// Central app state: permission status, monitored apps, cached chats, and
 /// the user's chosen display language. Refreshes itself when the native
@@ -26,6 +27,16 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   bool ignoringBatteryOptimizations = false;
   Set<String> monitoredApps = {pkgWhatsApp, pkgWhatsAppBusiness};
   bool alertsEnabled = true;
+
+  /// Deleted/edited messages that happened since the user last looked at
+  /// the Deleted tab -- the badge on its bottom-nav icon. Covers changes
+  /// detected while the app is open, which get no alert notification.
+  int unseenDeletedCount = 0;
+  DateTime? _deletedSeenAt;
+
+  /// Set by [HomeShell] while the Deleted tab is the one on screen, so
+  /// changes arriving then count as seen straight away.
+  bool _deletedTabVisible = false;
 
   List<Chat> chats = [];
   bool loading = false;
@@ -231,6 +242,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     try {
       chats = await NativeBridge.getChats();
+      await _guard(_refreshUnseenDeleted);
     } catch (e) {
       // Otherwise a throw here (e.g. a stale build missing a platform
       // channel method) leaves `loading` stuck true with nothing ever
@@ -240,6 +252,45 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     loading = false;
     dataRevision++;
     notifyListeners();
+  }
+
+  Future<void> _refreshUnseenDeleted() async {
+    if (_deletedTabVisible) {
+      await _markDeletedSeen();
+      return;
+    }
+    final seenAt = _deletedSeenAt ??= await _loadDeletedSeenAt();
+    unseenDeletedCount = await NativeBridge.countChangesSince(seenAt);
+  }
+
+  /// A fresh install starts from "now", so the badge only ever counts
+  /// changes the user hasn't had a chance to see -- not every deletion
+  /// captured before this feature existed.
+  Future<DateTime> _loadDeletedSeenAt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getInt(_deletedSeenAtPrefKey);
+    if (stored != null) return DateTime.fromMillisecondsSinceEpoch(stored);
+    final now = DateTime.now();
+    await prefs.setInt(_deletedSeenAtPrefKey, now.millisecondsSinceEpoch);
+    return now;
+  }
+
+  Future<void> _markDeletedSeen() async {
+    final now = DateTime.now();
+    _deletedSeenAt = now;
+    unseenDeletedCount = 0;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_deletedSeenAtPrefKey, now.millisecondsSinceEpoch);
+  }
+
+  /// Called by [HomeShell] whenever the visible tab changes. Entering and
+  /// leaving the Deleted tab both count as having seen everything in it.
+  void setDeletedTabVisible(bool visible) {
+    if (!visible && !_deletedTabVisible) return;
+    _deletedTabVisible = visible;
+    final hadUnseen = unseenDeletedCount > 0;
+    _markDeletedSeen(); // zeroes the count synchronously
+    if (hadUnseen) notifyListeners();
   }
 
   Future<List<Message>> loadMessages(String chatKey) {

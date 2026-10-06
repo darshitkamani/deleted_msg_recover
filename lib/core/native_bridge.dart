@@ -123,6 +123,15 @@ class NativeBridge {
     });
   }
 
+  /// Messages deleted or edited after [since] -- the Deleted tab's badge.
+  static Future<int> countChangesSince(DateTime since) async {
+    final result = await _methodChannel.invokeMethod<int>(
+      'countChangesSince',
+      {'since': since.millisecondsSinceEpoch},
+    );
+    return result ?? 0;
+  }
+
   /// Whether a notification is posted when a message is deleted or edited.
   static Future<bool> getAlertsEnabled() async {
     final result = await _methodChannel.invokeMethod<bool>('getAlertsEnabled');

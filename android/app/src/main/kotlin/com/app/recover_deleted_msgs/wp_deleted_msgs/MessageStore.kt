@@ -459,6 +459,24 @@ class MessageStore private constructor(context: Context) :
      * chat at a time. Mirrors [getMediaMessages]'s cross-chat join, plus [getEditHistory] per
      * row the same way [getMessages] already does.
      */
+    /**
+     * How many messages were deleted or edited after [since] (epoch ms) -- the Deleted tab's
+     * unseen badge. A message both edited and deleted since then counts once.
+     */
+    fun countChangesSince(since: Long): Int {
+        try {
+            readableDatabase.rawQuery(
+                "SELECT COUNT(*) FROM messages WHERE (status = ? AND deleted_at > ?) OR edited_at > ?",
+                arrayOf(STATUS_DELETED, since.toString(), since.toString())
+            ).use { cursor ->
+                return if (cursor.moveToFirst()) cursor.getInt(0) else 0
+            }
+        } catch (e: SQLException) {
+            reportNonFatal("countChangesSince", e)
+            return 0
+        }
+    }
+
     fun getEditedOrDeletedMessages(packageName: String?): List<Map<String, Any?>> {
         try {
             val result = mutableListOf<Map<String, Any?>>()
