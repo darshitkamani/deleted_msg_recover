@@ -5,6 +5,7 @@ import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
 import 'core/ads/ads_service.dart';
+import 'core/analytics/analytics_service.dart';
 import 'core/app_state.dart';
 import 'core/update/update_service.dart';
 import 'features/apptour/app_tour_screen.dart';
@@ -30,7 +31,10 @@ class RecoverApp extends StatelessWidget {
           locale: appState.locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          navigatorObservers: [_InterstitialAdNavigatorObserver()],
+          navigatorObservers: [
+            _InterstitialAdNavigatorObserver(),
+            AnalyticsService.instance.navigatorObserver,
+          ],
           // Draws the package's own "Ad Metrics Lab" floating debug overlay
           // (PreloadGoogleAds.showAdCounter) above every screen, gated
           // purely by AdsService.showAdMetricsLab (which mirrors the

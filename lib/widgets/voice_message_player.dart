@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// An in-app player for recovered voice notes with a real amplitude
 /// waveform (extracted from the actual audio file) instead of a plain
@@ -83,8 +84,24 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
     _stateSub?.cancel();
     _durationSub?.cancel();
     _completeSub?.cancel();
-    _controller.dispose();
+    _disposeController();
     super.dispose();
+  }
+
+  /// PlayerController.dispose() is `void async` and, on some devices
+  /// (seen on Samsung / Android 16), its native stopWaveformExtraction call
+  /// throws `IllegalStateException: codec is released already` because the
+  /// plugin stops a MediaCodec it already released when extraction finished.
+  /// Since the future is never exposed it can't be awaited/caught, so the
+  /// PlatformException escapes to PlatformDispatcher.onError and is reported
+  /// as a fatal crash. Run it in a guarded zone so teardown failures from
+  /// the native side are swallowed; anything else is forwarded as before.
+  void _disposeController() {
+    final outer = Zone.current;
+    runZonedGuarded(_controller.dispose, (error, stack) {
+      if (error is PlatformException) return;
+      outer.handleUncaughtError(error, stack);
+    });
   }
 
   Future<void> _togglePlay() async {
