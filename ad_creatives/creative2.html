@@ -1,0 +1,65 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Manrope:wght@500;700;800&display=swap">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased}
+.canvas{position:relative;width:100vw;height:100vh;overflow:hidden}
+.land{--u:calc(100vh/628)} .sq,.port{--u:calc(100vw/750)}
+.v-b{color:#eafbf6;background:radial-gradient(800px 600px at 90% 10%,rgba(255,122,89,.28),transparent 60%),radial-gradient(800px 600px at 0% 100%,rgba(20,184,166,.25),transparent 60%),#071c19}
+.v-c{color:#0e332c;background:radial-gradient(800px 600px at 100% 0%,rgba(20,184,166,.25),transparent 60%),radial-gradient(700px 600px at 0% 110%,rgba(255,122,89,.18),transparent 60%),linear-gradient(160deg,#eefaf6,#f9fdfc)}
+.brand{display:flex;align-items:center;gap:calc(var(--u)*14);font-family:'Sora';font-weight:700;font-size:calc(var(--u)*24)}
+.brand img{width:calc(var(--u)*58);height:calc(var(--u)*58);border-radius:calc(var(--u)*15);background:#fff;padding:calc(var(--u)*4);box-shadow:0 calc(var(--u)*6) calc(var(--u)*16) rgba(0,0,0,.18)}
+h1{font-family:'Sora';font-weight:800;line-height:1.05;letter-spacing:-.015em;font-size:calc(var(--u)*var(--h));margin-top:calc(var(--u)*30)}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--e1),var(--e2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.v-b{--e1:#8fe9db;--e2:#ff7a59}.v-c{--e1:#00897b;--e2:#ff7a59}
+.pills{display:flex;gap:calc(var(--u)*12);margin-top:calc(var(--u)*26)}
+.pill{border-radius:99px;padding:calc(var(--u)*10) calc(var(--u)*20);font-weight:800;font-size:calc(var(--u)*var(--p))}
+.pill::before{content:"✓ "}
+.v-b .pill{border:calc(var(--u)*2) solid rgba(143,233,219,.3);background:rgba(255,255,255,.05)}.v-b .pill::before{color:#8fe9db}
+.v-c .pill{border:calc(var(--u)*2) solid rgba(0,105,92,.25);background:#fff}.v-c .pill::before{color:#00897b}
+.txt{position:absolute}
+.land .txt{left:calc(var(--u)*64);top:calc(var(--u)*66);width:calc(var(--u)*640);--h:66;--p:20}
+.sq .txt{left:calc(var(--u)*50);top:calc(var(--u)*46);width:calc(var(--u)*650);--h:66;--p:20}
+.port .txt{left:calc(var(--u)*56);top:calc(var(--u)*64);width:calc(var(--u)*680);--h:72;--p:24}
+/* B: chat stack */
+.stack{position:absolute;display:flex;flex-direction:column;gap:calc(var(--u)*var(--g));width:calc(var(--u)*var(--w));font-size:calc(var(--u)*var(--f));filter:drop-shadow(0 calc(var(--u)*24) calc(var(--u)*40) rgba(0,0,0,.45))}
+.land .stack{--w:470;--f:20;--g:14;right:calc(var(--u)*60);top:calc(var(--u)*70)}
+.sq .stack{--w:600;--f:26;--g:20;left:50%;margin-left:calc(var(--u)*-300);top:calc(var(--u)*410)}
+.port .stack{--w:640;--f:27;--g:22;left:50%;margin-left:calc(var(--u)*-320);top:calc(var(--u)*440)}
+.b{border-radius:1em;padding:.7em 1em;line-height:1.35;font-weight:500;position:relative}
+.b small{display:block;text-align:right;opacity:.55;font-size:.7em;margin-top:.3em}
+.in{background:#fff;color:#173430;align-self:flex-start;max-width:78%}
+.out{background:#00695c;color:#fff;align-self:flex-end}
+.del{background:#fff;color:#173430;border:.12em dashed #d98a8a;border-radius:1.1em;padding:1em 1.1em 1.1em;box-shadow:0 0 0 .5em rgba(255,122,89,.18)}
+.del .h{color:#ba1a1a;font-style:italic;font-weight:800;border-bottom:.08em dashed #e8b5b5;padding-bottom:.6em;margin-bottom:.6em}
+.del .rec{position:absolute;right:-.4em;top:-1.1em;background:#ff7a59;color:#fff;font-weight:800;font-size:.72em;letter-spacing:.06em;padding:.45em .9em;border-radius:99px;box-shadow:0 .4em 1em rgba(0,0,0,.3)}
+.del .m{font-weight:700;font-size:1.1em}
+.sq .x,.port .x,.sq .y{display:none}
+.v-c.land .txt{--h:60}
+/* C: phones */
+.ph{position:absolute;width:calc(var(--u)*var(--pw));filter:drop-shadow(0 calc(var(--u)*24) calc(var(--u)*40) rgba(10,60,50,.35))}
+.ph img{width:100%;display:block}
+.land .p1{--pw:235;right:calc(var(--u)*300);top:calc(var(--u)*120);transform:rotate(-6deg)}
+.land .p2{--pw:235;right:calc(var(--u)*50);top:calc(var(--u)*60);transform:rotate(5deg)}
+.sq .p1{--pw:300;left:calc(var(--u)*120);top:calc(var(--u)*430);transform:rotate(-5deg)}
+.sq .p2{--pw:300;right:calc(var(--u)*110);top:calc(var(--u)*390);transform:rotate(5deg)}
+.port .p1{--pw:340;left:calc(var(--u)*70);top:calc(var(--u)*520);transform:rotate(-5deg)}
+.port .p2{--pw:340;right:calc(var(--u)*60);top:calc(var(--u)*470);transform:rotate(5deg)}
+</style></head><body>
+<script>
+const [v,l]=location.hash.slice(1).split('-');
+const head=`<div class="txt"><div class="brand"><img src="icon.png">Recover Deleted Messages</div>`;
+let html;
+if(v==='b'){
+ html=head+`<h1>They deleted it.<br><em>You still see it.</em></h1><div class="pills"><span class="pill">100% Offline</span><span class="pill">No Root Needed</span></div></div>
+ <div class="stack"><div class="b in y">Hey are we still on for the deposit tonight?<small>10:38</small></div>
+ <div class="b out">Yes! Sending it in a bit<small>10:39 ✓✓</small></div>
+ <div class="b del"><span class="rec">RECOVERED</span><div class="h">🗑&nbsp; This message was deleted</div><div class="m">"Don't tell Sam, it's a surprise 🎉"</div></div>
+ <div class="b in x">Wait what surprise 👀<small>10:43</small></div></div>`;
+}else{
+ html=head+`<h1>Recover texts,<br><em>statuses &amp; media.</em></h1><div class="pills"><span class="pill">Free to use</span><span class="pill">No Root</span></div></div>
+ <div class="ph p1"><img src="chats.png"></div><div class="ph p2"><img src="statuses.png"></div>`;
+}
+document.write(`<div class="canvas v-${v} ${l}">${html}</div>`);
+</script></body></html>

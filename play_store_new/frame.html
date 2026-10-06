@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Manrope:wght@500;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:1080px;height:1920px;overflow:hidden}
+body{font-family:'Manrope',sans-serif;color:#eafbf6;-webkit-font-smoothing:antialiased;--bg:#071c19;
+ background:radial-gradient(900px 700px at 20% -5%,var(--g1),transparent 62%),radial-gradient(800px 700px at 110% 105%,var(--g2),transparent 60%),var(--bg)}
+.top{position:absolute;left:80px;right:80px;top:96px}
+.kick{display:inline-flex;align-items:center;gap:14px;font-family:'Sora';font-weight:700;font-size:26px;color:var(--teal3);letter-spacing:.02em;text-transform:uppercase}
+.kick img{width:48px;height:48px;border-radius:13px;background:#fff;padding:3px}
+h1{font-family:'Sora';font-weight:800;font-size:86px;line-height:1.05;letter-spacing:-.02em;margin-top:30px}
+h1 em{font-style:normal;background:linear-gradient(100deg,#8fe9db,#ff7a59 115%);-webkit-background-clip:text;background-clip:text;color:transparent}
+p{margin-top:24px;font-size:36px;line-height:1.4;color:#a9c9c2;font-weight:500}
+.phone{position:absolute;left:50%;width:880px;margin-left:-440px;top:510px;filter:drop-shadow(0 40px 70px rgba(0,0,0,.6))}
+.phone img{width:100%;display:block}
+.fade{position:absolute;left:0;right:0;bottom:0;height:380px;background:linear-gradient(to bottom,transparent,var(--bg) 85%)}
+.chip{position:absolute;background:#fff;color:#0e332c;font-weight:700;font-size:34px;border-radius:26px;padding:22px 34px;display:flex;align-items:center;gap:18px;box-shadow:0 24px 50px rgba(0,0,0,.45)}
+.chip b{width:56px;height:56px;border-radius:50%;background:#ba1a1a;display:grid;place-items:center;font-size:28px}
+</style></head><body>
+<script>
+const S={
+ 1:{h:'Recover <em>deleted</em> WhatsApp messages',p:'One tap to see what was removed.',chip:['🗑','Message recovered!',{right:'30px',top:'860px'}],fade:1,g1:'rgba(20,184,166,.32)',g2:'rgba(255,122,89,.16)'},
+ 2:{h:'See what was deleted <em>at a glance</em>',p:'Deleted messages are flagged right in your chat list.',g1:'rgba(20,184,166,.32)',g2:'rgba(92,107,192,.20)'},
+ 3:{h:'Read the full chat <em>back in order</em>',p:'The deleted message, right where it belongs.',g1:'rgba(20,184,166,.30)',g2:'rgba(255,122,89,.18)'},
+ 4:{h:'Save statuses <em>before they vanish</em>',p:'Photos and videos, kept after the 24 hours.',g1:'rgba(255,122,89,.26)',g2:'rgba(33,150,201,.22)'},
+ 5:{fade:1,h:'Message any number <em>instantly</em>',p:'No need to save the contact first.',g1:'rgba(33,150,201,.28)',g2:'rgba(20,184,166,.20)'},
+ 6:{pw:770,top:575,h:'<em>100% private.</em><br>100% offline.',p:'No account, no cloud upload, no root.',g1:'rgba(20,184,166,.34)',g2:'rgba(31,168,85,.18)'}
+};
+const n=+(location.hash.slice(1)||1),d=S[n];
+const names={1:'01_recover_home',2:'02_chats_list',3:'03_chat_detail',4:'04_statuses',5:'05_direct_chat',6:'06_privacy'};
+document.body.style.setProperty('--g1',d.g1);document.body.style.setProperty('--g2',d.g2);document.body.style.setProperty('--teal3','#8fe9db');
+if(d.pw){const st=document.createElement('style');st.textContent='.phone{width:'+d.pw+'px!important;margin-left:-'+d.pw/2+'px!important;top:'+d.top+'px!important}';document.head.appendChild(st)}
+document.write(`<div class="top"><div class="kick"><img src="icon.png">Recover Deleted Messages</div><h1>${d.h}</h1><p>${d.p}</p></div>
+<div class="phone"><img src="src_${names[n]}.png"></div>${d.fade?`<div class="fade"></div>`:""}`+
+(d.chip?`<div class="chip" style="${Object.entries(d.chip[2]).map(([k,v])=>k+':'+v).join(';')}"><b>${d.chip[0]}</b>${d.chip[1]}</div>`:''));
+</script></body></html>

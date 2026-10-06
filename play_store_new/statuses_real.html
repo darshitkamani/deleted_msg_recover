@@ -1,0 +1,17 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{margin:0;box-sizing:border-box}html,body{width:1080px;height:2335px;overflow:hidden;background:transparent}
+#s{position:relative;width:925px;height:2000px;transform:scale(1.167568);transform-origin:0 0;background:url(base_statuses.png) 0 0/925px 2000px}
+.t{position:absolute;width:253px;height:451px;border-radius:38px;overflow:hidden}
+.t svg{width:100%;height:100%;display:block}
+.b{position:absolute;left:15px;bottom:14px;background:rgba(15,25,25,.72);color:#fff;font:700 22px Helvetica,Arial,sans-serif;border-radius:30px;padding:5px 14px 5px 12px}
+</style></head><body><div id="s"></div><script>
+const W=253,H=451;
+const rect=(x,y,w,h,f,x2)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+const g=(id,a,b)=>`<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
+function rnd(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+const badges={2:'0:14',5:'0:08',8:'0:22'};
+const xs=[60,336,612],ys=[518,992,1466];let h='';
+for(let i=0;i<9;i++){const x=xs[i%3],y=ys[Math.floor(i/3)];
+h+=`<div class="t" style="left:${x}px;top:${y}px"><img src="photos/status_${i+1}.jpg" style="width:100%;height:100%;object-fit:cover;display:block">${badges[i]?`<div class="b">▶ ${badges[i]}</div>`:''}</div>`}
+document.getElementById('s').innerHTML=h;
+</script></body></html>

@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@500&display=swap">
+<style>*{margin:0}html,body{width:1080px;height:2335px;overflow:hidden;background:transparent}
+canvas{position:absolute;left:0;top:0}
+#t{position:absolute;left:100px;top:62px;height:64px;line-height:64px;font:500 46px Roboto,system-ui,sans-serif;letter-spacing:.2px}
+#i{position:absolute;right:104px;top:62px;height:64px;display:flex;align-items:center;gap:14px}
+</style></head><body>
+<canvas id="c" width="1080" height="2335"></canvas><div id="t">10:24</div><div id="i">
+<svg width="42" height="42" viewBox="0 0 24 24"><path id="w" d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z"/></svg>
+<svg width="34" height="34" viewBox="0 0 24 24"><path id="s" d="M2 22h20V2z"/></svg>
+<svg width="50" height="26" viewBox="0 0 34 17"><rect class="bf" width="30" height="17" rx="4.5" opacity=".35"/><rect class="bf" width="24" height="17" rx="4.5"/><rect class="bf" x="31" y="5" width="2.4" height="7" rx="1"/></svg></div>
+<script>
+const [name,mode]=location.hash.slice(1).split(',');
+const col=mode==='light'?'#fff':'#12302b';
+document.getElementById('t').style.color=col;
+document.querySelectorAll('#w,#s,.bf').forEach(e=>e.setAttribute('fill',col));
+const img=new Image();img.onload=()=>{
+ const c=document.getElementById('c'),x=c.getContext('2d');x.drawImage(img,0,0);
+ const fill=(x0,x1,y0,y1)=>{for(let y=y0;y<y1;y++){
+  const L=x.getImageData(x0-6,y,3,1).data,R=x.getImageData(x1+3,y,3,1).data;
+  const a=[0,1,2].map(k=>(L[k]+L[k+4]+L[k+8])/3),b=[0,1,2].map(k=>(R[k]+R[k+4]+R[k+8])/3);
+  const g=x.createLinearGradient(x0,0,x1,0);
+  g.addColorStop(0,`rgb(${a})`);g.addColorStop(1,`rgb(${b})`);x.fillStyle=g;x.fillRect(x0,y,x1-x0,1)}};
+ fill(92,232,62,130);fill(700,992,62,130);
+ document.title='ready';
+};
+img.src='/'+name;
+</script></body></html>

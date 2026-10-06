@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Manrope:wght@500;700;800&display=swap">
+<style>
+:root{--teal3:#8fe9db;--coral:#ff7a59}
+*{box-sizing:border-box;margin:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{font-family:'Manrope',system-ui,sans-serif;color:#eafbf6;-webkit-font-smoothing:antialiased;
+ background:radial-gradient(900px 600px at 15% -10%,rgba(20,184,166,.28),transparent 60%),radial-gradient(700px 600px at 105% 110%,rgba(255,122,89,.16),transparent 60%),#071c19}
+.canvas{position:relative;width:100vw;height:100vh;overflow:hidden}
+.brand{display:flex;align-items:center;gap:calc(var(--u)*14);font-family:'Sora';font-weight:700;font-size:calc(var(--u)*24)}
+.brand img{width:calc(var(--u)*58);height:calc(var(--u)*58);border-radius:calc(var(--u)*15);background:#fff;padding:calc(var(--u)*4)}
+h1{font-family:'Sora';font-weight:800;line-height:1.04;letter-spacing:-.015em;font-size:calc(var(--u)*var(--h))}
+h1 em{font-style:normal;background:linear-gradient(100deg,var(--teal3),var(--coral) 110%);-webkit-background-clip:text;background-clip:text;color:transparent}
+p.sub{color:#a9c9c2;font-weight:500;line-height:1.45;font-size:calc(var(--u)*var(--s));margin-top:calc(var(--u)*18)}
+.pills{display:flex;gap:calc(var(--u)*12);margin-top:calc(var(--u)*26);flex-wrap:wrap}
+.pill{border:calc(var(--u)*2) solid rgba(143,233,219,.3);background:rgba(255,255,255,.05);border-radius:99px;padding:calc(var(--u)*10) calc(var(--u)*20);font-weight:800;font-size:calc(var(--u)*var(--p))}
+.pill::before{content:"✓ ";color:var(--teal3)}
+.phone{position:absolute;width:calc(var(--u)*var(--pw));filter:drop-shadow(0 calc(var(--u)*30) calc(var(--u)*50) rgba(0,0,0,.55))}
+.phone img{width:100%;display:block}
+.tag{position:absolute;background:#fff;color:#0e332c;font-weight:800;border-radius:calc(var(--u)*18);display:flex;align-items:center;gap:calc(var(--u)*12);padding:calc(var(--u)*14) calc(var(--u)*24);font-size:calc(var(--u)*var(--t));box-shadow:0 calc(var(--u)*14) calc(var(--u)*30) rgba(0,0,0,.4)}
+.tag i{width:calc(var(--u)*var(--t)*1.5);height:calc(var(--u)*var(--t)*1.5);border-radius:50%;background:#ba1a1a;display:grid;place-items:center;color:#fff;font-style:normal;font-size:calc(var(--u)*var(--t)*.9)}
+/* landscape 1200x628 : u = vh/628 */
+.land{--u:calc(100vh/628)}
+.land .txt{position:absolute;left:calc(var(--u)*64);top:calc(var(--u)*66);width:calc(var(--u)*640);--h:68;--s:26;--p:20}
+.land .phone{--pw:330;right:calc(var(--u)*70);top:calc(var(--u)*50);transform:rotate(5deg)}
+.land .tag{--t:20;right:calc(var(--u)*330);bottom:calc(var(--u)*70)}
+/* square 1200x1200 : u = vh/1200*1.6 -> use vw/750 */
+.sq{--u:calc(100vw/750)}
+.sq .txt{position:absolute;left:calc(var(--u)*50);top:calc(var(--u)*46);width:calc(var(--u)*650);--h:66;--s:25;--p:20}.sq #sub,.port #sub{display:none}
+.sq .phone{--pw:330;left:50%;margin-left:calc(var(--u)*-165);top:calc(var(--u)*370);transform:rotate(0)}
+.sq .tag{--t:22;right:calc(var(--u)*40);top:calc(var(--u)*430)}
+/* portrait 1200x1500 */
+.port{--u:calc(100vw/750)}
+.port .txt{position:absolute;left:calc(var(--u)*56);top:calc(var(--u)*64);width:calc(var(--u)*680);--h:72;--s:29;--p:24}
+.port .phone{--pw:400;left:50%;margin-left:calc(var(--u)*-200);top:calc(var(--u)*450);}
+.port .tag{--t:26;right:calc(var(--u)*36);top:calc(var(--u)*560)}
+</style></head><body>
+<div class="canvas" id="c">
+ <div class="txt">
+  <div class="brand"><img src="icon.png">Recover Deleted Messages</div>
+  <h1 style="margin-top:calc(var(--u)*34)">Nothing deleted<br>stays <em>hidden.</em></h1>
+  <p class="sub" id="sub">See deleted WhatsApp texts, statuses &amp; media. No root, no backup.</p>
+  <div class="pills"><span class="pill">100% Offline</span><span class="pill">No Root Needed</span></div>
+ </div>
+ <div class="phone"><img src="phone_chat.png"></div>
+ <div class="tag"><i>🗑</i>Recovered!</div>
+</div>
+<script>document.getElementById('c').className='canvas '+(location.hash.slice(1)||'land')</script>
+</body></html>

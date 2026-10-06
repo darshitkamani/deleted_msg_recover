@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&family=Manrope:wght@500;700;800&display=swap">
+<style>
+*{box-sizing:border-box;margin:0}
+html,body{width:1080px;height:1920px;overflow:hidden}
+body{font-family:'Manrope',sans-serif;color:#eafbf6;-webkit-font-smoothing:antialiased;
+ background:radial-gradient(900px 700px at 20% -5%,rgba(20,184,166,.32),transparent 62%),radial-gradient(800px 700px at 110% 105%,rgba(255,122,89,.18),transparent 60%),#071c19}
+.top{position:absolute;left:80px;right:80px;top:96px}
+.kick{display:inline-flex;align-items:center;gap:14px;font-family:'Sora';font-weight:700;font-size:26px;color:#8fe9db;letter-spacing:.02em;text-transform:uppercase}
+.kick img{width:48px;height:48px;border-radius:13px;background:#fff;padding:3px}
+h1{font-family:'Sora';font-weight:800;font-size:86px;line-height:1.05;letter-spacing:-.02em;margin-top:30px}
+h1 em{font-style:normal;background:linear-gradient(100deg,#8fe9db,#ff7a59 115%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{margin-top:24px;font-size:36px;line-height:1.4;color:#a9c9c2;font-weight:500}
+.hero{position:absolute;left:80px;right:80px;top:600px;height:330px;border-radius:54px;overflow:hidden;
+ background:linear-gradient(135deg,#2fbfc9 0%,#00695c 55%,#003c34 100%);box-shadow:0 40px 80px rgba(0,0,0,.5)}
+.hero .c1{position:absolute;left:-60px;bottom:-90px;width:300px;height:300px;border-radius:50%;background:#fff;opacity:.07}
+.hero .c2{position:absolute;right:-70px;top:-70px;width:330px;height:330px;border-radius:50%;background:#fff;opacity:.08}
+.hero .c3{position:absolute;right:170px;bottom:-60px;width:150px;height:150px;border-radius:50%;background:#fff;opacity:.07}
+.hero h2{position:absolute;left:56px;top:56px;font-family:'Sora';font-weight:800;font-size:68px;line-height:1.08;color:#fff}
+.hero p{position:absolute;left:58px;bottom:50px;font-size:34px;font-weight:500;color:rgba(255,255,255,.85)}
+.gear{position:absolute;right:48px;top:48px;width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center}
+.tiles{position:absolute;left:80px;right:80px;top:980px;display:flex;gap:28px}
+.tile{flex:1;height:330px;border-radius:50px;background:#e8f3f0;display:flex;flex-direction:column;align-items:center;padding-top:50px;color:#173430;font-weight:800;font-size:36px;text-align:center;line-height:1.2;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.ic{width:132px;height:132px;border-radius:50%;display:grid;place-items:center;margin-bottom:26px}
+.list{position:absolute;left:80px;right:80px;top:1360px}
+.lh{font-family:'Sora';font-weight:700;font-size:30px;color:#8fe9db;letter-spacing:.04em;text-transform:uppercase;margin-bottom:22px}
+.row{background:#e8f3f0;border-radius:46px;height:150px;margin-bottom:22px;display:flex;align-items:center;padding:0 40px;gap:34px;color:#173430;box-shadow:0 24px 50px rgba(0,0,0,.3)}
+.av{width:92px;height:92px;border-radius:50%;background:#d3e6e1;display:grid;place-items:center;flex:none}
+.rm{flex:1}.rn{font-weight:800;font-size:38px}.rs{font-size:32px;margin-top:6px;color:#4b635f;font-weight:500}
+.rs.del{color:#ba1a1a;font-style:italic;font-weight:700}
+.tag{background:#ff7a59;color:#fff;font-weight:800;font-size:24px;letter-spacing:.06em;padding:12px 22px;border-radius:99px}
+</style></head><body>
+<div class="top"><div class="kick"><img src="icon.png">Recover Deleted Messages</div>
+<h1>Recover <em>deleted</em> WhatsApp messages</h1><p class="sub">One tap to see what was removed.</p></div>
+
+<div class="hero"><i class="c1"></i><i class="c2"></i><i class="c3"></i>
+ <h2>Message<br>Recovery</h2><p>Get back what was deleted</p>
+ <div class="gear"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.6" stroke-width="3.4" stroke-dasharray="2.6 3.18"/><circle cx="12" cy="12" r="6.2"/></svg></div></div>
+
+<div class="tiles">
+ <div class="tile"><div class="ic" style="background:#1fa855"><svg width="64" height="64" viewBox="0 0 24 24" fill="#fff"><path d="M3 4h18v13H8l-5 4z"/></svg></div>Text<br>Message</div>
+ <div class="tile"><div class="ic" style="background:#5c6bc0"><svg width="64" height="64" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#fff"/><circle cx="12" cy="12" r="3.2" fill="#5c6bc0"/></svg></div>Statuses</div>
+ <div class="tile"><div class="ic" style="background:#2196c9"><svg width="64" height="64" viewBox="0 0 24 24" fill="#fff"><path d="M3 11 L21 3 L14 21 L11 13Z"/></svg></div>Direct</div>
+</div>
+
+<div class="list"><div class="lh">Recently recovered</div>
+ <div class="row"><div class="av"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#2b5951" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16 14.6c2.8 0 5 1.8 5 4.4"/></svg></div>
+  <div class="rm"><div class="rn">College Roommates</div><div class="rs del">🗑 "It's a surprise 🎉"</div></div><div class="tag">RECOVERED</div></div>
+ <div class="row"><div class="av"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#2b5951" stroke-width="1.8"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6"/></svg></div>
+  <div class="rm"><div class="rn">Team Standup</div><div class="rs del">🗑 "Moving the call to 4pm"</div></div><div class="tag">RECOVERED</div></div>
+</div>
+</body></html>
