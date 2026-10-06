@@ -228,6 +228,8 @@
   "openSettingsAction": "Open settings",
   "excludeAppAction": "Exclude app",
   "settingsMonitoredAppsHeader": "Monitored apps",
+  "settingsAlertsHeader": "Alerts",
+  "settingsAlertsTitle": "Notify me when a message is deleted or edited",
   "settingsDataHeader": "Data",
   "clearAllDataTitle": "Clear all captured data",
   "clearAllDataSubtitle": "Removes every stored chat and message from this device.",

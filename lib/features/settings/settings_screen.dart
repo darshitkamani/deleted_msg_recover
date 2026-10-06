@@ -66,6 +66,20 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 20),
+        _SectionHeader(l10n.settingsAlertsHeader),
+        const SizedBox(height: 8),
+        _SettingsGroup(
+          children: [
+            _SwitchRow(
+              icon: Icons.notifications_active_rounded,
+              iconColor: Colors.orange.shade700,
+              title: l10n.settingsAlertsTitle,
+              value: appState.alertsEnabled,
+              onChanged: appState.setAlertsEnabled,
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         _SectionHeader(l10n.settingsLanguageHeader),
         const SizedBox(height: 8),
         _SettingsGroup(

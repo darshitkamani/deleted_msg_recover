@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alert_channel_name">डिलीट और एडिट किए गए मैसेज</string>
+    <string name="alert_channel_description">जब कोई आपको भेजा गया मैसेज डिलीट या एडिट करे तो सूचना</string>
+    <string name="alert_deleted_title">%1$s ने एक मैसेज डिलीट किया</string>
+    <string name="alert_edited_title">%1$s ने एक मैसेज एडिट किया</string>
+    <string name="alert_deleted_title_group">%1$s ने %2$s में एक मैसेज डिलीट किया</string>
+    <string name="alert_edited_title_group">%1$s ने %2$s में एक मैसेज एडिट किया</string>
+    <string name="alert_edited_body">पहले: %1$s\nअब: %2$s</string>
+    <string name="alert_message_fallback">मैसेज</string>
+</resources>

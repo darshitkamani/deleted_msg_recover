@@ -12,6 +12,10 @@ const String pkgWhatsAppBusiness = 'com.whatsapp.w4b';
 /// how to use" link) don't need an import cycle through it.
 const int homeShellSettingsTabIndex = 3;
 
+/// Index of the Deleted tab in [HomeShell] -- where a tapped deleted/edited
+/// alert notification lands.
+const int homeShellDeletedTabIndex = 5;
+
 String appLabelForPackage(BuildContext context, String package) {
   final l10n = AppLocalizations.of(context);
   switch (package) {

@@ -1154,6 +1154,18 @@ abstract class AppLocalizations {
   /// **'Monitored apps'**
   String get settingsMonitoredAppsHeader;
 
+  /// No description provided for @settingsAlertsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get settingsAlertsHeader;
+
+  /// No description provided for @settingsAlertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me when a message is deleted or edited'**
+  String get settingsAlertsTitle;
+
   /// No description provided for @settingsDataHeader.
   ///
   /// In en, this message translates to:

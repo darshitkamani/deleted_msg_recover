@@ -45,6 +45,11 @@ class MainActivity : FlutterActivity() {
     private val bgExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /** Screen a tapped [AlertNotifier] alert asked for, until Dart picks it up via
+     * `consumeOpenTarget`. */
+    @Volatile
+    private var pendingOpenTarget: String? = null
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -53,6 +58,8 @@ class MainActivity : FlutterActivity() {
                 this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001
             )
         }
+
+        captureOpenTarget(intent)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -99,6 +106,15 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                         "clearAll" -> runInBackground(result) { store.clearAll(); null }
+                        "consumeOpenTarget" -> {
+                            result.success(pendingOpenTarget)
+                            pendingOpenTarget = null
+                        }
+                        "getAlertsEnabled" -> result.success(MonitorPrefs.alertsEnabled(applicationContext))
+                        "setAlertsEnabled" -> {
+                            MonitorPrefs.setAlertsEnabled(applicationContext, call.argument<Boolean>("enabled") ?: true)
+                            result.success(null)
+                        }
                         "getMonitoredApps" -> result.success(MonitorPrefs.getMonitored(applicationContext).toList())
                         "setMonitoredApps" -> {
                             val apps = call.argument<List<String>>("apps") ?: emptyList()
@@ -481,6 +497,24 @@ class MainActivity : FlutterActivity() {
             pendingMediaPackage = null
             result.success(false)
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // App already running (singleTop): tell Dart to come and fetch the target.
+        if (captureOpenTarget(intent)) EventBridge.emit(mapOf("type" to "open"))
+    }
+
+    /** Remembers which screen a tapped alert wants. Returns whether there was one. */
+    private fun captureOpenTarget(intent: Intent?): Boolean {
+        intent ?: return false
+        // Reopening from Recents replays the original intent, extras and all.
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return false
+        val target = intent.getStringExtra(AlertNotifier.EXTRA_OPEN_TARGET) ?: return false
+        intent.removeExtra(AlertNotifier.EXTRA_OPEN_TARGET)
+        pendingOpenTarget = target
+        return true
     }
 
     override fun onPause() {

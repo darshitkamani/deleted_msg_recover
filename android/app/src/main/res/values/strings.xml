@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="alert_channel_name">Deleted &amp; edited messages</string>
+    <string name="alert_channel_description">Alerts when someone deletes or edits a message they sent you</string>
+    <string name="alert_deleted_title">%1$s deleted a message</string>
+    <string name="alert_edited_title">%1$s edited a message</string>
+    <string name="alert_deleted_title_group">%1$s deleted a message in %2$s</string>
+    <string name="alert_edited_title_group">%1$s edited a message in %2$s</string>
+    <string name="alert_edited_body">Before: %1$s\nNow: %2$s</string>
+    <string name="alert_message_fallback">Message</string>
+</resources>

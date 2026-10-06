@@ -19,4 +19,15 @@ object MonitorPrefs {
     }
 
     fun isMonitored(context: Context, pkg: String): Boolean = getMonitored(context).contains(pkg)
+
+    private const val KEY_ALERTS_ENABLED = "alerts_enabled"
+
+    /** Whether to post a notification when a message is deleted or edited (see [AlertNotifier]). */
+    fun alertsEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ALERTS_ENABLED, true)
+
+    fun setAlertsEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_ALERTS_ENABLED, enabled).apply()
+    }
 }

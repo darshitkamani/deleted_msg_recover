@@ -448,6 +448,10 @@ class NotificationListener : NotificationListenerService() {
                         inserted = true
                         noteCapture(result.rowId)
                     }
+                    if (result.restoredFromDeleted) {
+                        Log.i(TAG, "Message => RESTORE (reappeared, was not deleted) chat=\"$title\" text=${entry.text.take(60)}")
+                        EventBridge.emit(mapOf("type" to "updated", "chatKey" to chatKey, "chatTitle" to title))
+                    }
                 }
 
                 is ReconcileAction.Edit -> {
@@ -458,6 +462,10 @@ class NotificationListener : NotificationListenerService() {
                     }
                     store.applyEdit(rowId, action.updated.text, System.currentTimeMillis())
                     store.markStillActive(rowId, sbn.key)
+                    AlertNotifier.notifyEdited(
+                        applicationContext, rowId, title, action.previous.sender,
+                        action.previous.text, action.updated.text
+                    )
                     Log.i(
                         TAG,
                         "Message => EDIT chat=\"$title\" \"${action.previous.text.take(40)}\" -> \"${action.updated.text.take(40)}\""
@@ -529,6 +537,7 @@ class NotificationListener : NotificationListenerService() {
         }
         store.applyDelete(rowId, System.currentTimeMillis())
         Log.i(TAG, "Message => DELETE ($source) chat=\"$title\" text=${previous.text.take(60)}")
+        AlertNotifier.notifyDeleted(applicationContext, rowId, title, previous.sender, previous.text)
         EventBridge.emit(
             mapOf(
                 "type" to "deleted",

@@ -593,6 +593,12 @@ class AppLocalizationsHi extends AppLocalizations {
   String get settingsMonitoredAppsHeader => 'मॉनिटर किए गए ऐप्स';
 
   @override
+  String get settingsAlertsHeader => 'अलर्ट';
+
+  @override
+  String get settingsAlertsTitle => 'मैसेज डिलीट या एडिट होने पर सूचना दें';
+
+  @override
   String get settingsDataHeader => 'डेटा';
 
   @override

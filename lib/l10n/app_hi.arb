@@ -133,6 +133,8 @@
   "openSettingsAction": "सेटिंग्स खोलें",
   "excludeAppAction": "ऐप को बाहर रखें",
   "settingsMonitoredAppsHeader": "मॉनिटर किए गए ऐप्स",
+  "settingsAlertsHeader": "अलर्ट",
+  "settingsAlertsTitle": "मैसेज डिलीट या एडिट होने पर सूचना दें",
   "settingsDataHeader": "डेटा",
   "clearAllDataTitle": "सारा कैप्चर किया डेटा हटाएं",
   "clearAllDataSubtitle": "इस डिवाइस से हर सेव की गई चैट और मैसेज हटा देता है।",

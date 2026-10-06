@@ -25,6 +25,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   bool notificationAccessGranted = false;
   bool ignoringBatteryOptimizations = false;
   Set<String> monitoredApps = {pkgWhatsApp, pkgWhatsAppBusiness};
+  bool alertsEnabled = true;
 
   List<Chat> chats = [];
   bool loading = false;
@@ -91,8 +92,17 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     accessChecked = true;
     notifyListeners();
     await _guard(refreshMonitoredApps);
+    await _guard(_loadAlertsEnabled);
     await refreshData();
-    _eventSub ??= NativeBridge.events.listen((_) => refreshData());
+    _eventSub ??= NativeBridge.events.listen((event) {
+      if (event['type'] == 'open') {
+        _guard(_handleOpenTarget);
+      } else {
+        refreshData();
+      }
+    });
+    // Cold start from a tapped alert.
+    await _guard(_handleOpenTarget);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -193,6 +203,25 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     monitoredApps = next;
     notifyListeners();
     await NativeBridge.setMonitoredApps(next);
+  }
+
+  Future<void> _loadAlertsEnabled() async {
+    alertsEnabled = await NativeBridge.getAlertsEnabled();
+    notifyListeners();
+  }
+
+  Future<void> setAlertsEnabled(bool enabled) async {
+    alertsEnabled = enabled;
+    notifyListeners();
+    await NativeBridge.setAlertsEnabled(enabled);
+  }
+
+  /// Switches to the Deleted tab when the app was opened from a deleted/
+  /// edited alert notification. [HomeShell] applies it once it's on screen,
+  /// so this also works when the tap lands on the splash screen first.
+  Future<void> _handleOpenTarget() async {
+    final target = await NativeBridge.consumeOpenTarget();
+    if (target == 'deleted') goToTab(homeShellDeletedTabIndex);
   }
 
   Future<void> refreshData() async {

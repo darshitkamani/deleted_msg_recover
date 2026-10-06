@@ -72,6 +72,7 @@ class NotificationFlowHarness {
         AppVisibility.isForeground = false
         screenOff()
         MonitorPrefs.setMonitored(app, MonitorPrefs.DEFAULT)
+        MonitorPrefs.setAlertsEnabled(app, true)
         EventBridge.attach(object : EventChannel.EventSink {
             override fun success(event: Any?) {
                 @Suppress("UNCHECKED_CAST")
@@ -83,6 +84,13 @@ class NotificationFlowHarness {
     }
 
     fun eventsOfType(type: String) = events.filter { it["type"] == type }
+
+    /** This app's own deleted/edited alerts currently showing (see [AlertNotifier]). */
+    fun postedAlerts(): List<Notification> =
+        shadowOf(app.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
+            .allNotifications
+
+    fun setAlertsEnabled(enabled: Boolean) = MonitorPrefs.setAlertsEnabled(app, enabled)
 
     /** Forgets every message and notification, for runs that repeat many scripts. */
     fun reset() {

@@ -200,6 +200,32 @@ class DeletedMessageFlowTest {
     // ---------------------------------------------------------------- must NEVER be flagged as deleted
 
     @Test
+    fun `lone message cancelled then re-posted after the grace period is restored`() {
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(4500)
+        assertDeleted(a) // indistinguishable from a deletion at this point
+
+        h.post(2, listOf(a)) // WhatsApp shows it again -- it was never deleted
+
+        assertDeleted()
+        assertTrue(h.eventsOfType("updated").isNotEmpty())
+    }
+
+    @Test
+    fun `lone message cancelled then re-posted with a newer one after the grace period is restored`() {
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(4500)
+
+        h.post(1, listOf(a, b))
+        h.advance(4500)
+
+        assertDeleted()
+        assertEquals(listOf(a.text, b.text), h.messages().map { it.text })
+    }
+
+    @Test
     fun `message read on the phone is not a deletion`() {
         h.screenOnUnlocked()
         val key = h.post(1, listOf(a))

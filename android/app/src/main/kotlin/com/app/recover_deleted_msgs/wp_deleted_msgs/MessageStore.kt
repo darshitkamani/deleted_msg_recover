@@ -42,7 +42,11 @@ data class RemovalResult(
  * (e.g. it wasn't available on first capture but showed up on a later
  * reprocess) -- the caller needs this to know a UI refresh is owed even
  * though nothing new was actually inserted. */
-data class InsertResult(val rowId: Long, val mediaBackfilled: Boolean = false)
+data class InsertResult(
+    val rowId: Long,
+    val mediaBackfilled: Boolean = false,
+    val restoredFromDeleted: Boolean = false
+)
 
 /** Returned after applying a [ReconcileAction.Edit] or a delete action, so the caller has
  * what it needs to emit an event without a second query. */
@@ -192,14 +196,28 @@ class MessageStore private constructor(context: Context) :
             // WhatsApp updating it in place). Media that failed to save before
             // might now succeed -- backfill it.
             var mediaBackfilled = false
+            var restoredFromDeleted = false
             db.rawQuery(
-                "SELECT id, media_path FROM messages WHERE chat_key = ? AND timestamp = ? AND text IS ?",
+                "SELECT id, media_path, status FROM messages WHERE chat_key = ? AND timestamp = ? AND text IS ?",
                 arrayOf(chatKey, timestamp.toString(), text)
             ).use { cursor ->
                 if (cursor.moveToFirst()) {
                     val existingId = cursor.getLong(0)
                     val existingMediaPath = cursor.getString(1)
                     markStillActive(existingId, notifKey)
+                    // The exact message (same timestamp and text) is showing in a live
+                    // notification again, so whatever marked it deleted was wrong -- e.g. a
+                    // cancel read as a lone-message deletion when WhatsApp actually re-posted it
+                    // after REMOVAL_GRACE_MS. A real deletion never brings the original text
+                    // back. The reconciler can't see this row (getWindow skips deleted ones),
+                    // so it arrives here as an Insert that collides with the dedup index.
+                    if (cursor.getString(2) == STATUS_DELETED) {
+                        db.execSQL(
+                            "UPDATE messages SET status = ?, deleted_at = NULL WHERE id = ?",
+                            arrayOf(STATUS_ACTIVE, existingId)
+                        )
+                        restoredFromDeleted = true
+                    }
                     if (mediaPath != null && existingMediaPath == null) {
                         val updateValues = ContentValues().apply {
                             put("media_path", mediaPath)
@@ -211,7 +229,7 @@ class MessageStore private constructor(context: Context) :
                     }
                 }
             }
-            return InsertResult(rowId, mediaBackfilled)
+            return InsertResult(rowId, mediaBackfilled, restoredFromDeleted)
         } catch (e: SQLException) {
             reportNonFatal("insertMessage", e)
             return InsertResult(-1L, mediaBackfilled = false)

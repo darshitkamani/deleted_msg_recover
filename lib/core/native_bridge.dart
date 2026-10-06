@@ -123,6 +123,24 @@ class NativeBridge {
     });
   }
 
+  /// Whether a notification is posted when a message is deleted or edited.
+  static Future<bool> getAlertsEnabled() async {
+    final result = await _methodChannel.invokeMethod<bool>('getAlertsEnabled');
+    return result ?? true;
+  }
+
+  static Future<void> setAlertsEnabled(bool enabled) {
+    return _methodChannel.invokeMethod('setAlertsEnabled', {
+      'enabled': enabled,
+    });
+  }
+
+  /// The screen a tapped deleted/edited alert asked to open (`'deleted'`),
+  /// or null. Cleared on read, so each tap is handled once.
+  static Future<String?> consumeOpenTarget() {
+    return _methodChannel.invokeMethod<String>('consumeOpenTarget');
+  }
+
   static Future<bool> openFile(String path, {String? mime}) async {
     final result = await _methodChannel.invokeMethod<bool>('openFile', {
       'path': path,

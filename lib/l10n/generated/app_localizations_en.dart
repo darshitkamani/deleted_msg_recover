@@ -593,6 +593,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMonitoredAppsHeader => 'Monitored apps';
 
   @override
+  String get settingsAlertsHeader => 'Alerts';
+
+  @override
+  String get settingsAlertsTitle =>
+      'Notify me when a message is deleted or edited';
+
+  @override
   String get settingsDataHeader => 'Data';
 
   @override
