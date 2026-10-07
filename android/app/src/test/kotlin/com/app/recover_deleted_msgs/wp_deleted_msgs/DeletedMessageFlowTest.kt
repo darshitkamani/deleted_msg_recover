@@ -237,6 +237,45 @@ class DeletedMessageFlowTest {
     }
 
     @Test
+    fun `tapping the notification on the lock screen and then unlocking is not a deletion`() {
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a))
+        h.cancel(key) // WhatsApp cancels at the tap, before the unlock has finished
+        h.advance(1500)
+        h.unlock()
+        h.advance(20_000)
+
+        assertDeleted()
+        assertTrue(h.eventsOfType("deleted").isEmpty())
+    }
+
+    @Test
+    fun `lone message cancelled while the screen is on but stays locked is still a deletion`() {
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(4500)
+        assertDeleted() // still waiting for a possible unlock
+        h.advance(16_000)
+
+        assertDeleted(a)
+    }
+
+    @Test
+    fun `cancel right after one of two messages was deleted does not delete the survivor`() {
+        // Reported on a locked Pixel: "Hello", then "Hiii", then the sender deletes "Hiii".
+        // WhatsApp shows the placeholder beside "Hello", then cancels the notification.
+        h.screenOnLocked()
+        h.post(1, listOf(a))
+        h.post(1, listOf(a, b))
+        val key = h.post(1, listOf(a, Msg("This message was deleted", b.timestamp)))
+        h.cancel(key)
+        h.advance(21_000)
+
+        assertDeleted(b)
+    }
+
+    @Test
     fun `swipe dismissal is not a deletion`() {
         val key = h.post(1, listOf(a))
         h.cancel(key, REASON_CANCEL)

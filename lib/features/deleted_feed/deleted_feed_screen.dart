@@ -299,124 +299,156 @@ class _DeletedFeedRow extends StatelessWidget {
         ? mediaTypeLabel(context, item.mediaType)
         : l10n.deletedFeedNoText;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.chatTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                Text(
-                  time,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            if (item.isDeleted)
-              _StatusTag(
-                icon: Icons.delete_outline_rounded,
-                label: l10n.deletedMessageLabel,
-                color: theme.colorScheme.error,
-              )
-            else if (item.isEdited)
-              _StatusTag(
-                icon: Icons.edit_outlined,
-                label: l10n.editedBadge,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            const SizedBox(height: 4),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (item.hasMedia)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8, top: 2),
-                    child: Icon(
-                      _mediaIcon(item.mediaType),
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                Expanded(
-                  child: Text(
-                    contentLabel,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: item.isDeleted
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurface,
-                      fontStyle: item.isDeleted
-                          ? FontStyle.italic
-                          : FontStyle.normal,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            // Shown unconditionally, matching ChatDetailScreen's message
-            // bubble: both what it originally said (above, as the main
-            // content) and what it was later edited to need to be visible
-            // at once, even for a message that was also deleted. Styled
-            // the same quote-block way -- a left accent bar with a label
-            // above the text, rather than one italic sentence with the
-            // new text embedded in quotes.
-            if (item.isEdited)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Container(
-                  padding: const EdgeInsets.only(left: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(
-                        color: theme.colorScheme.primary.withValues(
-                          alpha: 0.4,
-                        ),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.editedToLabel,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.text ?? '',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
+    return GestureDetector(
+      // Debug builds only: long-press shows why this was flagged as deleted.
+      onLongPress: kDebugMode && item.isDeleted
+          ? () => _showDeleteDiagnostics(context)
+          : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(16),
         ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.chatTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    time,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              if (item.isDeleted)
+                _StatusTag(
+                  icon: Icons.delete_outline_rounded,
+                  label: l10n.deletedMessageLabel,
+                  color: theme.colorScheme.error,
+                )
+              else if (item.isEdited)
+                _StatusTag(
+                  icon: Icons.edit_outlined,
+                  label: l10n.editedBadge,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.hasMedia)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8, top: 2),
+                      child: Icon(
+                        _mediaIcon(item.mediaType),
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      contentLabel,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: item.isDeleted
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurface,
+                        fontStyle: item.isDeleted
+                            ? FontStyle.italic
+                            : FontStyle.normal,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              // Shown unconditionally, matching ChatDetailScreen's message
+              // bubble: both what it originally said (above, as the main
+              // content) and what it was later edited to need to be visible
+              // at once, even for a message that was also deleted. Styled
+              // the same quote-block way -- a left accent bar with a label
+              // above the text, rather than one italic sentence with the
+              // new text embedded in quotes.
+              if (item.isEdited)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Container(
+                    padding: const EdgeInsets.only(left: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.4,
+                          ),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.editedToLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.text ?? '',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteDiagnostics(BuildContext context) {
+    final report =
+        'source: ${item.deleteSource ?? 'unknown (flagged before diagnostics existed)'}\n'
+        'text: ${item.text}\n'
+        'timestamp: ${item.timestamp}  deletedAt: ${item.deletedAt}\n\n'
+        '${item.deleteDetail ?? ''}';
+    print("report => $report");
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Deletion diagnostics'),
+        content: SingleChildScrollView(child: SelectableText(report)),
+        actions: [
+          TextButton(
+            onPressed: () => Clipboard.setData(ClipboardData(text: report)),
+            child: const Text('Copy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

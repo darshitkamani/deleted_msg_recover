@@ -278,4 +278,62 @@ class MessageReconcilerTest {
 
         assertEquals(7L, (actions[0] as ReconcileAction.Noop).entry.id)
     }
+
+    @Test
+    fun `scroll-out within a same-second burst is not an edit or a delete (Pixel log 10-07 10_46)`() {
+        val s = "Bhavdip"
+        fun e(ts: Long, text: String, id: Long? = null) = WindowEntry(ts, text, s, id)
+        val stored = listOf(
+            e(202, "Dbd", 1), e(202, "Dhd", 2), e(204, "Dbdd d", 3), e(204, "Dbd", 4),
+            e(205, "Bd", 5), e(205, "Dbd", 6), e(206, "Fbd", 7)
+        )
+        val incoming = listOf(
+            e(202, "Dhd"), e(204, "Dbdd d"), e(204, "Dbd"), e(205, "Bd"),
+            e(205, "Dbd"), e(206, "Fbd"), e(206, "Bd")
+        )
+
+        val actions = MessageReconciler.reconcile(stored, incoming)
+
+        assertEquals(7, actions.size) // no DeletedSilently appended
+        assertTrue(actions.take(6).all { it is ReconcileAction.Noop })
+        assertEquals(listOf(2L, 3L, 4L, 5L, 6L, 7L), actions.take(6).map { (it as ReconcileAction.Noop).entry.id })
+        assertTrue(actions[6] is ReconcileAction.Insert)
+    }
+
+    @Test
+    fun `two edits in the same second pair up in order`() {
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(WindowEntry(1, "a"), WindowEntry(1, "b"), WindowEntry(2, "c")),
+            incoming = listOf(WindowEntry(1, "a2"), WindowEntry(1, "b2"), WindowEntry(2, "c"))
+        )
+
+        assertEquals(3, actions.size)
+        assertEquals("a", (actions[0] as ReconcileAction.Edit).previous.text)
+        assertEquals("b", (actions[1] as ReconcileAction.Edit).previous.text)
+    }
+
+    @Test
+    fun `scroll-out plus an edit in the same second is ambiguous - no false edit, no delete`() {
+        // "x" scrolled out and "a" was edited to "a2", both on second 1: can't tell which of the
+        // two stored messages "a2" replaced, so nothing is paired and nothing is deleted.
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(WindowEntry(1, "x"), WindowEntry(1, "a"), WindowEntry(2, "c")),
+            incoming = listOf(WindowEntry(1, "a2"), WindowEntry(2, "c"))
+        )
+
+        assertEquals(2, actions.size)
+        assertTrue(actions[0] is ReconcileAction.Insert)
+        assertTrue(actions[1] is ReconcileAction.Noop)
+    }
+
+    @Test
+    fun `placeholder in a same-second burst replaces the right message`() {
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(WindowEntry(1, "a"), WindowEntry(1, "b"), WindowEntry(1, "c")),
+            incoming = listOf(WindowEntry(1, "a"), WindowEntry(1, "This message was deleted"), WindowEntry(1, "c"))
+        )
+
+        assertEquals(3, actions.size)
+        assertEquals("b", (actions[1] as ReconcileAction.DeletedWithPlaceholder).previous.text)
+    }
 }

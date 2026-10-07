@@ -67,7 +67,7 @@ class MessageStore private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "recover.db"
-        private const val DB_VERSION = 6
+        private const val DB_VERSION = 7
 
         const val STATUS_ACTIVE = "active"
         const val STATUS_DELETED = "deleted"
@@ -117,7 +117,9 @@ class MessageStore private constructor(context: Context) :
                 removed_at INTEGER,
                 status TEXT NOT NULL DEFAULT 'active',
                 edited_at INTEGER,
-                deleted_at INTEGER
+                deleted_at INTEGER,
+                delete_source TEXT,
+                delete_detail TEXT
             )
             """.trimIndent()
         )
@@ -141,6 +143,12 @@ class MessageStore private constructor(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        // 6 -> 7 only adds the deletion diagnostics columns; keep the user's captured messages.
+        if (oldVersion == 6) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN delete_source TEXT")
+            db.execSQL("ALTER TABLE messages ADD COLUMN delete_detail TEXT")
+            return
+        }
         db.execSQL("DROP TABLE IF EXISTS message_edits")
         db.execSQL("DROP TABLE IF EXISTS messages")
         db.execSQL("DROP TABLE IF EXISTS chats")
@@ -380,7 +388,7 @@ class MessageStore private constructor(context: Context) :
         readableDatabase.rawQuery(
             """
             SELECT id, sender, text, media_path, media_type, media_mime, timestamp, removed_at,
-                   status, edited_at, deleted_at
+                   status, edited_at, deleted_at, delete_source, delete_detail
             FROM messages WHERE chat_key = ? ORDER BY timestamp ASC
             """.trimIndent(),
             arrayOf(chatKey)
@@ -399,6 +407,8 @@ class MessageStore private constructor(context: Context) :
                         "status" to cursor.getString(8),
                         "editedAt" to (if (cursor.isNull(9)) null else cursor.getLong(9)),
                         "deletedAt" to (if (cursor.isNull(10)) null else cursor.getLong(10)),
+                        "deleteSource" to cursor.getString(11),
+                        "deleteDetail" to cursor.getString(12),
                         "editHistory" to getEditHistory(cursor.getLong(0))
                     )
                 )
@@ -487,7 +497,8 @@ class MessageStore private constructor(context: Context) :
             readableDatabase.rawQuery(
                 """
                 SELECT m.id, m.chat_key, c.title, c.package, m.sender, m.text, m.timestamp,
-                       m.status, m.edited_at, m.deleted_at, m.media_path, m.media_type, m.media_mime
+                       m.status, m.edited_at, m.deleted_at, m.media_path, m.media_type, m.media_mime,
+                       m.delete_source, m.delete_detail
                 FROM messages m JOIN chats c ON c.chat_key = m.chat_key
                 WHERE (m.status = ? OR m.edited_at IS NOT NULL) $packageClause
                 ORDER BY m.timestamp DESC
@@ -511,6 +522,8 @@ class MessageStore private constructor(context: Context) :
                             "mediaPath" to cursor.getString(10),
                             "mediaType" to cursor.getString(11),
                             "mediaMime" to cursor.getString(12),
+                            "deleteSource" to cursor.getString(13),
+                            "deleteDetail" to cursor.getString(14),
                             "editHistory" to getEditHistory(id)
                         )
                     )
@@ -608,7 +621,12 @@ class MessageStore private constructor(context: Context) :
      * [text] -- the last known real text is exactly what this app exists to preserve, so it's
      * left in place rather than overwritten with a placeholder or cleared.
      */
-    fun applyDelete(rowId: Long, deletedAt: Long): ChangeResult? {
+    /**
+     * @param source which detector flagged it: PLACEHOLDER, SILENT or CANCELLED.
+     * @param detail what that detector saw, kept so a wrongly flagged message can be traced
+     *   after the fact -- logcat rolls over within minutes on a busy phone.
+     */
+    fun applyDelete(rowId: Long, deletedAt: Long, source: String? = null, detail: String? = null): ChangeResult? {
         try {
             val db = writableDatabase
             val row = findRowForChange(db, rowId) ?: return null
@@ -618,6 +636,8 @@ class MessageStore private constructor(context: Context) :
                 ContentValues().apply {
                     put("status", STATUS_DELETED)
                     put("deleted_at", deletedAt)
+                    put("delete_source", source)
+                    put("delete_detail", detail)
                 },
                 "id = ?",
                 arrayOf(rowId.toString())

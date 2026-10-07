@@ -30,12 +30,14 @@ sealed class ReconcileAction {
  * Reconciles the message window from a new notification against the window we stored from
  * the previous one, for a single chat.
  *
- * Matching is by timestamp *and* sender, but resolved by ordered consumption rather than a
- * plain key lookup: each incoming entry can only match the first not-yet-consumed stored
- * entry with the same timestamp and sender, scanning forward from where the previous match
- * left off. This is what keeps a burst of messages sharing a timestamp from being misread as
- * edits of each other -- the first same-timestamp message matches the first stored one, the
- * second has nothing left to match and is correctly treated as new.
+ * Matching is in two passes. First, entries that are exactly unchanged (timestamp, sender and
+ * text) pair up in order. Only what's left can be an edit or a placeholder replacement, and
+ * only against a stored entry with the same timestamp and sender lying between the exact
+ * matches around it. WhatsApp's notification timestamps have one-second resolution, so a fast
+ * burst puts several messages on the same second; matching on timestamp alone would pair a
+ * message with a different one from that second once the oldest scrolls out of the window.
+ * Likewise a burst of new same-second messages has nothing left to pair with and is
+ * correctly treated as new rather than as edits of each other.
  *
  * Requiring [WindowEntry.sender] to also agree matters for group chats: several members can
  * post around the same timestamp (WhatsApp's notification timestamps aren't fine-grained
@@ -88,36 +90,78 @@ object MessageReconciler {
         incoming: List<WindowEntry>
     ): List<ReconcileAction> {
         val consumed = BooleanArray(stored.size)
-        val actions = mutableListOf<ReconcileAction>()
-        var storedPtr = 0
+        val matchOf = IntArray(incoming.size) { -1 }
 
-        for (newEntry in incoming) {
-            val isPlaceholder = isDeletionPlaceholder(newEntry.text)
-            var matchIndex =
-                findFirstUnconsumedMatch(stored, consumed, storedPtr, newEntry.timestamp, newEntry.sender)
+        // Pass 1: messages that are still exactly the same (timestamp, sender AND text), in
+        // order. WhatsApp's timestamps only have one-second resolution, so a fast burst puts
+        // several messages on the same second; pairing by timestamp first would match a message
+        // against a *different* one from that second as soon as the oldest scrolls out of the
+        // window -- reporting an edit that never happened and a deletion of the real one.
+        var ptr = 0
+        for ((i, entry) in incoming.withIndex()) {
+            val m = (ptr until stored.size).firstOrNull { j ->
+                !consumed[j] && stored[j].timestamp == entry.timestamp &&
+                    stored[j].sender == entry.sender && stored[j].text == entry.text
+            } ?: continue
+            consumed[m] = true
+            matchOf[i] = m
+            ptr = m + 1
+        }
 
+        // Pass 2: what's left is new, edited, or replaced by a deletion placeholder. A changed
+        // message can only sit between the exact matches around it (the "gap"); within a gap,
+        // stored and incoming entries with the same timestamp and sender pair up in order --
+        // but only when there are as many of each. Otherwise it's ambiguous which stored
+        // message changed (e.g. one scrolled out AND one was edited in the same second), and
+        // guessing wrong reports a false edit plus a false deletion, so nothing is paired and
+        // the incoming ones are treated as new.
+        val unmatched = incoming.indices.filter { matchOf[it] == -1 }
+        val gaps = unmatched.groupBy { i ->
+            val lower = (i - 1 downTo 0).firstOrNull { matchOf[it] != -1 }?.let { matchOf[it] + 1 } ?: 0
+            val upper = (i + 1 until incoming.size).firstOrNull { matchOf[it] != -1 }?.let { matchOf[it] } ?: stored.size
+            lower to upper
+        }
+        for ((bounds, indices) in gaps) {
+            val (lower, upper) = bounds
+            val gapStored = (lower until upper).filter { !consumed[it] }
+            for ((_, group) in indices.groupBy { incoming[it].timestamp to incoming[it].sender }) {
+                val first = incoming[group.first()]
+                val candidates = gapStored.filter {
+                    !consumed[it] && stored[it].timestamp == first.timestamp && stored[it].sender == first.sender
+                }
+                if (candidates.isEmpty() || candidates.size != group.size) continue
+                for ((k, i) in group.withIndex()) {
+                    consumed[candidates[k]] = true
+                    matchOf[i] = candidates[k]
+                }
+            }
             // A deletion placeholder's Person can come through without a name (or a different
             // one) than the original message had, so requiring the sender to agree would make
             // it miss the very message it replaces. Fall back to the timestamp alone, but only
             // when exactly one stored message could be meant -- that keeps the group-chat
-            // protection above from being thrown away.
-            if (matchIndex == -1 && isPlaceholder) {
-                matchIndex = findUniqueTimestampMatch(stored, consumed, storedPtr, newEntry.timestamp)
+            // protection (sender must agree) from being thrown away.
+            for (i in indices) {
+                if (matchOf[i] != -1 || !isDeletionPlaceholder(incoming[i].text)) continue
+                val candidates = gapStored.filter { !consumed[it] && stored[it].timestamp == incoming[i].timestamp }
+                if (candidates.size != 1) continue
+                consumed[candidates[0]] = true
+                matchOf[i] = candidates[0]
             }
+        }
 
-            if (matchIndex == -1) {
+        val actions = mutableListOf<ReconcileAction>()
+        for ((i, newEntry) in incoming.withIndex()) {
+            val m = matchOf[i]
+            if (m == -1) {
                 // A placeholder that matches nothing is never a real message: recording it
                 // would put "This message was deleted" in the chat as if someone had typed it.
                 // The message it replaced is simply left unconsumed, so the gap check below
                 // still flags that one as deleted when there's overlap to anchor on.
-                actions += if (isPlaceholder) ReconcileAction.Noop(newEntry) else ReconcileAction.Insert(newEntry)
+                actions += if (isDeletionPlaceholder(newEntry.text)) ReconcileAction.Noop(newEntry)
+                else ReconcileAction.Insert(newEntry)
                 continue
             }
-
-            consumed[matchIndex] = true
-            storedPtr = matchIndex + 1
-            val previous = stored[matchIndex]
-
+            val previous = stored[m]
             actions += when {
                 previous.text == newEntry.text -> ReconcileAction.Noop(newEntry.copy(id = previous.id))
                 isDeletionPlaceholder(newEntry.text) -> ReconcileAction.DeletedWithPlaceholder(previous, newEntry)
@@ -150,34 +194,6 @@ object MessageReconciler {
             result += ReconcileAction.DeletedSilently(stored[i])
         }
         return result
-    }
-
-    private fun findFirstUnconsumedMatch(
-        stored: List<WindowEntry>,
-        consumed: BooleanArray,
-        fromIndex: Int,
-        timestamp: Long,
-        sender: String?
-    ): Int {
-        for (i in fromIndex until stored.size) {
-            if (!consumed[i] && stored[i].timestamp == timestamp && stored[i].sender == sender) return i
-        }
-        return -1
-    }
-
-    private fun findUniqueTimestampMatch(
-        stored: List<WindowEntry>,
-        consumed: BooleanArray,
-        fromIndex: Int,
-        timestamp: Long
-    ): Int {
-        var found = -1
-        for (i in fromIndex until stored.size) {
-            if (consumed[i] || stored[i].timestamp != timestamp) continue
-            if (found != -1) return -1 // ambiguous -- don't guess which one was meant
-            found = i
-        }
-        return found
     }
 
     /**

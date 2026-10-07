@@ -106,6 +106,19 @@ class NotificationFlowHarness {
         shadowOf(app.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).setKeyguardLocked(true)
     }
 
+    /** Screen on but still locked -- e.g. looking at (or tapping) the lock-screen notification. */
+    fun screenOnLocked() {
+        shadowOf(app.getSystemService(Context.POWER_SERVICE) as PowerManager).turnScreenOn(true)
+        shadowOf(app.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).setKeyguardLocked(true)
+    }
+
+    /** The user finishes unlocking: the keyguard goes away and Android sends USER_PRESENT. */
+    fun unlock() {
+        screenOnUnlocked()
+        app.sendBroadcast(android.content.Intent(android.content.Intent.ACTION_USER_PRESENT))
+        ShadowLooper.idleMainLooper()
+    }
+
     /** Screen on and unlocked with another app in front: WhatsApp itself could be open. */
     fun screenOnUnlocked() {
         shadowOf(app.getSystemService(Context.POWER_SERVICE) as PowerManager).turnScreenOn(true)
@@ -137,6 +150,9 @@ class NotificationFlowHarness {
     fun cancel(key: String, reason: Int = NotificationListenerService.REASON_APP_CANCEL) {
         val sbn = live.remove(key) ?: error("no live notification $key")
         syncActive()
+        // Like Android, hand the listener a lightened copy: the message list is stripped.
+        sbn.notification.extras.remove(Notification.EXTRA_MESSAGES)
+        sbn.notification.extras.remove(Notification.EXTRA_HISTORIC_MESSAGES)
         service.onNotificationRemoved(sbn, null, reason)
         tick()
     }

@@ -43,25 +43,35 @@ object RemovalClassifier {
      *   unknown capture time must answer false: counting a row that was in fact there keeps a
      *   lone-message deletion from being inferred out of several.
      * @param shownIn key of the active notification still showing the row's message, or null.
+     * @param cancelledShowed the messages (timestamp to text) the cancelled notification itself
+     *   was displaying, or null if it couldn't be read. This is the ground truth for "was it a
+     *   lone message": rows alone can't tell, because a message already flagged deleted moments
+     *   earlier (WhatsApp's "This message was deleted" still sitting beside it) isn't a live row,
+     *   and skipping it made the one survivor look like a lone deletion.
      */
     fun resolve(
         results: List<RemovalResult>,
         isAppCancel: Boolean,
         couldBeReadingOnThisPhone: Boolean,
         capturedAfterCancel: (RemovalResult) -> Boolean,
-        shownIn: (RemovalResult) -> String?
+        shownIn: (RemovalResult) -> String?,
+        cancelledShowed: List<Pair<Long, String>>? = null
     ): RemovalDecision {
         val shown = results.associateWith(shownIn)
         val stillActive = shown.mapNotNull { (row, key) -> key?.let { row to it } }.toMap()
         val gone = results.filter { shown[it] == null }
 
-        val cancelled = results.filter { !it.alreadyDeleted && !capturedAfterCancel(it) }
-        val lone = cancelled.singleOrNull()
+        // Rows that were in the cancelled notification, deleted ones included: they still took
+        // up a line in it.
+        val inCancelled = results.filter { !capturedAfterCancel(it) }
+        val lone = inCancelled.filter { !it.alreadyDeleted }.singleOrNull()?.takeIf { row ->
+            cancelledShowed == null || cancelledShowed.any { it.first == row.timestamp && it.second == row.text }
+        }
         val deletion = lone?.takeIf {
             isLikelyDeletion(
                 isAppCancel = isAppCancel,
                 couldBeReadingOnThisPhone = couldBeReadingOnThisPhone,
-                unreadMessagesInNotification = cancelled.size,
+                unreadMessagesInNotification = cancelledShowed?.size ?: inCancelled.size,
                 stillShownInAnotherNotification = shown[it] != null
             )
         }
@@ -74,8 +84,8 @@ object RemovalClassifier {
      * @param couldBeReadingOnThisPhone the screen was on and unlocked with this app NOT in the
      *   foreground -- i.e. WhatsApp itself might have been open. If the screen is off/locked, or
      *   this app is what's on screen, the user can't have been reading it in WhatsApp here.
-     * @param unreadMessagesInNotification how many not-yet-removed messages the cancelled
-     *   notification held. Only a lone message is treated as a deletion: cancelling several at
+     * @param unreadMessagesInNotification how many messages the cancelled notification held,
+     *   counting any "this message was deleted" placeholders still shown in it. Only a lone message is treated as a deletion: cancelling several at
      *   once is overwhelmingly a read/clear, and one deletion among several arrives as a
      *   re-post instead.
      * @param stillShownInAnotherNotification the message is still visible in some active

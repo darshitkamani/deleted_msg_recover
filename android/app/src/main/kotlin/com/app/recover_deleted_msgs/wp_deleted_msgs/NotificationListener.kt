@@ -2,7 +2,10 @@ package com.app.recover_deleted_msgs.wp_deleted_msgs
 
 import android.app.KeyguardManager
 import android.app.Notification
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -15,6 +18,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.io.FileOutputStream
@@ -43,6 +47,18 @@ private const val TAG = "NotifCapture"
  * window, we treat the "removal" as churn, not a deletion.
  */
 private const val REMOVAL_GRACE_MS = 4000L
+
+/**
+ * Tapping a WhatsApp notification on the lock screen makes WhatsApp cancel it right away, while
+ * the phone still reports itself locked -- the unlock (PIN, fingerprint, face) completes after.
+ * A cancel seen with the screen on but locked therefore waits this long for an unlock before
+ * it can count as a deletion. Long enough to type a PIN; a real deletion is just reported later.
+ */
+private const val UNLOCK_WAIT_MS = 20_000L
+
+/** An unlock this soon before the cancel still counts: the keyguard can report "locked" for a
+ * moment after ACTION_USER_PRESENT while its dismiss animation finishes. */
+private const val UNLOCK_SLACK_MS = 2_000L
 private const val CAPTURE_TTL_MS = 60_000L
 
 /** Logs a caught error locally and reports it to Crashlytics as a non-fatal, so an error
@@ -67,6 +83,39 @@ class NotificationListener : NotificationListenerService() {
     // of notifications in a row is exactly what freezes the UI (and can ANR)
     // right at launch. Everything that actually touches disk runs here instead.
     private val bgExecutor = Executors.newSingleThreadExecutor()
+
+    /**
+     * The messages (timestamp to text) each WhatsApp notification key showed when last posted,
+     * deletion placeholders included -- so a cancel can be judged by what was actually on screen.
+     * Only touched on [bgExecutor]. Lost on a process restart, where removals fall back to rows.
+     */
+    private val lastShown = HashMap<String, List<Pair<Long, String>>>()
+
+    /** When the user last unlocked the phone (ACTION_USER_PRESENT), or 0 if not this process. */
+    @Volatile
+    private var lastUnlockAt = 0L
+
+    private val unlockReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_USER_PRESENT) lastUnlockAt = System.currentTimeMillis()
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // USER_PRESENT can't be declared in the manifest (Android 8+), only registered at runtime.
+        ContextCompat.registerReceiver(
+            this, unlockReceiver, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onDestroy() {
+        try {
+            unregisterReceiver(unlockReceiver)
+        } catch (_: IllegalArgumentException) {
+        }
+        super.onDestroy()
+    }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -203,27 +252,48 @@ class NotificationListener : NotificationListenerService() {
         val isAppCancel = reason == NotificationListenerService.REASON_APP_CANCEL
         // Sampled now, not after the grace period below: what matters is whether the user
         // could have been reading it in WhatsApp at the moment it was cancelled.
-        val couldBeReadingHere = couldBeReadingOnThisPhone()
+        val device = deviceState()
+        // What the cancelled notification was showing, as of its last post. Not read from `sbn`:
+        // Android lightens the copy it hands to onNotificationRemoved, dropping the message list.
+        // Snapshotted on bgExecutor, which is serial, so every earlier post has been handled
+        // and a re-post arriving after this cancel can't overwrite it.
+        val cancelledShowed = bgExecutor.submit<List<Pair<Long, String>>?> { lastShown.remove(notifKey) }
+        // Screen on but locked: possibly a tap on the lock-screen notification with the unlock
+        // still in progress. Give that unlock time to arrive before judging.
+        val awaitingUnlock = device.screenOn && device.locked
         handler.postDelayed({
             bgExecutor.execute {
                 try {
-                    resolveRemoval(notifKey, removedAt, isAppCancel, couldBeReadingHere)
+                    // Already done: it was queued on this same serial executor before this task.
+                    val showed = cancelledShowed.get()
+                    val unlockedAround = lastUnlockAt >= removedAt - UNLOCK_SLACK_MS
+                    val couldBeReading = device.couldBeReadingHere || (awaitingUnlock && unlockedAround)
+                    val cancelDetail = "reason=${describeReason(reason)} $device " +
+                        "unlockedAround=$unlockedAround key=$notifKey " +
+                        "showed=${showed?.joinToString(prefix = "[", postfix = "]") { "${it.first}|${it.second.take(40)}" }}"
+                    resolveRemoval(notifKey, removedAt, isAppCancel, couldBeReading, showed, cancelDetail)
                 } catch (t: Throwable) {
                     reportNonFatal("resolveRemoval crashed for key=$notifKey, recovering", t)
                 }
             }
-        }, REMOVAL_GRACE_MS)
+        }, if (awaitingUnlock) UNLOCK_WAIT_MS else REMOVAL_GRACE_MS)
     }
 
     /**
-     * True when the screen is on and unlocked with this app off screen -- i.e. WhatsApp itself
-     * might have been open. Anything we can't determine counts as "could be", so an unknown
-     * never turns into a deletion.
+     * The screen/lock/foreground state at a cancel. [DeviceState.couldBeReadingHere] is true when
+     * the screen is on and unlocked with this app off screen -- i.e. WhatsApp itself might have
+     * been open. Anything we can't determine counts as "could be", so an unknown never turns
+     * into a deletion.
      */
-    private fun couldBeReadingOnThisPhone(): Boolean {
-        val screenOn = (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
-        val locked = (getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked ?: false
-        return screenOn && !locked && !AppVisibility.isForeground
+    private fun deviceState() = DeviceState(
+        screenOn = (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true,
+        locked = (getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked ?: false,
+        appForeground = AppVisibility.isForeground
+    )
+
+    private data class DeviceState(val screenOn: Boolean, val locked: Boolean, val appForeground: Boolean) {
+        val couldBeReadingHere get() = screenOn && !locked && !appForeground
+        override fun toString() = "screenOn=$screenOn locked=$locked appForeground=$appForeground"
     }
 
     /**
@@ -270,7 +340,9 @@ class NotificationListener : NotificationListenerService() {
         notifKey: String,
         removedAt: Long,
         isAppCancel: Boolean,
-        couldBeReadingHere: Boolean
+        couldBeReadingHere: Boolean,
+        cancelledShowed: List<Pair<Long, String>>?,
+        cancelDetail: String
     ) {
         // Can't see what's on screen, so can't tell a removal from a re-post. Leave the rows
         // alone -- a later cancel of the same key will still find them.
@@ -292,7 +364,8 @@ class NotificationListener : NotificationListenerService() {
             isAppCancel = isAppCancel,
             couldBeReadingOnThisPhone = couldBeReadingHere,
             capturedAfterCancel = { (recentCaptures[it.id] ?: Long.MIN_VALUE) > removedAt }, // a tie counts as "was there"
-            shownIn = { keyStillShowing(it, active) }
+            shownIn = { keyStillShowing(it, active) },
+            cancelledShowed = cancelledShowed
         )
 
         // Still on screen: not removed, so undo the mark rather than reporting it.
@@ -317,14 +390,15 @@ class NotificationListener : NotificationListenerService() {
             applyDeletion(
                 store, deleted.chatKey, deleted.chatTitle,
                 WindowEntry(deleted.timestamp, deleted.text ?: "", deleted.sender, deleted.id),
-                "CANCELLED"
+                "CANCELLED",
+                "$cancelDetail rows=${results.size}"
             )
         } else {
             Log.d(
                 TAG,
                 "resolveRemoval key=$notifKey: not treated as deleted " +
                     "(appCancel=$isAppCancel couldBeReadingHere=$couldBeReadingHere " +
-                    "rows=${results.size} stillShown=${decision.stillActive.size})"
+                    "rows=${results.size} stillShown=${decision.stillActive.size}) $cancelDetail"
             )
         }
     }
@@ -393,6 +467,11 @@ class NotificationListener : NotificationListenerService() {
         // Placeholders are dropped before reconciliation, not after -- a message that's still
         // "Downloading..." isn't part of the real conversation window WhatsApp will keep
         // presenting, so it must not occupy a matching slot for the real content that replaces it.
+        lastShown[sbn.key] = style.messages.mapNotNull { m ->
+            val text = m.text?.toString() ?: ""
+            if (isDownloadPlaceholder(text)) null else m.timestamp to text
+        }
+
         val lastMessage = style.messages.lastOrNull()
         val incoming = style.messages.mapNotNull { msg ->
             val text = msg.text?.toString()
@@ -483,7 +562,10 @@ class NotificationListener : NotificationListenerService() {
                 }
 
                 is ReconcileAction.DeletedWithPlaceholder -> {
-                    applyDeletion(store, chatKey, title, action.previous, "PLACEHOLDER")
+                    applyDeletion(
+                        store, chatKey, title, action.previous, "PLACEHOLDER",
+                        "placeholder=\"${action.placeholder.text}\" key=${sbn.key}"
+                    )
                     deleted = true
                 }
 
@@ -511,9 +593,13 @@ class NotificationListener : NotificationListenerService() {
             }
         }
 
+        // Both windows, so a wrong SILENT call shows exactly which entry failed to match.
+        val silentDetail by lazy {
+            "key=${sbn.key} stored=${describeWindow(stored)} incoming=${describeWindow(incoming.map { it.second })}"
+        }
         for (i in incoming.size until actions.size) {
             val action = actions[i] as? ReconcileAction.DeletedSilently ?: continue
-            applyDeletion(store, chatKey, title, action.previous, "SILENT")
+            applyDeletion(store, chatKey, title, action.previous, "SILENT", silentDetail)
             deleted = true
         }
 
@@ -529,14 +615,24 @@ class NotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun applyDeletion(store: MessageStore, chatKey: String, title: String, previous: WindowEntry, source: String) {
+    private fun describeWindow(entries: List<WindowEntry>): String =
+        entries.joinToString(prefix = "[", postfix = "]") { "${it.timestamp}|${it.sender}|${it.text.take(40)}" }
+
+    private fun applyDeletion(
+        store: MessageStore,
+        chatKey: String,
+        title: String,
+        previous: WindowEntry,
+        source: String,
+        detail: String
+    ) {
         val rowId = previous.id
         if (rowId == null) {
             Log.w(TAG, "  delete action with no row id, dropping: $previous")
             return
         }
-        store.applyDelete(rowId, System.currentTimeMillis())
-        Log.i(TAG, "Message => DELETE ($source) chat=\"$title\" text=${previous.text.take(60)}")
+        store.applyDelete(rowId, System.currentTimeMillis(), source, detail)
+        Log.i(TAG, "Message => DELETE ($source) chat=\"$title\" text=${previous.text.take(60)} detail=$detail")
         AlertNotifier.notifyDeleted(applicationContext, rowId, title, previous.sender, previous.text)
         EventBridge.emit(
             mapOf(

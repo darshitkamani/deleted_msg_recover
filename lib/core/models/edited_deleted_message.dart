@@ -22,6 +22,11 @@ class EditedDeletedMessage {
   final MediaType mediaType;
   final String? mediaMime;
 
+  /// Which detector flagged the deletion (PLACEHOLDER, SILENT or CANCELLED)
+  /// and what it saw -- diagnostics for tracing a wrongly flagged message.
+  final String? deleteSource;
+  final String? deleteDetail;
+
   const EditedDeletedMessage({
     required this.id,
     required this.chatKey,
@@ -37,6 +42,8 @@ class EditedDeletedMessage {
     required this.mediaPath,
     required this.mediaType,
     required this.mediaMime,
+    this.deleteSource,
+    this.deleteDetail,
   });
 
   bool get isDeleted => status == MessageStatus.deleted;
@@ -67,6 +74,8 @@ class EditedDeletedMessage {
       mediaPath: map['mediaPath'] as String?,
       mediaType: mediaTypeFromString(map['mediaType'] as String?),
       mediaMime: map['mediaMime'] as String?,
+      deleteSource: map['deleteSource'] as String?,
+      deleteDetail: map['deleteDetail'] as String?,
     );
   }
 }

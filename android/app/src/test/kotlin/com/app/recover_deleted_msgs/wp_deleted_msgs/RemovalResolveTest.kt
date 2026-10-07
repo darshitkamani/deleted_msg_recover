@@ -20,13 +20,15 @@ class RemovalResolveTest {
         isAppCancel: Boolean = true,
         couldBeReading: Boolean = false,
         capturedAfterCancel: Set<Long> = emptySet(),
-        shownIn: Map<Long, String> = emptyMap()
+        shownIn: Map<Long, String> = emptyMap(),
+        cancelledShowed: List<Pair<Long, String>>? = null
     ) = RemovalClassifier.resolve(
         results = rows,
         isAppCancel = isAppCancel,
         couldBeReadingOnThisPhone = couldBeReading,
         capturedAfterCancel = { it.id in capturedAfterCancel },
-        shownIn = { shownIn[it.id] }
+        shownIn = { shownIn[it.id] },
+        cancelledShowed = cancelledShowed
     )
 
     @Test
@@ -107,5 +109,29 @@ class RemovalResolveTest {
         val d = resolve(listOf(row(2)), capturedAfterCancel = setOf(2), shownIn = mapOf(2L to "key"))
 
         assertNull(d.deletion)
+    }
+
+    @Test
+    fun `an already deleted row still counts toward the cancelled notification's size`() {
+        val rows = listOf(row(1), row(2, alreadyDeleted = true))
+        assertNull(resolve(rows).deletion)
+    }
+
+    @Test
+    fun `cancelled notification still showing a deleted placeholder is not a lone deletion`() {
+        val rows = listOf(row(1), row(2, alreadyDeleted = true))
+        val showed = listOf(1001L to "msg1", 1002L to "This message was deleted")
+        assertNull(resolve(rows, cancelledShowed = showed).deletion)
+    }
+
+    @Test
+    fun `cancelled notification showing only the survivor is a lone deletion`() {
+        val rows = listOf(row(1), row(2, alreadyDeleted = true))
+        assertEquals(1L, resolve(rows, cancelledShowed = listOf(1001L to "msg1")).deletion?.id)
+    }
+
+    @Test
+    fun `lone row that the cancelled notification was not showing is not a deletion`() {
+        assertNull(resolve(listOf(row(1)), cancelledShowed = listOf(5000L to "other")).deletion)
     }
 }
