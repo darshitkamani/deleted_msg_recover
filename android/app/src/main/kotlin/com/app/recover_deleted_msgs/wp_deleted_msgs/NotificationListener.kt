@@ -56,6 +56,13 @@ private const val REMOVAL_GRACE_MS = 4000L
  */
 private const val UNLOCK_WAIT_MS = 20_000L
 
+/** How often the keyguard is re-checked while a cancel waits for an unlock. */
+private const val UNLOCK_POLL_MS = 500L
+
+/** A child removed with REASON_GROUP_SUMMARY_CANCELED within this long after its summary was
+ * removed is attributed to that summary's removal. */
+private const val SUMMARY_CASCADE_MS = 2_000L
+
 /** An unlock this soon before the cancel still counts: the keyguard can report "locked" for a
  * moment after ACTION_USER_PRESENT while its dismiss animation finishes. */
 private const val UNLOCK_SLACK_MS = 2_000L
@@ -190,9 +197,12 @@ class NotificationListener : NotificationListenerService() {
                 "  [dump] id=${sbn.id} tag=${sbn.tag} postTime=${sbn.postTime} " +
                     "isClearable=${sbn.isClearable} groupKey=${sbn.groupKey}"
             )
+            // Notification.getChannelId() only exists on API 26+; calling it on
+            // 7.x throws NoSuchMethodError (an Error, so the catch below misses it).
+            val channelId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) n.channelId else null
             Log.d(
                 TAG,
-                "  [dump] channelId=${n.channelId} category=${n.category} " +
+                "  [dump] channelId=$channelId category=${n.category} " +
                     "visibility=${n.visibility} priority=${n.priority} " +
                     "group=${n.group} sortKey=${n.sortKey} `when`=${n.`when`} " +
                     "flags=0x${Integer.toHexString(n.flags)}"
@@ -204,9 +214,11 @@ class NotificationListener : NotificationListenerService() {
                 for (a in actions) {
                     val showsUi = a.extras?.getBoolean("android.support.action.showsUserInterface")
                     val hasRemoteInput = !a.remoteInputs.isNullOrEmpty()
+                    val semanticAction =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) a.semanticAction else null
                     Log.d(
                         TAG,
-                        "  [dump] action title=\"${a.title}\" semanticAction=${a.semanticAction} " +
+                        "  [dump] action title=\"${a.title}\" semanticAction=$semanticAction " +
                             "showsUserInterface=$showsUi hasRemoteInput=$hasRemoteInput"
                     )
                 }
@@ -233,8 +245,10 @@ class NotificationListener : NotificationListenerService() {
                     Log.d(TAG, "  [dump] extras[$key] = $shown")
                 }
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "  [dump] failed: ${e.message}")
+        } catch (t: Throwable) {
+            // Throwable, not Exception: this is diagnostics on the main thread, and a
+            // missing-API NoSuchMethodError here must never take the process down.
+            Log.w(TAG, "  [dump] failed: ${t.message}")
         }
     }
 
@@ -249,7 +263,10 @@ class NotificationListener : NotificationListenerService() {
         Log.d(TAG, "removed pkg=$pkg key=${sbn.key} reason=${describeReason(reason)}")
         val notifKey = sbn.key
         val removedAt = System.currentTimeMillis()
-        val isAppCancel = reason == NotificationListenerService.REASON_APP_CANCEL
+        val isSummary = (sbn.notification?.flags ?: 0) and Notification.FLAG_GROUP_SUMMARY != 0
+        if (isSummary) summaryCancels[sbn.groupKey] = reason to removedAt
+        val isAppCancel = reason == NotificationListenerService.REASON_APP_CANCEL ||
+            cancelledViaAppSummary(sbn, reason, removedAt)
         // Sampled now, not after the grace period below: what matters is whether the user
         // could have been reading it in WhatsApp at the moment it was cancelled.
         val device = deviceState()
@@ -261,15 +278,20 @@ class NotificationListener : NotificationListenerService() {
         // Screen on but locked: possibly a tap on the lock-screen notification with the unlock
         // still in progress. Give that unlock time to arrive before judging.
         val awaitingUnlock = device.screenOn && device.locked
+        if (awaitingUnlock) watchForUnlock(removedAt + UNLOCK_WAIT_MS)
         handler.postDelayed({
             bgExecutor.execute {
                 try {
                     // Already done: it was queued on this same serial executor before this task.
                     val showed = cancelledShowed.get()
                     val unlockedAround = lastUnlockAt >= removedAt - UNLOCK_SLACK_MS
-                    val couldBeReading = device.couldBeReadingHere || (awaitingUnlock && unlockedAround)
+                    // Fallback for when USER_PRESENT isn't seen: unlocked and on by the end of the
+                    // wait also means the user got in, so the cancel was them opening it.
+                    val unlockedNow = awaitingUnlock && deviceState().let { it.screenOn && !it.locked }
+                    val couldBeReading = device.couldBeReadingHere ||
+                        (awaitingUnlock && (unlockedAround || unlockedNow))
                     val cancelDetail = "reason=${describeReason(reason)} $device " +
-                        "unlockedAround=$unlockedAround key=$notifKey " +
+                        "unlockedAround=$unlockedAround unlockedNow=$unlockedNow key=$notifKey " +
                         "showed=${showed?.joinToString(prefix = "[", postfix = "]") { "${it.first}|${it.second.take(40)}" }}"
                     resolveRemoval(notifKey, removedAt, isAppCancel, couldBeReading, showed, cancelDetail)
                 } catch (t: Throwable) {
@@ -289,7 +311,40 @@ class NotificationListener : NotificationListenerService() {
         screenOn = (getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isInteractive ?: true,
         locked = (getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked ?: false,
         appForeground = AppVisibility.isForeground
-    )
+    ).also {
+        // Any sighting of the phone unlocked counts as an unlock: on a Pixel, USER_PRESENT was
+        // never seen arriving even while the keyguard visibly went away mid-cancel.
+        if (it.screenOn && !it.locked) lastUnlockAt = System.currentTimeMillis()
+    }
+
+    /** Polls the keyguard until [until] so an unlock during the wait is noticed even without
+     * USER_PRESENT -- see [deviceState]. Cheap, and only runs while a cancel awaits an unlock. */
+    private fun watchForUnlock(until: Long) {
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                val state = deviceState()
+                if (state.screenOn && !state.locked) return
+                if (System.currentTimeMillis() < until) handler.postDelayed(this, UNLOCK_POLL_MS)
+            }
+        }, UNLOCK_POLL_MS)
+    }
+
+    /**
+     * Last removal reason and time of each group summary, by group key. When WhatsApp cancels a
+     * conversation's group summary, Android removes the conversation's own notification with
+     * REASON_GROUP_SUMMARY_CANCELED rather than APP_CANCEL -- seen on a Pixel when a chat's only
+     * unread message was deleted. Only main-thread access (onNotificationRemoved).
+     */
+    private val summaryCancels = HashMap<String, Pair<Int, Long>>()
+
+    /** True when [sbn] went because WhatsApp itself cancelled its group summary just now. A
+     * summary the user swiped away doesn't count -- that's them dismissing the group. */
+    private fun cancelledViaAppSummary(sbn: StatusBarNotification, reason: Int, removedAt: Long): Boolean {
+        if (reason != NotificationListenerService.REASON_GROUP_SUMMARY_CANCELED) return false
+        val (summaryReason, at) = summaryCancels[sbn.groupKey] ?: return false
+        return summaryReason == NotificationListenerService.REASON_APP_CANCEL &&
+            removedAt - at in 0..SUMMARY_CASCADE_MS
+    }
 
     private data class DeviceState(val screenOn: Boolean, val locked: Boolean, val appForeground: Boolean) {
         val couldBeReadingHere get() = screenOn && !locked && !appForeground
@@ -467,6 +522,7 @@ class NotificationListener : NotificationListenerService() {
         // Placeholders are dropped before reconciliation, not after -- a message that's still
         // "Downloading..." isn't part of the real conversation window WhatsApp will keep
         // presenting, so it must not occupy a matching slot for the real content that replaces it.
+        val previousShown = lastShown[sbn.key]
         lastShown[sbn.key] = style.messages.mapNotNull { m ->
             val text = m.text?.toString() ?: ""
             if (isDownloadPlaceholder(text)) null else m.timestamp to text
@@ -494,7 +550,8 @@ class NotificationListener : NotificationListenerService() {
         val stored = store.getWindow(chatKey, MessageReconciler.DEFAULT_WINDOW_CAP)
         val actions = MessageReconciler.reconcile(
             stored = stored,
-            incoming = incoming.map { it.second }
+            incoming = incoming.map { it.second },
+            previousShown = previousShown
         )
 
         var inserted = false
@@ -539,8 +596,13 @@ class NotificationListener : NotificationListenerService() {
                         Log.w(TAG, "  edit action with no row id, dropping: ${action.previous}")
                         continue
                     }
-                    store.applyEdit(rowId, action.updated.text, System.currentTimeMillis())
+                    val applied = store.applyEdit(rowId, action.updated.text, System.currentTimeMillis())
                     store.markStillActive(rowId, sbn.key)
+                    if (applied == null) {
+                        // Nothing was saved (see applyEdit), so don't announce an edit either.
+                        Log.w(TAG, "  edit not saved, skipping alert: ${action.previous.text.take(40)} -> ${action.updated.text.take(40)}")
+                        continue
+                    }
                     AlertNotifier.notifyEdited(
                         applicationContext, rowId, title, action.previous.sender,
                         action.previous.text, action.updated.text

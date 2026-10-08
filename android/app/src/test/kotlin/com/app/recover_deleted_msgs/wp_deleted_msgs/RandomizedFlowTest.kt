@@ -84,7 +84,8 @@ class RandomizedFlowTest {
         val m = Model()
         val log = mutableListOf<String>()
 
-        fun fail(why: String): Nothing = fail("seed=$seed: $why\nops:\n  " + log.joinToString("\n  "))
+        fun fail(why: String): Nothing =
+            throw AssertionError("seed=$seed: $why\nops:\n  " + log.joinToString("\n  "))
 
         fun repost(newKey: Boolean) {
             val old = m.liveKey

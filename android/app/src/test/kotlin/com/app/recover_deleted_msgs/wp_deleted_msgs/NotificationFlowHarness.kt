@@ -98,6 +98,11 @@ class NotificationFlowHarness {
         syncActive()
         events.clear()
         MessageStore.getInstance(app).writableDatabase.execSQL("DELETE FROM messages")
+        // The listener's memory of what each key last showed belongs to the old script too.
+        bgExecutor.submit {
+            (NotificationListener::class.java.getDeclaredField("lastShown")
+                .apply { isAccessible = true }.get(service) as MutableMap<*, *>).clear()
+        }.get(10, TimeUnit.SECONDS)
     }
 
     /** Phone locked with the screen off: the user can't be reading in WhatsApp here. */
@@ -136,6 +141,7 @@ class NotificationFlowHarness {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(chat)
             .setStyle(style)
+            .setGroup(GROUP)
             .build()
         val sbn = statusBarNotification(id, notification)
         live[sbn.key] = sbn
@@ -155,6 +161,20 @@ class NotificationFlowHarness {
         sbn.notification.extras.remove(Notification.EXTRA_HISTORIC_MESSAGES)
         service.onNotificationRemoved(sbn, null, reason)
         tick()
+    }
+
+    /**
+     * WhatsApp cancels its group summary [summaryReason], and Android takes the conversation
+     * notification [key] down with it (REASON_GROUP_SUMMARY_CANCELED) -- as seen on a Pixel.
+     */
+    fun cancelViaSummary(key: String, summaryReason: Int = NotificationListenerService.REASON_APP_CANCEL) {
+        val summary = NotificationCompat.Builder(app, "chan")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setGroup(GROUP)
+            .setGroupSummary(true)
+            .build()
+        service.onNotificationRemoved(statusBarNotification(SUMMARY_ID, summary), null, summaryReason)
+        cancel(key, NotificationListenerService.REASON_GROUP_SUMMARY_CANCELED)
     }
 
     /** Lets [millis] of wall time pass: fires the listener's grace-period timer if due. */
@@ -207,6 +227,8 @@ class NotificationFlowHarness {
     data class Msg(val text: String, val timestamp: Long)
 
     companion object {
+        private const val GROUP = "group_key_messages"
+        private const val SUMMARY_ID = 9999
         /** MessageStore is a process-wide singleton; each test needs a fresh database. */
         fun resetStore() {
             val field = MessageStore::class.java.getDeclaredField("instance").apply { isAccessible = true }

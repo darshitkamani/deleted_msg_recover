@@ -237,7 +237,7 @@ class _SenderHeader extends StatelessWidget {
             radius: 16,
             backgroundColor: theme.colorScheme.primaryContainer,
             child: Text(
-              sender.isNotEmpty ? sender[0].toUpperCase() : '?',
+              sender.isNotEmpty ? sender.characters.first.toUpperCase() : '?',
               style: TextStyle(
                 color: theme.colorScheme.onPrimaryContainer,
                 fontWeight: FontWeight.bold,

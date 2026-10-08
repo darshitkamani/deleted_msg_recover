@@ -134,4 +134,12 @@ class RemovalResolveTest {
     fun `lone row that the cancelled notification was not showing is not a deletion`() {
         assertNull(resolve(listOf(row(1)), cancelledShowed = listOf(5000L to "other")).deletion)
     }
+
+    @Test
+    fun `rows left over from an earlier unresolved cancel don't hide a lone deletion`() {
+        // Pixel log 10-07 11:12: the key still held Ok/123tyi/Hey from a locked-screen cancel
+        // waiting on an unlock, but the cancelled notification itself only showed Hello.
+        val rows = listOf(row(1, "Ok"), row(2, "123tyi"), row(3, "Hey"), row(4, "Hello"))
+        assertEquals(4L, resolve(rows, cancelledShowed = listOf(1004L to "Hello")).deletion?.id)
+    }
 }

@@ -85,9 +85,16 @@ object MessageReconciler {
         "you deleted this message"
     )
 
+    /**
+     * @param previousShown what this same notification showed on its previous post (timestamp to
+     *   text), or null if unknown. Lets a vanished OLDEST message be told apart from a scroll-out:
+     *   a message only scrolls out when a new one pushes it, so if it was in the previous post
+     *   and this re-post adds nothing new, it was deleted.
+     */
     fun reconcile(
         stored: List<WindowEntry>,
-        incoming: List<WindowEntry>
+        incoming: List<WindowEntry>,
+        previousShown: List<Pair<Long, String>>? = null
     ): List<ReconcileAction> {
         val consumed = BooleanArray(stored.size)
         val matchOf = IntArray(incoming.size) { -1 }
@@ -169,14 +176,20 @@ object MessageReconciler {
             }
         }
 
-        actions += silentlyDeletedActions(stored, consumed)
+        val nothingNew = actions.none { it is ReconcileAction.Insert }
+        val leadingDeletable = { e: WindowEntry ->
+            nothingNew && previousShown != null &&
+                previousShown.any { it.first == e.timestamp && it.second == e.text }
+        }
+        actions += silentlyDeletedActions(stored, consumed, leadingDeletable)
 
         return actions
     }
 
     private fun silentlyDeletedActions(
         stored: List<WindowEntry>,
-        consumed: BooleanArray
+        consumed: BooleanArray,
+        leadingDeletable: (WindowEntry) -> Boolean
     ): List<ReconcileAction.DeletedSilently> {
         if (!consumed.any { it }) {
             // Zero overlap with the previous window -- almost certainly a read/clear reset
@@ -190,7 +203,9 @@ object MessageReconciler {
         val result = mutableListOf<ReconcileAction.DeletedSilently>()
         for (i in stored.indices) {
             if (consumed[i]) continue
-            if (i < firstConsumedIndex) continue // leading edge: scroll-out/dismissal, not a deletion
+            // Leading edge: normally scroll-out/dismissal, not a deletion -- unless it was in the
+            // previous post and nothing new arrived that could have pushed it out.
+            if (i < firstConsumedIndex && !leadingDeletable(stored[i])) continue
             result += ReconcileAction.DeletedSilently(stored[i])
         }
         return result

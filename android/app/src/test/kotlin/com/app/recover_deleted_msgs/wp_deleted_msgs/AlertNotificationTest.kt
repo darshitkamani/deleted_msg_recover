@@ -98,7 +98,7 @@ class AlertNotificationTest {
         assertEquals(0, store.countChangesSince(seenAt))
 
         h.post(1, listOf(a, Msg("B: how are you doing", b.timestamp))) // edit b
-        h.post(1, listOf(Msg("B: how are you doing", b.timestamp))) // a: leading edge, not a deletion
+        h.post(1, listOf(Msg("B: how are you doing", b.timestamp), Msg("C", 3000))) // a scrolls out as C arrives
         assertEquals(1, store.countChangesSince(seenAt))
         assertEquals(0, store.countChangesSince(System.currentTimeMillis() + 1))
     }

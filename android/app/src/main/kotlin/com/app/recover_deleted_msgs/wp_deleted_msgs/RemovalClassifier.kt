@@ -61,12 +61,17 @@ object RemovalClassifier {
         val stillActive = shown.mapNotNull { (row, key) -> key?.let { row to it } }.toMap()
         val gone = results.filter { shown[it] == null }
 
-        // Rows that were in the cancelled notification, deleted ones included: they still took
-        // up a line in it.
-        val inCancelled = results.filter { !capturedAfterCancel(it) }
-        val lone = inCancelled.filter { !it.alreadyDeleted }.singleOrNull()?.takeIf { row ->
-            cancelledShowed == null || cancelledShowed.any { it.first == row.timestamp && it.second == row.text }
+        // Rows that were in the cancelled notification. When we know what it showed, only rows
+        // it actually showed count: the same key can still hold rows from an EARLIER cancel of
+        // it that hasn't been resolved yet (a locked-screen cancel waits UNLOCK_WAIT_MS), and
+        // sweeping those in made a lone deletion look like several messages being read.
+        // Without that, fall back to every row on the key, deleted ones included -- they still
+        // took up a line in it.
+        val inCancelled = results.filter { row ->
+            !capturedAfterCancel(row) &&
+                (cancelledShowed == null || cancelledShowed.any { it.first == row.timestamp && it.second == row.text })
         }
+        val lone = inCancelled.filter { !it.alreadyDeleted }.singleOrNull()
         val deletion = lone?.takeIf {
             isLikelyDeletion(
                 isAppCancel = isAppCancel,

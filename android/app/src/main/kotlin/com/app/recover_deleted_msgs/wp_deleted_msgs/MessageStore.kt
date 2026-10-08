@@ -586,8 +586,13 @@ class MessageStore private constructor(context: Context) :
 
     /** Applies a [ReconcileAction.Edit]: archives the old text and updates the row in place. */
     fun applyEdit(rowId: Long, newText: String, editedAt: Long): ChangeResult? {
+        // One transaction: the history row and the text change land together or not at all.
+        // The text update can fail on the (chat_key, timestamp, text) dedup index, and doing the
+        // history insert on its own left a message showing "Edited" in its chat but missing
+        // from the Deleted tab, which lists edits by edited_at.
+        val db = writableDatabase
+        db.beginTransaction()
         try {
-            val db = writableDatabase
             val row = findRowForChange(db, rowId) ?: return null
 
             db.insertWithOnConflict(
@@ -600,19 +605,23 @@ class MessageStore private constructor(context: Context) :
                 },
                 SQLiteDatabase.CONFLICT_IGNORE
             )
-            db.update(
+            db.updateWithOnConflict(
                 "messages",
                 ContentValues().apply {
                     put("text", newText)
                     put("edited_at", editedAt)
                 },
                 "id = ?",
-                arrayOf(rowId.toString())
+                arrayOf(rowId.toString()),
+                SQLiteDatabase.CONFLICT_ABORT
             )
+            db.setTransactionSuccessful()
             return ChangeResult(row.chatKey, row.chatTitle, row.text, row.sender)
         } catch (e: SQLException) {
             reportNonFatal("applyEdit", e)
             return null
+        } finally {
+            db.endTransaction()
         }
     }
 

@@ -276,6 +276,100 @@ class DeletedMessageFlowTest {
     }
 
     @Test
+    fun `real edit is listed in the deleted tab with its history`() {
+        h.post(1, listOf(a, b))
+        h.post(1, listOf(a, Msg("B: how are you doing", b.timestamp)))
+
+        val store = MessageStore.getInstance(org.robolectric.RuntimeEnvironment.getApplication())
+        val listed = store.getEditedOrDeletedMessages(null)
+        assertEquals(listOf("B: how are you doing"), listed.map { it["text"] })
+        assertEquals(1, (listed.single()["editHistory"] as List<*>).size)
+    }
+
+    @Test
+    fun `edit that collides with an existing message saves nothing at all`() {
+        val store = MessageStore.getInstance(org.robolectric.RuntimeEnvironment.getApplication())
+        h.post(1, listOf(Msg("Dbd", 2000), Msg("Dhd", 2000)))
+        val dbdId = store.getWindow("com.whatsapp|Alice", 7).first { it.text == "Dbd" }.id!!
+
+        assertNull(store.applyEdit(dbdId, "Dhd", 5000)) // "Dhd" at 2000 already exists
+
+        assertTrue(store.getEditedOrDeletedMessages(null).isEmpty())
+        assertTrue(store.getMessages("com.whatsapp|Alice").all { (it["editHistory"] as List<*>).isEmpty() })
+    }
+
+    @Test
+    fun `lone deletion right after an earlier locked-screen cancel of the same chat is caught`() {
+        // Pixel log 10-07 11:12: old unread messages cancelled on the lock screen (resolution
+        // waits for an unlock), re-posted as just "Hello", which the sender then deletes.
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a, b))
+        h.cancel(key)
+        h.screenOff()
+        val again = h.post(1, listOf(c))
+        h.cancel(again)
+        h.advance(4500)
+
+        assertDeleted(c)
+        h.advance(20_000) // the earlier cancel resolves now and must not add anything
+        assertDeleted(c)
+    }
+
+    @Test
+    fun `oldest of two messages deleted while locked is recovered`() {
+        h.post(1, listOf(a))
+        h.post(1, listOf(a, b))
+        h.post(1, listOf(b)) // WhatsApp re-posts without the deleted (older) one
+        h.advance(4500)
+
+        assertDeleted(a)
+    }
+
+    @Test
+    fun `lock-screen cancel counts as opening it when the phone is unlocked by the end of the wait`() {
+        // No USER_PRESENT broadcast this time -- only the keyguard state shows the unlock.
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.screenOnUnlocked()
+        h.advance(21_000)
+
+        assertDeleted()
+    }
+
+    @Test
+    fun `lone deletion arriving as a group-summary cascade is recovered (Pixel log 11_27)`() {
+        val key = h.post(1, listOf(a))
+        h.cancelViaSummary(key)
+        h.advance(4500)
+
+        assertDeleted(a)
+    }
+
+    @Test
+    fun `user swiping the whole group away is not a deletion`() {
+        val key = h.post(1, listOf(a))
+        h.cancelViaSummary(key, summaryReason = REASON_CANCEL)
+        h.advance(4500)
+
+        assertDeleted()
+    }
+
+    @Test
+    fun `unlock seen by polling during the wait counts, even if the phone locks again`() {
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(1000)
+        h.screenOnUnlocked() // no USER_PRESENT broadcast
+        h.advance(1000)
+        h.screenOff()
+        h.advance(20_000)
+
+        assertDeleted()
+    }
+
+    @Test
     fun `swipe dismissal is not a deletion`() {
         val key = h.post(1, listOf(a))
         h.cancel(key, REASON_CANCEL)

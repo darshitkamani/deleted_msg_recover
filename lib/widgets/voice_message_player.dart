@@ -67,16 +67,38 @@ class _VoiceMessagePlayerState extends State<VoiceMessagePlayer> {
     if (_preparing) return;
     _preparing = true;
     try {
+      // Waveform extraction is started separately below: with
+      // shouldExtractWaveform: true the plugin fires it off un-awaited with
+      // no error handler, so a native failure (seen on Samsung: an NPE
+      // unboxing a null Long before decoding starts) escapes as a fatal
+      // uncaught PlatformException instead of reaching this catch.
       await _controller.preparePlayer(
         path: widget.path,
-        shouldExtractWaveform: true,
-        noOfSamples: (waveWidth / _waveSpacing).floor().clamp(10, 300),
+        shouldExtractWaveform: false,
       );
       await _controller.setFinishMode(finishMode: FinishMode.pause);
       if (mounted) setState(() => _ready = true);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
+      return;
     }
+    unawaited(_extractWaveform(waveWidth));
+  }
+
+  /// Fills the waveform once playback is ready. AudioFileWaveforms picks the
+  /// samples up from the extraction stream as they arrive; if extraction
+  /// fails the note still plays, just over an empty waveform.
+  Future<void> _extractWaveform(double waveWidth) async {
+    final extraction = _controller.waveformExtraction;
+    try {
+      final data = await extraction.extractWaveformData(
+        path: widget.path,
+        noOfSamples: (waveWidth / _waveSpacing).floor().clamp(10, 300),
+      );
+      extraction.waveformData
+        ..clear()
+        ..addAll(data);
+    } catch (_) {}
   }
 
   @override

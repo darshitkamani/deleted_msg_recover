@@ -336,4 +336,42 @@ class MessageReconcilerTest {
         assertEquals(3, actions.size)
         assertEquals("b", (actions[1] as ReconcileAction.DeletedWithPlaceholder).previous.text)
     }
+
+    @Test
+    fun `oldest message vanishing from a re-post that adds nothing new is a delete (Pixel log 11_20)`() {
+        val heiil = WindowEntry(224, "Heiil", id = 1)
+        val hello = WindowEntry(228, "Hello", id = 2)
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(heiil, hello),
+            incoming = listOf(WindowEntry(228, "Hello")),
+            previousShown = listOf(224L to "Heiil", 228L to "Hello")
+        )
+
+        assertEquals(2, actions.size)
+        assertEquals("Heiil", (actions[1] as ReconcileAction.DeletedSilently).previous.text)
+    }
+
+    @Test
+    fun `oldest message pushed out by a new one is still scroll-out`() {
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(WindowEntry(1, "a"), WindowEntry(2, "b")),
+            incoming = listOf(WindowEntry(2, "b"), WindowEntry(3, "c")),
+            previousShown = listOf(1L to "a", 2L to "b")
+        )
+
+        assertTrue(actions.none { it is ReconcileAction.DeletedSilently })
+    }
+
+    @Test
+    fun `older read message not in the previous post is never a delete`() {
+        // "old" was read earlier (not in the notification's previous post), so its absence
+        // says nothing.
+        val actions = MessageReconciler.reconcile(
+            stored = listOf(WindowEntry(1, "old"), WindowEntry(5, "x")),
+            incoming = listOf(WindowEntry(5, "x")),
+            previousShown = listOf(5L to "x")
+        )
+
+        assertTrue(actions.none { it is ReconcileAction.DeletedSilently })
+    }
 }
