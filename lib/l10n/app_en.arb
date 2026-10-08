@@ -205,6 +205,10 @@
   "noReadReceiptsExplanation": "Viewing this chat here doesn't send a read receipt (blue tick) on WhatsApp.",
   "editedBadge": "Edited",
   "deletedMessageLabel": "This message was deleted",
+  "possiblyDeletedMessageLabel": "Possibly deleted",
+  "@possiblyDeletedMessageLabel": {
+    "description": "Tag on a message that may have been deleted: its WhatsApp notification disappeared while the user wasn't reading it, which can also mean it was read on another device."
+  },
   "editedToLabel": "Edited to",
   "editedToExplanation": "This message was later edited to: \"{newText}\"",
   "@editedToExplanation": {

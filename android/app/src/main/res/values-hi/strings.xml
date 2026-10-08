@@ -5,6 +5,8 @@
     <string name="alert_deleted_title">%1$s ने एक मैसेज डिलीट किया</string>
     <string name="alert_edited_title">%1$s ने एक मैसेज एडिट किया</string>
     <string name="alert_deleted_title_group">%1$s ने %2$s में एक मैसेज डिलीट किया</string>
+    <string name="alert_possibly_deleted_title">%1$s ने शायद एक मैसेज डिलीट किया</string>
+    <string name="alert_possibly_deleted_title_group">%1$s ने %2$s में शायद एक मैसेज डिलीट किया</string>
     <string name="alert_edited_title_group">%1$s ने %2$s में एक मैसेज एडिट किया</string>
     <string name="alert_edited_body">पहले: %1$s\nअब: %2$s</string>
     <string name="alert_message_fallback">मैसेज</string>

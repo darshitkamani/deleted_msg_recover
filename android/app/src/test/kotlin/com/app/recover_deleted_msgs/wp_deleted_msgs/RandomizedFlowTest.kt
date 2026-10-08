@@ -53,9 +53,8 @@ class RandomizedFlowTest {
 
         /**
          * The oldest of several messages vanishing silently looks exactly like scrolling out or
-         * being read (an information limit documented in MessageReconciler), and it also leaves
-         * a stale unread row behind that hides later lone-cancel deletions. Once that has
-         * happened in a window, later deletions are allowed but not required to be caught.
+         * being read (an information limit documented in MessageReconciler). Once that has
+         * happened in a window, later silent deletions are allowed but not required to be caught.
          */
         fun undetectable() { tainted = true }
 
@@ -145,6 +144,8 @@ class RandomizedFlowTest {
                 }
 
                 // The user reads everything on the phone: WhatsApp cancels, nothing is deleted.
+                // (Read on a linked device while the phone is off would be a POSSIBLE deletion,
+                // by design -- covered in DeletedMessageFlowTest, not here.)
                 3 -> if (m.liveKey != null) {
                     h.screenOnUnlocked()
                     h.cancel(m.liveKey!!)
@@ -173,12 +174,13 @@ class RandomizedFlowTest {
                     val i = m.window.indexOf(victim)
                     m.everDeleted += victim.text
                     if (m.window.size == 1) {
-                        // Nothing left to re-post: WhatsApp cancels the notification.
+                        // Nothing left to re-post: WhatsApp removes the notification -- either
+                        // directly or by cancelling its group summary. Caught as possible.
                         m.window.removeAt(i)
-                        h.cancel(m.liveKey!!)
+                        if (rnd.nextBoolean()) h.cancelViaSummary(m.liveKey!!) else h.cancel(m.liveKey!!)
                         m.liveKey = null
-                        if (!m.tainted) m.mustBeFlagged += victim.text
-                        covered("delete-lone"); covered(if (m.tainted) "deletion-allowed-only" else "deletion-required")
+                        m.mustBeFlagged += victim.text
+                        covered("delete-lone"); covered("deletion-required")
                         settleAndCheck("delete-lone ${victim.text}")
                     } else {
                         val anchored = m.window.take(i).any { !m.isPlaceholder(it) }

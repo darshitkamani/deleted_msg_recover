@@ -53,9 +53,9 @@ class RecoverApp extends StatelessWidget {
                 valueListenable: AdsService.instance.showAdMetricsLab,
                 builder: (context, showAdMetricsLab, _) =>
                     PreloadGoogleAds.instance.showAdCounter(
-                  showCounter: showAdMetricsLab,
-                  showInRelease: showAdMetricsLab,
-                ),
+                      showCounter: showAdMetricsLab || kDebugMode,
+                      showInRelease: showAdMetricsLab,
+                    ),
               ),
               // Meta Ad Lab (Meta stats + AdMob Ad Inspector): always in debug
               // builds, and in release only behind the same remote flag.
@@ -63,8 +63,8 @@ class RecoverApp extends StatelessWidget {
                 valueListenable: AdsService.instance.showAdMetricsLab,
                 builder: (context, showAdMetricsLab, _) =>
                     kDebugMode || showAdMetricsLab
-                        ? const MetaAdLab()
-                        : const SizedBox.shrink(),
+                    ? const MetaAdLab()
+                    : const SizedBox.shrink(),
               ),
             ],
           ),

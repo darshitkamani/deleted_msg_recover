@@ -2,6 +2,11 @@ import 'media_type.dart';
 
 enum MessageStatus { active, deleted }
 
+/// `deleteSource` of a possible deletion -- a chat's only message whose WhatsApp notification
+/// went away while the user couldn't have been reading it, which a read on WhatsApp Web also
+/// looks like (MessageStore.SOURCE_POSSIBLE on the Android side). Shown as "possibly deleted".
+const possibleDeleteSource = 'POSSIBLE';
+
 MessageStatus _statusFromString(String? raw) =>
     raw == 'deleted' ? MessageStatus.deleted : MessageStatus.active;
 
@@ -34,6 +39,9 @@ class Message {
   final int? deletedAt;
   final List<MessageEdit> editHistory;
 
+  /// Which detector flagged the deletion, see [EditedDeletedMessage.deleteSource].
+  final String? deleteSource;
+
   const Message({
     required this.id,
     required this.sender,
@@ -47,10 +55,13 @@ class Message {
     this.editedAt,
     this.deletedAt,
     this.editHistory = const [],
+    this.deleteSource,
   });
 
   bool get hasMedia => mediaPath != null && mediaPath!.isNotEmpty;
   bool get isDeleted => status == MessageStatus.deleted;
+  bool get isPossiblyDeleted =>
+      isDeleted && deleteSource == possibleDeleteSource;
   bool get isEdited => editHistory.isNotEmpty;
 
   /// The earliest text this app ever captured for this message. If it was
@@ -75,6 +86,7 @@ class Message {
       editHistory: ((map['editHistory'] as List?) ?? const [])
           .map((e) => MessageEdit.fromMap(e as Map<dynamic, dynamic>))
           .toList(),
+      deleteSource: map['deleteSource'] as String?,
     );
   }
 }

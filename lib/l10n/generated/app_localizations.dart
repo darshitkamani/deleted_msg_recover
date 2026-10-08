@@ -1088,6 +1088,12 @@ abstract class AppLocalizations {
   /// **'This message was deleted'**
   String get deletedMessageLabel;
 
+  /// Tag on a message that may have been deleted: its WhatsApp notification disappeared while the user wasn't reading it, which can also mean it was read on another device.
+  ///
+  /// In en, this message translates to:
+  /// **'Possibly deleted'**
+  String get possiblyDeletedMessageLabel;
+
   /// No description provided for @editedToLabel.
   ///
   /// In en, this message translates to:

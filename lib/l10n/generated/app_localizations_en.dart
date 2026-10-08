@@ -554,6 +554,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deletedMessageLabel => 'This message was deleted';
 
   @override
+  String get possiblyDeletedMessageLabel => 'Possibly deleted';
+
+  @override
   String get editedToLabel => 'Edited to';
 
   @override

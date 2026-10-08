@@ -26,12 +26,22 @@ object AlertNotifier {
     const val EXTRA_OPEN_TARGET = "open_target"
     const val TARGET_DELETED = "deleted"
 
-    fun notifyDeleted(context: Context, rowId: Long, chatTitle: String, sender: String?, text: String?) {
+    /** [possible]: a possible deletion (MessageStore.SOURCE_POSSIBLE), worded as "may have". */
+    fun notifyDeleted(
+        context: Context,
+        rowId: Long,
+        chatTitle: String,
+        sender: String?,
+        text: String?,
+        possible: Boolean = false
+    ) {
         val body = text?.takeIf { it.isNotBlank() } ?: context.getString(R.string.alert_message_fallback)
+        val single = if (possible) R.string.alert_possibly_deleted_title else R.string.alert_deleted_title
+        val group = if (possible) R.string.alert_possibly_deleted_title_group else R.string.alert_deleted_title_group
         post(
             context,
             id = notificationId(rowId, edited = false),
-            title = title(context, R.string.alert_deleted_title, R.string.alert_deleted_title_group, chatTitle, sender),
+            title = title(context, single, group, chatTitle, sender),
             body = body,
             bigText = body
         )

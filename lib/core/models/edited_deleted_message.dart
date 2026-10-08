@@ -22,8 +22,9 @@ class EditedDeletedMessage {
   final MediaType mediaType;
   final String? mediaMime;
 
-  /// Which detector flagged the deletion (PLACEHOLDER, SILENT or CANCELLED)
-  /// and what it saw -- diagnostics for tracing a wrongly flagged message.
+  /// Which detector flagged the deletion (PLACEHOLDER or SILENT, [possibleDeleteSource] for a
+  /// possible one, or CANCELLED for ones recorded by older versions) and what it saw --
+  /// diagnostics for tracing a wrongly flagged message.
   final String? deleteSource;
   final String? deleteDetail;
 
@@ -47,6 +48,8 @@ class EditedDeletedMessage {
   });
 
   bool get isDeleted => status == MessageStatus.deleted;
+  bool get isPossiblyDeleted =>
+      isDeleted && deleteSource == possibleDeleteSource;
   bool get isEdited => editHistory.isNotEmpty;
   bool get hasMedia => mediaPath != null && mediaPath!.isNotEmpty;
 

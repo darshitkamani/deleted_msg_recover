@@ -215,7 +215,7 @@ object MessageReconciler {
      * Compared after stripping everything that isn't a letter, digit or space, so a leading
      * emoji ("🚫 This message was deleted") or trailing punctuation doesn't stop it matching.
      */
-    private fun isDeletionPlaceholder(text: String): Boolean {
+    fun isDeletionPlaceholder(text: String): Boolean {
         val normalized = text.lowercase()
             .filter { it.isLetterOrDigit() || it.isWhitespace() }
             .trim()

@@ -1,5 +1,6 @@
 import 'package:preload_google_ads/preload_google_ads.dart';
 
+import 'ad_shimmer.dart';
 import 'ads_service.dart';
 import 'meta_ad_stats.dart';
 import 'meta_ads_bridge.dart';
@@ -80,7 +81,12 @@ class _MetaFirstNativeAdState extends State<MetaFirstNativeAd> {
         );
       case _Source.pending:
         // Held open at the ad's size so content doesn't jump when it lands.
-        return _shell(context, child: const SizedBox.expand());
+        return _shell(
+          context,
+          child: AdShimmer(
+            isDark: NativeADStyle.instance.isDarkMode(context: context),
+          ),
+        );
       case _Source.meta:
         return _shell(context, child: _metaView(context));
     }

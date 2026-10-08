@@ -1,109 +1,48 @@
 package com.app.recover_deleted_msgs.wp_deleted_msgs
 
 /**
- * Decides whether WhatsApp cancelling a conversation notification means the message in it was
- * deleted by its sender.
- *
- * [MessageReconciler] can't see this case: it only runs when a notification is posted. When a
- * chat has several unread messages and one is deleted, WhatsApp re-posts the notification
- * without it, which the reconciler catches. When the deleted message is the only one, there's
- * nothing left to re-post, so WhatsApp just cancels the notification (`APP_CANCEL`), with no
- * placeholder text at all.
- *
- * The catch is that WhatsApp cancels with the very same reason when the message is READ --
- * opened from the launcher, or read on WhatsApp Web / another device -- so the reason alone
- * can't be trusted. Every condition below exists to keep a read message from being reported
- * as deleted, since mislabelling a message that still exists is worse than missing one.
+ * Sorts the messages of a removed WhatsApp notification into those still on screen and those
+ * that are gone, and picks out a possible deletion ([loneDeletion]). Otherwise "gone" only
+ * means "no longer shown in a notification" -- see NotificationListener.onNotificationRemoved.
  */
 object RemovalClassifier {
 
     /**
-     * What a cancelled notification's rows turned out to be.
      * [stillActive] maps each row that is still on screen to the key of the notification
-     * showing it -- those were re-issued, not removed. [gone] is the rest. [deletion] is the
-     * one message to record as deleted, if the cancel amounts to that.
+     * showing it -- those were re-issued, not removed. [gone] is the rest.
      */
     data class RemovalDecision(
         val gone: List<RemovalResult>,
-        val stillActive: Map<RemovalResult, String>,
-        val deletion: RemovalResult?
+        val stillActive: Map<RemovalResult, String>
     )
 
     /**
-     * Turns the rows [MessageStore.markRemoved] swept up for a cancelled key into a decision.
-     *
-     * WhatsApp often re-posts a chat under the very same key, so a key can hold rows from two
-     * moments: the notification that was cancelled, and messages that arrived after it. Only the
-     * former count toward "how many messages did the cancelled notification hold" -- otherwise a
-     * message deleted just before a new one arrives would look like one of two and never be
-     * flagged. Whether a row was in the cancelled notification is judged by when we captured it,
-     * not by its own send timestamp, which the sender's clock can skew.
-     *
-     * @param capturedAfterCancel true for a row we first saw after the cancel happened. An
-     *   unknown capture time must answer false: counting a row that was in fact there keeps a
-     *   lone-message deletion from being inferred out of several.
+     * @param results the rows [MessageStore.markRemoved] swept up for the removed key.
      * @param shownIn key of the active notification still showing the row's message, or null.
-     * @param cancelledShowed the messages (timestamp to text) the cancelled notification itself
-     *   was displaying, or null if it couldn't be read. This is the ground truth for "was it a
-     *   lone message": rows alone can't tell, because a message already flagged deleted moments
-     *   earlier (WhatsApp's "This message was deleted" still sitting beside it) isn't a live row,
-     *   and skipping it made the one survivor look like a lone deletion.
      */
     fun resolve(
         results: List<RemovalResult>,
-        isAppCancel: Boolean,
-        couldBeReadingOnThisPhone: Boolean,
-        capturedAfterCancel: (RemovalResult) -> Boolean,
-        shownIn: (RemovalResult) -> String?,
-        cancelledShowed: List<Pair<Long, String>>? = null
+        shownIn: (RemovalResult) -> String?
     ): RemovalDecision {
         val shown = results.associateWith(shownIn)
         val stillActive = shown.mapNotNull { (row, key) -> key?.let { row to it } }.toMap()
         val gone = results.filter { shown[it] == null }
-
-        // Rows that were in the cancelled notification. When we know what it showed, only rows
-        // it actually showed count: the same key can still hold rows from an EARLIER cancel of
-        // it that hasn't been resolved yet (a locked-screen cancel waits UNLOCK_WAIT_MS), and
-        // sweeping those in made a lone deletion look like several messages being read.
-        // Without that, fall back to every row on the key, deleted ones included -- they still
-        // took up a line in it.
-        val inCancelled = results.filter { row ->
-            !capturedAfterCancel(row) &&
-                (cancelledShowed == null || cancelledShowed.any { it.first == row.timestamp && it.second == row.text })
-        }
-        val lone = inCancelled.filter { !it.alreadyDeleted }.singleOrNull()
-        val deletion = lone?.takeIf {
-            isLikelyDeletion(
-                isAppCancel = isAppCancel,
-                couldBeReadingOnThisPhone = couldBeReadingOnThisPhone,
-                unreadMessagesInNotification = cancelledShowed?.size ?: inCancelled.size,
-                stillShownInAnotherNotification = shown[it] != null
-            )
-        }
-        return RemovalDecision(gone, stillActive, deletion)
+        return RemovalDecision(gone, stillActive)
     }
 
     /**
-     * @param isAppCancel the removal reason was the app cancelling its own notification.
-     *   Swipe-dismiss and tap are the user's doing, never a deletion.
-     * @param couldBeReadingOnThisPhone the screen was on and unlocked with this app NOT in the
-     *   foreground -- i.e. WhatsApp itself might have been open. If the screen is off/locked, or
-     *   this app is what's on screen, the user can't have been reading it in WhatsApp here.
-     * @param unreadMessagesInNotification how many messages the cancelled notification held,
-     *   counting any "this message was deleted" placeholders still shown in it. Only a lone message is treated as a deletion: cancelling several at
-     *   once is overwhelmingly a read/clear, and one deletion among several arrives as a
-     *   re-post instead.
-     * @param stillShownInAnotherNotification the message is still visible in some active
-     *   notification -- WhatsApp re-issued it under a new key, so nothing was deleted.
+     * The message a removal possibly deleted, or null. Only called for a removal by WhatsApp while
+     * the user couldn't be reading it. Only a notification that showed exactly one message
+     * qualifies: with several, deleting one is a re-post without it (MessageReconciler's job), so
+     * their all going at once is a read or clear. The row must be that message, gone from every
+     * notification, and not already recorded as deleted.
+     *
+     * @param gone rows no longer shown anywhere (see [resolve]).
+     * @param showed what the removed notification showed at its last post (timestamp to text).
      */
-    fun isLikelyDeletion(
-        isAppCancel: Boolean,
-        couldBeReadingOnThisPhone: Boolean,
-        unreadMessagesInNotification: Int,
-        stillShownInAnotherNotification: Boolean
-    ): Boolean =
-            isAppCancel &&
-            !couldBeReadingOnThisPhone &&
-            unreadMessagesInNotification == 1 &&
-            !stillShownInAnotherNotification
+    fun loneDeletion(gone: List<RemovalResult>, showed: List<Pair<Long, String>>): RemovalResult? {
+        val (timestamp, text) = showed.singleOrNull() ?: return null
+        if (MessageReconciler.isDeletionPlaceholder(text)) return null
+        return gone.firstOrNull { it.timestamp == timestamp && it.text == text && !it.alreadyDeleted }
+    }
 }

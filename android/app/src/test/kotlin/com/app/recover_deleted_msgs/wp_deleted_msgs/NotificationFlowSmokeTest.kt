@@ -34,11 +34,20 @@ class NotificationFlowSmokeTest {
     }
 
     @Test
-    fun `lone message cancelled by WhatsApp with the screen off is recorded as deleted`() {
+    fun `message replaced by WhatsApp's deleted placeholder is recorded as deleted`() {
+        h.post(1, listOf(NotificationFlowHarness.Msg("secret", 1000)))
+        h.post(1, listOf(NotificationFlowHarness.Msg("This message was deleted", 1000)))
+        h.advance(4500)
+
+        assertTrue(h.message("secret").isDeleted)
+    }
+
+    @Test
+    fun `lone message removed by WhatsApp with the screen off is recorded as possibly deleted`() {
         val key = h.post(1, listOf(NotificationFlowHarness.Msg("secret", 1000)))
         h.cancel(key)
         h.advance(4500)
 
-        assertTrue(h.message("secret").isDeleted)
+        assertTrue(h.message("secret").isPossiblyDeleted)
     }
 }

@@ -72,6 +72,14 @@ class MessageStore private constructor(context: Context) :
         const val STATUS_ACTIVE = "active"
         const val STATUS_DELETED = "deleted"
 
+        /**
+         * delete_source of a POSSIBLE deletion: a chat's only message whose notification
+         * WhatsApp removed while the user couldn't be reading it -- which a read on WhatsApp Web
+         * also looks like. Shown as "possibly deleted" rather than "deleted"; see
+         * NotificationListener.onNotificationRemoved.
+         */
+        const val SOURCE_POSSIBLE = "POSSIBLE"
+
         // Messages (and their recovered media) older than this are pruned once per process --
         // neither the messages table nor recovered_media/ had any retention at all before, so
         // both grew forever across a long-lived install, and that unbounded growth is what

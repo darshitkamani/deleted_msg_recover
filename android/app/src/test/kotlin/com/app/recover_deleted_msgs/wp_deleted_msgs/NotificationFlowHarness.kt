@@ -40,9 +40,11 @@ data class StoredMessage(
     val text: String,
     val status: String,
     val removedAt: Long?,
-    val notifKey: String
+    val notifKey: String,
+    val deleteSource: String? = null
 ) {
     val isDeleted get() = status == MessageStore.STATUS_DELETED
+    val isPossiblyDeleted get() = isDeleted && deleteSource == MessageStore.SOURCE_POSSIBLE
 }
 
 /**
@@ -62,7 +64,6 @@ class NotificationFlowHarness {
             .get(service) as ExecutorService
 
     private val live = linkedMapOf<String, StatusBarNotification>()
-    private val sender = Person.Builder().setName("Alice").build()
 
     /** Everything the listener told the Flutter side, in order (what the UI would have heard). */
     val events = mutableListOf<Map<String, Any?>>()
@@ -136,6 +137,9 @@ class NotificationFlowHarness {
      */
     fun post(id: Int, messages: List<Msg>, chat: String = "Alice"): String {
         val style = NotificationCompat.MessagingStyle(Person.Builder().setName("Me").build())
+        // A one-to-one chat: every message is from the contact the chat is named after, which
+        // is also where the listener takes the chat's title from.
+        val sender = Person.Builder().setName(chat).build()
         messages.forEach { style.addMessage(it.text, it.timestamp, sender) }
         val notification = NotificationCompat.Builder(app, "chan")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -186,12 +190,12 @@ class NotificationFlowHarness {
     fun messages(): List<StoredMessage> {
         val out = mutableListOf<StoredMessage>()
         MessageStore.getInstance(app).readableDatabase.rawQuery(
-            "SELECT text, status, removed_at, notif_key FROM messages ORDER BY timestamp, id", null
+            "SELECT text, status, removed_at, notif_key, delete_source FROM messages ORDER BY timestamp, id", null
         ).use { c ->
             while (c.moveToNext()) {
                 out += StoredMessage(
                     c.getString(0), c.getString(1),
-                    if (c.isNull(2)) null else c.getLong(2), c.getString(3)
+                    if (c.isNull(2)) null else c.getLong(2), c.getString(3), c.getString(4)
                 )
             }
         }

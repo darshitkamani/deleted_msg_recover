@@ -260,11 +260,7 @@ class MessageBubble extends StatelessWidget {
               if (message.isDeleted)
                 Padding(
                   padding: const EdgeInsets.only(left: 4, bottom: 2),
-                  child: _StatusTag(
-                    icon: Icons.delete_outline_rounded,
-                    label: AppLocalizations.of(context).deletedMessageLabel,
-                    color: theme.colorScheme.error,
-                  ),
+                  child: _deletedTag(context, message),
                 ),
               Image.file(
                 File(message.mediaPath!),
@@ -355,11 +351,7 @@ class MessageBubble extends StatelessWidget {
                 if (message.isDeleted)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: _StatusTag(
-                      icon: Icons.delete_outline_rounded,
-                      label: AppLocalizations.of(context).deletedMessageLabel,
-                      color: theme.colorScheme.error,
-                    ),
+                    child: _deletedTag(context, message),
                   )
                 else if (message.isEdited)
                   Padding(
@@ -572,6 +564,23 @@ IconData _documentIcon(String nameOrPath) {
 
 /// Small icon+label row flagging a message as deleted or edited, shown above
 /// its recovered content.
+/// The "deleted" / "possibly deleted" tag shown on a deleted message.
+Widget _deletedTag(BuildContext context, Message message) {
+  final scheme = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context);
+  return message.isPossiblyDeleted
+      ? _StatusTag(
+          icon: Icons.help_outline_rounded,
+          label: l10n.possiblyDeletedMessageLabel,
+          color: scheme.tertiary,
+        )
+      : _StatusTag(
+          icon: Icons.delete_outline_rounded,
+          label: l10n.deletedMessageLabel,
+          color: scheme.error,
+        );
+}
+
 class _StatusTag extends StatelessWidget {
   final IconData icon;
   final String label;

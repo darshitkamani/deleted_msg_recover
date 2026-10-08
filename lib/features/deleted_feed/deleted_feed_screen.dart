@@ -338,7 +338,13 @@ class _DeletedFeedRow extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              if (item.isDeleted)
+              if (item.isPossiblyDeleted)
+                _StatusTag(
+                  icon: Icons.help_outline_rounded,
+                  label: l10n.possiblyDeletedMessageLabel,
+                  color: theme.colorScheme.tertiary,
+                )
+              else if (item.isDeleted)
                 _StatusTag(
                   icon: Icons.delete_outline_rounded,
                   label: l10n.deletedMessageLabel,

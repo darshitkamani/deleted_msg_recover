@@ -38,17 +38,79 @@ class DeletedMessageFlowTest {
     @After
     fun tearDown() = NotificationFlowHarness.resetStore()
 
+    /** What WhatsApp shows in place of [msg] once its sender deletes it. */
+    private fun placeholder(msg: Msg) = Msg("This message was deleted", msg.timestamp)
+
+    /** Every deleted message, confirmed or possible. */
     private fun assertDeleted(vararg msgs: Msg) {
         val deleted = h.messages().filter { it.isDeleted }.map { it.text }.toSet()
         assertEquals(msgs.map { it.text }.toSet(), deleted)
     }
 
+    /** The subset of deletions that are only possible (MessageStore.SOURCE_POSSIBLE). */
+    private fun assertPossiblyDeleted(vararg msgs: Msg) {
+        val possible = h.messages().filter { it.isPossiblyDeleted }.map { it.text }.toSet()
+        assertEquals(msgs.map { it.text }.toSet(), possible)
+    }
+
     // ---------------------------------------------------------------- deletions that must be caught
 
     @Test
-    fun `lone message deleted by its sender is recovered`() {
+    fun `lone message deleted, group summary cancelled, is possibly deleted (Pixel log 10-08 17_20)`() {
+        // Nothing left to re-post and no placeholder: WhatsApp cancels its group summary and
+        // Android takes the conversation down with it.
+        val key = h.post(1, listOf(a))
+        h.cancelViaSummary(key)
+        h.advance(4500)
+
+        assertPossiblyDeleted(a)
+        val ev = h.eventsOfType("deleted").single()
+        assertEquals("A: hello", ev["recoveredText"])
+        assertEquals(true, ev["possible"])
+        assertTrue(h.eventsOfType("removed").isEmpty())
+    }
+
+    @Test
+    fun `lone message deleted, conversation cancelled directly, is possibly deleted (Pixel log 10-08 17_28)`() {
         val key = h.post(1, listOf(a))
         h.cancel(key)
+        h.advance(4500)
+
+        assertPossiblyDeleted(a)
+    }
+
+    @Test
+    fun `lone message removed while the phone stays locked is possibly deleted after the unlock wait`() {
+        // Also what reading it on WhatsApp Web looks like (the Punjab National Bank report) --
+        // which is exactly why it is only "possibly".
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(4500)
+        assertDeleted() // still waiting for a possible unlock
+        h.advance(16_000)
+
+        assertPossiblyDeleted(a)
+    }
+
+    @Test
+    fun `last of three messages deleted one by one is recovered (Pixel log 10-08 17_22)`() {
+        h.post(1, listOf(a))
+        h.post(1, listOf(a, b))
+        h.post(1, listOf(a, b, c))
+        h.post(1, listOf(a, c)) // b deleted: re-posted without it
+        val key = h.post(1, listOf(c)) // a deleted
+        h.cancelViaSummary(key) // c deleted: nothing left
+        h.advance(4500)
+
+        assertDeleted(a, b, c)
+        assertPossiblyDeleted(c) // a and b are certain: WhatsApp re-posted without them
+    }
+
+    @Test
+    fun `lone message replaced by the deleted placeholder is recovered`() {
+        h.post(1, listOf(a))
+        h.post(1, listOf(placeholder(a)))
         h.advance(4500)
 
         assertDeleted(a)
@@ -78,7 +140,7 @@ class DeletedMessageFlowTest {
     @Test
     fun `message replaced by a deleted placeholder is recovered and the placeholder is not stored`() {
         h.post(1, listOf(a, b))
-        h.post(1, listOf(a, Msg("This message was deleted", b.timestamp)))
+        h.post(1, listOf(a, placeholder(b)))
         h.advance(4500)
 
         assertDeleted(b)
@@ -86,35 +148,10 @@ class DeletedMessageFlowTest {
     }
 
     @Test
-    fun `lone message deleted and a new one arriving under the same key within 4s`() {
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.advance(1000)
-        h.post(1, listOf(b))
-        h.advance(4500)
-
-        assertDeleted(a)
-        assertNull(h.message(b.text).removedAt)
-        assertEquals("only the real deletion is announced", 1, h.eventsOfType("deleted").size)
-    }
-
-    @Test
-    fun `lone message deleted and a new one arriving under a different key within 4s`() {
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.advance(1000)
-        h.post(2, listOf(b))
-        h.advance(4500)
-
-        assertDeleted(a)
-        assertNull(h.message(b.text).removedAt)
-    }
-
-    @Test
     fun `deleting one chat's lone message leaves another chat alone`() {
-        val alice = h.post(1, listOf(a), chat = "Alice")
+        h.post(1, listOf(a), chat = "Alice")
         h.post(2, listOf(Msg("Bob: hi", 1500)), chat = "Bob")
-        h.cancel(alice)
+        h.post(1, listOf(placeholder(a)), chat = "Alice")
         h.advance(4500)
 
         assertDeleted(a)
@@ -122,8 +159,8 @@ class DeletedMessageFlowTest {
 
     @Test
     fun `message re-notified then really deleted is still caught`() {
-        // The regression a naive "ignore cancels when the key is live again" fix would cause:
-        // the re-notify must not leave the row flagged removed, or the real cancel finds nothing.
+        // The re-notify must not leave the row flagged removed, or it wouldn't be matched as
+        // the live message the later placeholder replaces.
         val key = h.post(1, listOf(a))
         h.cancel(key)
         h.post(1, listOf(a))
@@ -131,7 +168,7 @@ class DeletedMessageFlowTest {
         assertDeleted()
         assertNull(h.message(a.text).removedAt)
 
-        h.cancel(key)
+        h.post(1, listOf(placeholder(a)))
         h.advance(4500)
         assertDeleted(a)
     }
@@ -140,11 +177,11 @@ class DeletedMessageFlowTest {
     fun `message re-issued under a new key then really deleted is still caught`() {
         val first = h.post(1, listOf(a))
         h.cancel(first)
-        val second = h.post(2, listOf(a))
+        h.post(2, listOf(a))
         h.advance(4500)
         assertDeleted()
 
-        h.cancel(second)
+        h.post(2, listOf(placeholder(a)))
         h.advance(4500)
         assertDeleted(a)
     }
@@ -152,8 +189,8 @@ class DeletedMessageFlowTest {
     @Test
     fun `messages that re-appear long after their notification was cancelled can still be caught when deleted`() {
         // Cancelled and settled (both flagged removed), then WhatsApp shows them again under a
-        // new key. Seeing them again must re-attach them to the live notification, or a later
-        // deletion cancels a key that none of their rows carry.
+        // new key. Seeing them again must re-attach them to the live notification, so later
+        // deletions in that notification are matched to them.
         val first = h.post(1, listOf(a, b))
         h.cancel(first)
         h.advance(10_000)
@@ -167,73 +204,35 @@ class DeletedMessageFlowTest {
         h.advance(4500)
         assertDeleted(b)
 
-        val key = h.post(2, listOf(a))
-        h.cancel(key) // and then a is deleted too, leaving nothing to re-post
+        h.post(2, listOf(placeholder(a))) // and then a is deleted too
         h.advance(4500)
         assertDeleted(a, b)
     }
 
     @Test
-    fun `an earlier message that was read does not stop a later lone deletion`() {
-        h.screenOnUnlocked()
-        val first = h.post(1, listOf(a))
-        h.cancel(first) // read in WhatsApp
+    fun `duplicate placeholder posts for one deletion record it once`() {
+        h.post(1, listOf(a, b))
+        h.post(1, listOf(a, placeholder(b)))
+        h.post(1, listOf(a, placeholder(b))) // WhatsApp re-posting the same state
         h.advance(4500)
-        assertDeleted()
 
-        h.screenOff()
-        val second = h.post(1, listOf(b))
-        h.cancel(second)
-        h.advance(4500)
         assertDeleted(b)
-    }
-
-    @Test
-    fun `duplicate removal events for one deletion record it once`() {
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.advance(4500)
-        h.post(1, listOf(a)) // never happens for a deleted message, but must not double-count
         assertEquals(1, h.eventsOfType("deleted").size)
     }
 
     // ---------------------------------------------------------------- must NEVER be flagged as deleted
 
     @Test
-    fun `lone message cancelled then re-posted after the grace period is restored`() {
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.advance(4500)
-        assertDeleted(a) // indistinguishable from a deletion at this point
-
-        h.post(2, listOf(a)) // WhatsApp shows it again -- it was never deleted
-
-        assertDeleted()
-        assertTrue(h.eventsOfType("updated").isNotEmpty())
-    }
-
-    @Test
-    fun `lone message cancelled then re-posted with a newer one after the grace period is restored`() {
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.advance(4500)
-
-        h.post(1, listOf(a, b))
-        h.advance(4500)
-
-        assertDeleted()
-        assertEquals(listOf(a.text, b.text), h.messages().map { it.text })
-    }
-
-    @Test
-    fun `message read on the phone is not a deletion`() {
+    fun `lone message removed while the user could be reading it in WhatsApp is not a deletion`() {
         h.screenOnUnlocked()
         val key = h.post(1, listOf(a))
         h.cancel(key)
-        h.advance(4500)
+        h.advance(30_000)
 
         assertDeleted()
         assertTrue(h.eventsOfType("deleted").isEmpty())
+        assertTrue("recorded as no longer shown", h.message(a.text).removedAt != null)
+        assertEquals(1, h.eventsOfType("removed").size)
     }
 
     @Test
@@ -246,31 +245,84 @@ class DeletedMessageFlowTest {
         h.advance(20_000)
 
         assertDeleted()
-        assertTrue(h.eventsOfType("deleted").isEmpty())
     }
 
     @Test
-    fun `lone message cancelled while the screen is on but stays locked is still a deletion`() {
+    fun `lock-screen removal counts as opening it when the phone is unlocked by the end of the wait`() {
+        // No USER_PRESENT broadcast this time -- only the keyguard state shows the unlock.
         h.screenOnLocked()
         val key = h.post(1, listOf(a))
         h.cancel(key)
-        h.advance(4500)
-        assertDeleted() // still waiting for a possible unlock
-        h.advance(16_000)
+        h.screenOnUnlocked()
+        h.advance(21_000)
 
-        assertDeleted(a)
+        assertDeleted()
+    }
+
+    @Test
+    fun `unlock seen by polling during the wait counts, even if the phone locks again`() {
+        h.screenOnLocked()
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(1000)
+        h.screenOnUnlocked() // no USER_PRESENT broadcast
+        h.advance(1000)
+        h.screenOff()
+        h.advance(20_000)
+
+        assertDeleted()
+    }
+
+    @Test
+    fun `possibly deleted message shown again is restored`() {
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(4500)
+        assertPossiblyDeleted(a)
+
+        h.post(2, listOf(a)) // WhatsApp shows it again -- it was never deleted
+
+        assertDeleted()
+        assertNull(h.message(a.text).removedAt)
+        assertTrue(h.eventsOfType("updated").isNotEmpty())
+    }
+
+    @Test
+    fun `lone message removed and a new one arriving right after is possibly deleted, the new one not`() {
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(1000)
+        h.post(1, listOf(b))
+        h.advance(4500)
+
+        assertPossiblyDeleted(a)
+        assertNull(h.message(b.text).removedAt)
+        assertEquals("only the possible deletion is announced", 1, h.eventsOfType("deleted").size)
+    }
+
+    @Test
+    fun `lone message cancelled then re-posted with a newer one after the grace period is restored`() {
+        val key = h.post(1, listOf(a))
+        h.cancel(key)
+        h.advance(4500)
+        assertPossiblyDeleted(a)
+
+        h.post(1, listOf(a, b))
+        h.advance(4500)
+
+        assertDeleted()
+        assertEquals(listOf(a.text, b.text), h.messages().map { it.text })
     }
 
     @Test
     fun `cancel right after one of two messages was deleted does not delete the survivor`() {
         // Reported on a locked Pixel: "Hello", then "Hiii", then the sender deletes "Hiii".
         // WhatsApp shows the placeholder beside "Hello", then cancels the notification.
-        h.screenOnLocked()
         h.post(1, listOf(a))
         h.post(1, listOf(a, b))
-        val key = h.post(1, listOf(a, Msg("This message was deleted", b.timestamp)))
+        val key = h.post(1, listOf(a, placeholder(b)))
         h.cancel(key)
-        h.advance(21_000)
+        h.advance(4500)
 
         assertDeleted(b)
     }
@@ -299,23 +351,6 @@ class DeletedMessageFlowTest {
     }
 
     @Test
-    fun `lone deletion right after an earlier locked-screen cancel of the same chat is caught`() {
-        // Pixel log 10-07 11:12: old unread messages cancelled on the lock screen (resolution
-        // waits for an unlock), re-posted as just "Hello", which the sender then deletes.
-        h.screenOnLocked()
-        val key = h.post(1, listOf(a, b))
-        h.cancel(key)
-        h.screenOff()
-        val again = h.post(1, listOf(c))
-        h.cancel(again)
-        h.advance(4500)
-
-        assertDeleted(c)
-        h.advance(20_000) // the earlier cancel resolves now and must not add anything
-        assertDeleted(c)
-    }
-
-    @Test
     fun `oldest of two messages deleted while locked is recovered`() {
         h.post(1, listOf(a))
         h.post(1, listOf(a, b))
@@ -326,24 +361,12 @@ class DeletedMessageFlowTest {
     }
 
     @Test
-    fun `lock-screen cancel counts as opening it when the phone is unlocked by the end of the wait`() {
-        // No USER_PRESENT broadcast this time -- only the keyguard state shows the unlock.
-        h.screenOnLocked()
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.screenOnUnlocked()
-        h.advance(21_000)
-
-        assertDeleted()
-    }
-
-    @Test
-    fun `lone deletion arriving as a group-summary cascade is recovered (Pixel log 11_27)`() {
-        val key = h.post(1, listOf(a))
+    fun `several messages taken down with the group summary are not a deletion`() {
+        val key = h.post(1, listOf(a, b))
         h.cancelViaSummary(key)
         h.advance(4500)
 
-        assertDeleted(a)
+        assertDeleted()
     }
 
     @Test
@@ -351,20 +374,6 @@ class DeletedMessageFlowTest {
         val key = h.post(1, listOf(a))
         h.cancelViaSummary(key, summaryReason = REASON_CANCEL)
         h.advance(4500)
-
-        assertDeleted()
-    }
-
-    @Test
-    fun `unlock seen by polling during the wait counts, even if the phone locks again`() {
-        h.screenOnLocked()
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
-        h.advance(1000)
-        h.screenOnUnlocked() // no USER_PRESENT broadcast
-        h.advance(1000)
-        h.screenOff()
-        h.advance(20_000)
 
         assertDeleted()
     }

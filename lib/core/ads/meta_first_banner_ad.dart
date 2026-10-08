@@ -1,5 +1,6 @@
 import 'package:preload_google_ads/preload_google_ads.dart';
 
+import 'ad_shimmer.dart';
 import 'ads_service.dart';
 import 'meta_ad_stats.dart';
 import 'meta_ads_bridge.dart';
@@ -126,8 +127,11 @@ class _MetaFirstBannerAdState extends State<MetaFirstBannerAd> {
         ),
       );
     } else {
-      // Still loading: hold the space so content below doesn't jump.
-      child = const SizedBox.shrink();
+      // Still loading (Meta, then AdMob if Meta failed): hold the space so
+      // content below doesn't jump.
+      child = AdShimmer(
+        isDark: NativeADStyle.instance.isDarkMode(context: context),
+      );
     }
     return SizedBox(
       width: double.infinity,

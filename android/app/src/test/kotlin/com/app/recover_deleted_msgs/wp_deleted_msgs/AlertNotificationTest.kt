@@ -39,12 +39,23 @@ class AlertNotificationTest {
 
     @Test
     fun `deleted message posts an alert with its text`() {
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
+        h.post(1, listOf(a))
+        h.post(1, listOf(Msg("This message was deleted", a.timestamp)))
         h.advance(4500)
 
         val alert = h.postedAlerts().single()
         assertEquals("Alice deleted a message", alert.title())
+        assertEquals(a.text, alert.bigText())
+    }
+
+    @Test
+    fun `possibly deleted message posts a "may have" alert`() {
+        val key = h.post(1, listOf(a))
+        h.cancel(key) // lone message removed with the screen off
+        h.advance(4500)
+
+        val alert = h.postedAlerts().single()
+        assertEquals("Alice may have deleted a message", alert.title())
         assertEquals(a.text, alert.bigText())
     }
 
@@ -81,8 +92,8 @@ class AlertNotificationTest {
     @Test
     fun `no alert when turned off in settings`() {
         h.setAlertsEnabled(false)
-        val key = h.post(1, listOf(a))
-        h.cancel(key)
+        h.post(1, listOf(a))
+        h.post(1, listOf(Msg("This message was deleted", a.timestamp)))
         h.advance(4500)
 
         assertEquals(1, h.eventsOfType("deleted").size)
