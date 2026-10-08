@@ -144,6 +144,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   /// leaving the chat, mirroring _ExitAppDialog in home_shell.dart -- shown
   /// for both the app bar back button and the iOS edge-swipe gesture, since
   /// PopScope intercepts both the same way.
+  ///
+  /// Currently off: leaving a chat is a plain back navigation. To bring the
+  /// dialog back, restore `canPop: false` and the handler in [build].
+  // ignore: unused_element
   Future<void> _confirmExit(BuildContext context) async {
     final shouldExit = await showDialog<bool>(
       context: context,
@@ -159,11 +163,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _confirmExit(context);
-      },
+      // Exit dialog (with its native ad) is off for now -- see _confirmExit.
+      // canPop: false,
+      // onPopInvokedWithResult: (didPop, result) {
+      //   if (didPop) return;
+      //   _confirmExit(context);
+      // },
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.chat.title),
@@ -195,16 +200,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             : const Color(0xFFECE5DD),
         body: Column(
           children: [
-            // PreloadGoogleAds.instance.showNativeAd(
-            //   nativeADType: NativeADType.small,
-            // ),
             Container(
               constraints: const BoxConstraints(minHeight: 100),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
               ),
               clipBehavior: Clip.antiAlias,
-              child: MetaFirstNativeAd(type: NativeADType.small),
+              child: const MetaFirstNativeAd(),
             ),
             Expanded(
               child: Stack(
@@ -311,6 +313,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 /// Exit-confirmation dialog shown instead of letting back/swipe leave the
 /// chat outright -- a native ad plus an explicit choice between staying and
 /// actually leaving, mirroring _ExitAppDialog in home_shell.dart.
+// ignore: unused_element
 class _ExitChatDialog extends StatelessWidget {
   const _ExitChatDialog();
 

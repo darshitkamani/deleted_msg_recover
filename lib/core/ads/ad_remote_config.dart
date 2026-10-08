@@ -59,6 +59,11 @@ class AdRemoteConfig {
   final bool showMetaInterstitial;
   final bool showMetaBanner;
 
+  /// Meta failures (no fill or any other load error) in a row after which a
+  /// format stops asking Meta and goes straight to AdMob until the next app
+  /// launch. A Meta success resets the count. See MetaAdsBridge.
+  final int metaNoFillLimit;
+
   const AdRemoteConfig({
     required this.showAd,
     required this.showBanner,
@@ -85,6 +90,7 @@ class AdRemoteConfig {
     this.showMetaNative = true,
     this.showMetaInterstitial = true,
     this.showMetaBanner = true,
+    this.metaNoFillLimit = 3,
     this.showAdMetricsLab = false,
   });
 
@@ -177,6 +183,7 @@ class AdRemoteConfig {
         fallback.showMetaInterstitial,
       ),
       showMetaBanner: boolOr('showMetaBanner', fallback.showMetaBanner),
+      metaNoFillLimit: intOr('metaNoFillLimit', fallback.metaNoFillLimit),
       showAdMetricsLab: boolOr('showAdMetricsLab', fallback.showAdMetricsLab),
     );
   }
@@ -212,6 +219,7 @@ class AdRemoteConfig {
         showMetaNative: showMetaNative,
         showMetaInterstitial: showMetaInterstitial,
         showMetaBanner: showMetaBanner,
+        metaNoFillLimit: metaNoFillLimit,
       );
 
   /// Serializes back to the same shape [fromJson] reads -- used to seed
@@ -229,6 +237,7 @@ class AdRemoteConfig {
         'nativeCounter': nativeCounter,
         'interstitialCounter': interstitialCounter,
         'showAdMetricsLab': showAdMetricsLab,
+        'metaNoFillLimit': metaNoFillLimit,
         'showMetaAd': showMetaAd,
         'showMetaNative': showMetaNative,
         'showMetaInterstitial': showMetaInterstitial,
@@ -302,18 +311,28 @@ class AdRemoteConfig {
   String? get googleBannerId => showAd && showBanner ? bannerId : null;
 
   /// Whether an app open ad should be requested on a cold start (the old
-  /// "splash" ad): same "no id means off" rule as [toAdFlag].
+  /// "splash" ad). Meta has no app open format, so that slot tries a Meta
+  /// interstitial ([metaInterstitialPlacement]) first and falls back to the
+  /// AdMob [appOpenId]; it runs if either is there.
   bool get appOpenOnLaunchEnabled =>
-      showAd && showSplashAd && appOpenId != null;
+      showAd &&
+      showSplashAd &&
+      (appOpenId != null || metaInterstitialPlacement != null);
 
   /// Whether an app open ad should be requested every time the app returns
-  /// from the background.
+  /// from the background -- same networks as [appOpenOnLaunchEnabled].
   bool get appOpenOnResumeEnabled =>
-      showAd && showOpenApp && appOpenId != null;
+      showAd &&
+      showOpenApp &&
+      (appOpenId != null || metaInterstitialPlacement != null);
 
-  /// Whether the app's own on-demand rewarded interstitial should run.
+  /// Whether the rewarded slot (status download/share) should show an ad:
+  /// a Meta interstitial ([metaInterstitialPlacement]) first, then the AdMob
+  /// [rewardedInterstitialId].
   bool get rewardedInterstitialEnabled =>
-      showAd && showRewardedInterstitial && rewardedInterstitialId != null;
+      showAd &&
+      showRewardedInterstitial &&
+      (rewardedInterstitialId != null || metaInterstitialPlacement != null);
 
   AdCounter toAdCounter() => AdCounter(
         nativeCounter: nativeCounter,

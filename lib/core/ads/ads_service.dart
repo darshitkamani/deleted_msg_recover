@@ -6,7 +6,9 @@ import 'package:preload_google_ads/preload_google_ads.dart';
 
 import '../../widgets/ad_loading_dialog.dart';
 import 'ad_remote_config.dart';
+import 'meta_ad_stats.dart';
 import 'meta_ads_bridge.dart';
+import 'meta_first_app_open.dart';
 import 'meta_first_interstitial.dart';
 import 'native_ad_sizing.dart';
 
@@ -44,6 +46,14 @@ class AdsService {
   /// no-op instead of using the package's built-in defaults (Google's *test*
   /// ad unit ids, everything enabled), which would otherwise load a test ad.
   MetaFirstInterstitial? _interstitial;
+
+  /// Meta interstitial placement the rewarded gate tries before the AdMob
+  /// rewarded interstitial; null when Meta is off for interstitials.
+  String? _rewardedMetaPlacement;
+
+  /// How long the rewarded gate waits for a Meta interstitial before falling
+  /// back to the AdMob rewarded interstitial.
+  static const _rewardedMetaTimeout = Duration(seconds: 5);
   OnDemandRewardedInterstitialAd? _rewardedInterstitial;
 
   /// Firebase Remote Config key holding this app's ad flags/counters/ad
@@ -82,10 +92,12 @@ class AdsService {
     final config = kDebugMode ? fetched.withTestIds() : fetched;
     showAdMetricsLab.value = config.showAdMetricsLab;
 
-    // Meta Audience Network is tried before AdMob for native, banner and
-    // interstitial (see MetaFirstNativeAd / MetaFirstBannerAd /
-    // MetaFirstInterstitial). Debug builds use Meta's test mode, since its
-    // placement ids can't be swapped for shared test ids like AdMob's.
+    // Meta Audience Network is tried before AdMob for every format (see
+    // MetaFirstNativeAd / MetaFirstBannerAd / MetaFirstInterstitial /
+    // MetaFirstAppOpen and the rewarded gate below) until it hits its no-fill
+    // limit. Debug builds use Meta's test mode, since its placement ids can't
+    // be swapped for shared test ids like AdMob's.
+    MetaAdsBridge.noFillLimit = config.metaNoFillLimit;
     await MetaAdsBridge.initialize(testMode: kDebugMode);
     _config.complete(config);
 
@@ -107,12 +119,19 @@ class AdsService {
       );
     }
     if (config.rewardedInterstitialEnabled) {
-      _rewardedInterstitial = OnDemandRewardedInterstitialAd(
-        adUnitId: config.rewardedInterstitialId!,
-      );
+      _rewardedMetaPlacement = config.metaInterstitialPlacement;
+      final googleId = config.rewardedInterstitialId;
+      if (googleId != null) {
+        _rewardedInterstitial = OnDemandRewardedInterstitialAd(
+          adUnitId: googleId,
+        );
+      }
     }
     if (config.appOpenOnLaunchEnabled || config.appOpenOnResumeEnabled) {
-      final appOpen = OnDemandAppOpenAd(adUnitId: config.appOpenId!);
+      final appOpen = MetaFirstAppOpen(
+        metaPlacementId: config.metaInterstitialPlacement,
+        googleAdUnitId: config.appOpenId,
+      );
       // Every return from the background, requested at that moment.
       if (config.appOpenOnResumeEnabled) appOpen.startListening();
       // Once for this cold start. Not awaited: nothing waits on the ad, and
@@ -216,29 +235,47 @@ class AdsService {
   /// until [init] has completed.
   void showInterstitialOnNavigation() => _interstitial?.onNavigation();
 
-  /// Requests a rewarded interstitial right now, shows it, then runs [then]
-  /// once it's dismissed. Nothing is preloaded, so the user waits behind a
-  /// loading dialog (see [showAdLoadingDialog]) while it loads; if it's off,
-  /// fails or takes too long, [then] just runs straight away -- used to gate
-  /// a status download/share behind an ad view without ever blocking the
-  /// action itself.
+  /// Shows an ad right now, then runs [then] once it's dismissed: a Meta
+  /// interstitial first, the AdMob rewarded interstitial if Meta has nothing.
+  /// Nothing is preloaded, so the user waits behind a loading dialog (see
+  /// [showAdLoadingDialog]) while it loads; if both are off, fail or take too
+  /// long, [then] just runs straight away -- used to gate a status
+  /// download/share behind an ad view without ever blocking the action itself.
   Future<void> showRewardedInterThen(
     BuildContext context,
     AdLoadingAction action,
     VoidCallback then,
   ) async {
+    final metaPlacement = _rewardedMetaPlacement;
     final loader = _rewardedInterstitial;
-    if (loader == null) {
+    if (metaPlacement == null && loader == null) {
       then();
       return;
     }
 
     final navigator = Navigator.of(context, rootNavigator: true);
     showAdLoadingDialog(context, action: action);
-    final ad = await loader.load();
+
+    if (metaPlacement != null) {
+      final id = await MetaAdsBridge.loadInterstitialWithin(
+        metaPlacement,
+        _rewardedMetaTimeout,
+      );
+      if (id != null) {
+        navigator.pop();
+        await MetaAdsBridge.showInterstitial(id);
+        then();
+        return;
+      }
+      if (loader != null) {
+        MetaAdStats.instance[MetaAdFormat.interstitial].fallbacks.value++;
+      }
+    }
+
+    final ad = await loader?.load();
     navigator.pop();
 
-    if (ad != null) await loader.show(ad);
+    if (ad != null) await loader!.show(ad);
     then();
   }
 }

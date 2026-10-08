@@ -128,10 +128,14 @@ class _RootRouterState extends State<_RootRouter> {
 
     _adsInitStarted = true;
     AdsService.instance.init().then((_) {
-      // Warms up the one format the package still preloads (native) if it
-      // isn't already loading. Interstitial, rewarded interstitial and app
-      // open are not part of this -- AdsService loads those on demand.
-      PreloadGoogleAds.instance.reloadUnloadedAds();
+      // Warms up the one format the package still preloads: the MEDIUM
+      // native ad, the only size the app shows. Not reloadUnloadedAds(),
+      // which would also preload a small native ad nothing ever displays.
+      // Interstitial, rewarded interstitial and app open are not part of
+      // this -- AdsService loads those on demand.
+      PreloadGoogleAds.instance.reloadNativeAd(
+        nativeADType: NativeADType.medium,
+      );
     });
   }
 

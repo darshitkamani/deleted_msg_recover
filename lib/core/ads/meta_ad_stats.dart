@@ -22,8 +22,14 @@ class MetaFormatStats {
   final impressions = ValueNotifier(0);
   final clicks = ValueNotifier(0);
 
-  /// Times this format fell back to AdMob after a Meta error.
+  /// Times this format's slot was filled by AdMob instead of Meta.
   final fallbacks = ValueNotifier(0);
+
+  /// Meta failures since its last success -- see MetaAdsBridge.noFillLimit.
+  final failuresInARow = ValueNotifier(0);
+
+  /// Hit the no-fill limit: AdMob only until the next app launch.
+  final switchedToGoogle = ValueNotifier(false);
 
   late final Listenable all = Listenable.merge([
     requests,
@@ -32,6 +38,7 @@ class MetaFormatStats {
     impressions,
     clicks,
     fallbacks,
+    switchedToGoogle,
   ]);
 }
 

@@ -246,11 +246,17 @@ class _MetaAdLabState extends State<MetaAdLab> {
           children: [
             Expanded(
               flex: 4,
+              // "G only": hit the no-fill limit, AdMob until next launch.
               child: Text(
-                format.label,
-                style: const TextStyle(
+                stats.switchedToGoogle.value
+                    ? '${format.label} · G only'
+                    : format.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
+                  color: stats.switchedToGoogle.value ? Colors.orange : null,
                 ),
               ),
             ),

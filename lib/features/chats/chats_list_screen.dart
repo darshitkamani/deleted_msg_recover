@@ -47,11 +47,12 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             ],
           ),
         ),
-        // Small native ad, pinned right above the welcome chat tile (the
+        // Native ad, pinned right above the welcome chat tile (the
         // always-first "row" in this list) rather than scrolling away as
         // part of the list content -- same fixed-slot treatment as the
-        // small native ad in ChatDetailScreen.
-        MetaFirstNativeAd(type: NativeADType.small),
+        // native ad in ChatDetailScreen. Medium, like every slot: the small
+        // native ad is never loaded.
+        const MetaFirstNativeAd(),
 
         Expanded(
           child: RefreshIndicator(

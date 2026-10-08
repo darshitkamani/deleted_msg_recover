@@ -27,6 +27,17 @@ class MetaAdsBridge {
   static final _dismissals = <String, Completer<void>>{};
   static Future<bool>? _initFuture;
 
+  /// Meta failures in a row after which a format stops asking Meta for the
+  /// rest of this process (i.e. until the next app launch) -- its slots then go
+  /// straight to AdMob. Set from Remote Config's `metaNoFillLimit` by
+  /// AdsService; a success resets the count. The interstitial, app-open and
+  /// rewarded slots share one count, since they share one placement.
+  static int noFillLimit = 3;
+
+  /// Whether [format] has hit [noFillLimit] and is AdMob-only for now.
+  static bool isSwitchedToGoogle(MetaAdFormat format) =>
+      MetaAdStats.instance[format].switchedToGoogle.value;
+
   static bool get isSupported => !kIsWeb && Platform.isAndroid;
 
   /// Starts the SDK once per process. [testMode] makes Meta serve its test
@@ -100,22 +111,63 @@ class MetaAdsBridge {
     Map<String, Object> args,
   ) async {
     final stats = MetaAdStats.instance;
+    // Past the no-fill limit: don't even ask, the caller goes to AdMob.
+    if (isSwitchedToGoogle(format)) return null;
     if (!isSupported || !await (_initFuture ?? Future.value(false))) {
-      stats.recordError(format, 'SDK not initialized');
+      _failed(format, 'SDK not initialized');
       return null;
     }
     stats[format].requests.value++;
     try {
       final id = await _channel.invokeMethod<String>(method, args);
-      if (id != null) stats[format].loaded.value++;
+      if (id == null) {
+        _failed(format, 'no ad id returned');
+        return null;
+      }
+      stats[format].loaded.value++;
+      stats[format].failuresInARow.value = 0;
       return id;
     } on PlatformException catch (e) {
       debugPrint('Meta $method failed: ${e.code} ${e.details} ${e.message}');
       // details carries Meta's error code (1001 = no fill, 1002 = too many
       // requests, 2000s = server/network).
-      stats.recordError(format, '${e.details ?? e.code} ${e.message ?? ''}');
+      _failed(format, '${e.details ?? e.code} ${e.message ?? ''}');
       return null;
     }
+  }
+
+  static void _failed(MetaAdFormat format, String error) {
+    final stats = MetaAdStats.instance;
+    stats.recordError(format, error);
+    final row = stats[format];
+    row.failuresInARow.value++;
+    if (row.failuresInARow.value >= noFillLimit &&
+        !row.switchedToGoogle.value) {
+      row.switchedToGoogle.value = true;
+      debugPrint(
+        'Meta ${format.name}: $noFillLimit failures in a row, AdMob only until next launch',
+      );
+    }
+  }
+
+  /// [loadInterstitial] that gives up after [timeout] -- for slots that make
+  /// the user wait (app open, the rewarded gate). An ad that arrives after
+  /// that is destroyed rather than leaked; the wait doesn't count as a Meta
+  /// failure, only a real load error does.
+  static Future<String?> loadInterstitialWithin(
+    String placementId,
+    Duration timeout,
+  ) {
+    final load = loadInterstitial(placementId);
+    return load.timeout(
+      timeout,
+      onTimeout: () {
+        load.then((late) {
+          if (late != null) destroy(late);
+        });
+        return null;
+      },
+    );
   }
 
   /// Shows a loaded interstitial and completes once it's dismissed. Returns
