@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 
 /** A media attachment recovered from a notification, ready to store. */
@@ -500,6 +501,12 @@ class NotificationListener : NotificationListenerService() {
         val store = MessageStore.getInstance(applicationContext)
         store.upsertChat(chatKey, pkg, title, isGroup)
 
+        // --- chat avatar (contact/group photo) ---
+        // WhatsApp sets the large icon to the contact or group photo. We save
+        // it locally with a content-hash filename so an updated photo gets a
+        // new path and displays immediately instead of the stale cached one.
+        trySaveChatAvatar(notification, chatKey, store)
+
         // Placeholders are dropped before reconciliation, not after -- a message that's still
         // "Downloading..." isn't part of the real conversation window WhatsApp will keep
         // presenting, so it must not occupy a matching slot for the real content that replaces it.
@@ -707,6 +714,70 @@ class NotificationListener : NotificationListenerService() {
     private fun isDownloadPlaceholder(text: String): Boolean {
         val t = text.trim()
         return t.startsWith("Downloading") || t.startsWith("Uploading")
+    }
+    /**
+     * Extracts the notification's large icon (WhatsApp uses it for the contact/group photo),
+     * computes a SHA-1 content hash, and writes it to disk only when the photo has actually
+     * changed. The hash is embedded in the filename so Flutter sees a new path instantly
+     * instead of having to invalidate an image cache for the same filename.
+     */
+    @Suppress("DEPRECATION")
+    private fun trySaveChatAvatar(notification: Notification, chatKey: String, store: MessageStore) {
+        try {
+            val extras = notification.extras ?: return
+            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                notification.getLargeIcon()?.let { icon ->
+                    val drawable = icon.loadDrawable(applicationContext) ?: return
+                    if (drawable is android.graphics.drawable.BitmapDrawable) {
+                        drawable.bitmap
+                    } else {
+                        val bmp = Bitmap.createBitmap(
+                            drawable.intrinsicWidth.coerceAtLeast(1),
+                            drawable.intrinsicHeight.coerceAtLeast(1),
+                            Bitmap.Config.ARGB_8888
+                        )
+                        val canvas = android.graphics.Canvas(bmp)
+                        drawable.setBounds(0, 0, canvas.width, canvas.height)
+                        drawable.draw(canvas)
+                        bmp
+                    }
+                }
+            } else {
+                extras.getParcelable<Bitmap>(Notification.EXTRA_LARGE_ICON)
+            } ?: return
+
+            val hash = bitmapSha1(bitmap) ?: return
+            val existing = store.getChatAvatar(chatKey)
+            // The hash is already in the stored path -- nothing changed.
+            if (existing != null && existing.contains(hash)) return
+
+            val dir = File(applicationContext.filesDir, "chat_avatars").apply { mkdirs() }
+            val safeName = safeFileId(chatKey)
+            val outFile = File(dir, "${safeName}_$hash.jpg")
+            FileOutputStream(outFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            }
+            store.setChatAvatar(chatKey, outFile.absolutePath)
+
+            // Clean up the previous avatar file if it was different.
+            if (existing != null && existing != outFile.absolutePath) {
+                try { File(existing).delete() } catch (_: Exception) {}
+            }
+        } catch (t: Throwable) {
+            // Avatar capture must never crash the notification pipeline.
+            reportNonFatal("trySaveChatAvatar", t)
+        }
+    }
+
+    /** SHA-1 hex digest of a bitmap's JPEG representation -- cheap enough for a small icon. */
+    private fun bitmapSha1(bitmap: Bitmap): String? = try {
+        val stream = java.io.ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+        val digest = MessageDigest.getInstance("SHA-1").digest(stream.toByteArray())
+        digest.joinToString("") { "%02x".format(it) }
+    } catch (t: Throwable) {
+        reportNonFatal("bitmapSha1", t)
+        null
     }
 
     /**

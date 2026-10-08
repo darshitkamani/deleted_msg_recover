@@ -67,7 +67,7 @@ class MessageStore private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "recover.db"
-        private const val DB_VERSION = 7
+        private const val DB_VERSION = 8
 
         const val STATUS_ACTIVE = "active"
         const val STATUS_DELETED = "deleted"
@@ -106,7 +106,8 @@ class MessageStore private constructor(context: Context) :
                 title TEXT NOT NULL,
                 is_group INTEGER NOT NULL DEFAULT 0,
                 last_opened_at INTEGER,
-                last_activity_at INTEGER
+                last_activity_at INTEGER,
+                avatar_path TEXT
             )
             """.trimIndent()
         )
@@ -151,10 +152,14 @@ class MessageStore private constructor(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // 6 -> 7 only adds the deletion diagnostics columns; keep the user's captured messages.
-        if (oldVersion == 6) {
-            db.execSQL("ALTER TABLE messages ADD COLUMN delete_source TEXT")
-            db.execSQL("ALTER TABLE messages ADD COLUMN delete_detail TEXT")
+        // 6 -> 7 adds the deletion diagnostics columns, 7 -> 8 the chat photo; keep the
+        // user's captured messages either way.
+        if (oldVersion in 6..7) {
+            if (oldVersion == 6) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN delete_source TEXT")
+                db.execSQL("ALTER TABLE messages ADD COLUMN delete_detail TEXT")
+            }
+            db.execSQL("ALTER TABLE chats ADD COLUMN avatar_path TEXT")
             return
         }
         db.execSQL("DROP TABLE IF EXISTS message_edits")
@@ -179,6 +184,27 @@ class MessageStore private constructor(context: Context) :
             )
         } catch (e: SQLException) {
             reportNonFatal("upsertChat", e)
+        }
+    }
+
+    /** The chat's stored photo path (see [setChatAvatar]), or null. */
+    fun getChatAvatar(chatKey: String): String? = try {
+        readableDatabase.rawQuery("SELECT avatar_path FROM chats WHERE chat_key = ?", arrayOf(chatKey))
+            .use { if (it.moveToFirst() && !it.isNull(0)) it.getString(0) else null }
+    } catch (e: SQLException) {
+        reportNonFatal("getChatAvatar", e)
+        null
+    }
+
+    /** Points the chat at a newly saved photo file. */
+    fun setChatAvatar(chatKey: String, path: String) {
+        try {
+            writableDatabase.execSQL(
+                "UPDATE chats SET avatar_path = ? WHERE chat_key = ?",
+                arrayOf(path, chatKey)
+            )
+        } catch (e: SQLException) {
+            reportNonFatal("setChatAvatar", e)
         }
     }
 
@@ -366,7 +392,8 @@ class MessageStore private constructor(context: Context) :
                    (SELECT timestamp FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_ts,
                    (SELECT COUNT(*) FROM messages m WHERE m.chat_key = c.chat_key) AS total_count,
                    (SELECT status FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_status,
-                   (SELECT edited_at FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_edited_at
+                   (SELECT edited_at FROM messages m WHERE m.chat_key = c.chat_key ORDER BY timestamp DESC LIMIT 1) AS last_edited_at,
+                   c.avatar_path
             FROM chats c
             ORDER BY last_ts DESC
             """.trimIndent(),
@@ -383,7 +410,8 @@ class MessageStore private constructor(context: Context) :
                         "lastTimestamp" to (if (cursor.isNull(5)) 0L else cursor.getLong(5)),
                         "totalCount" to cursor.getInt(6),
                         "lastStatus" to cursor.getString(7),
-                        "lastIsEdited" to !cursor.isNull(8)
+                        "lastIsEdited" to !cursor.isNull(8),
+                        "avatarPath" to cursor.getString(9)
                     )
                 )
             }

@@ -10,6 +10,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/welcome_chat_tile.dart';
+import '../../widgets/chat_avatar.dart';
 import 'chat_detail_screen.dart';
 import '../../core/ads/meta_first_native_ad.dart';
 
@@ -157,17 +158,10 @@ class _ChatTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    chat.isGroup ? Icons.group_rounded : Icons.person_rounded,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
+                ChatAvatar(
+                  avatarPath: chat.avatarPath,
+                  title: chat.title,
+                  isGroup: chat.isGroup,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

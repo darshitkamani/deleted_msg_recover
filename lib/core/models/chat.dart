@@ -8,6 +8,7 @@ class Chat {
   final int totalCount;
   final bool lastIsDeleted;
   final bool lastIsEdited;
+  final String? avatarPath;
 
   const Chat({
     required this.chatKey,
@@ -19,6 +20,7 @@ class Chat {
     required this.totalCount,
     this.lastIsDeleted = false,
     this.lastIsEdited = false,
+    this.avatarPath,
   });
 
   bool get isBusiness => package == 'com.whatsapp.w4b';
@@ -34,6 +36,7 @@ class Chat {
       totalCount: (map['totalCount'] as num?)?.toInt() ?? 0,
       lastIsDeleted: map['lastStatus'] == 'deleted',
       lastIsEdited: map['lastIsEdited'] as bool? ?? false,
+      avatarPath: map['avatarPath'] as String?,
     );
   }
 }

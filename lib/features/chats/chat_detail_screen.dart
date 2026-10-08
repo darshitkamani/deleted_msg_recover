@@ -13,6 +13,7 @@ import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/message_bubble.dart';
+import '../../widgets/chat_avatar.dart';
 import '../../core/ads/meta_first_native_ad.dart';
 
 /// Opening a chat here marks it "opened" -- this is the app's proxy for
@@ -171,7 +172,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       // },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.chat.title),
+          title: Row(
+            children: [
+              ChatAvatar(
+                avatarPath: widget.chat.avatarPath,
+                title: widget.chat.title,
+                isGroup: widget.chat.isGroup,
+                radius: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.chat.title,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 4),
