@@ -50,6 +50,8 @@ class MainActivity : FlutterActivity() {
     @Volatile
     private var pendingOpenTarget: String? = null
 
+    private var metaAds: MetaAdsBridge? = null
+
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -60,6 +62,8 @@ class MainActivity : FlutterActivity() {
         }
 
         captureOpenTarget(intent)
+
+        metaAds = MetaAdsBridge(this, flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -519,6 +523,12 @@ class MainActivity : FlutterActivity() {
         intent.removeExtra(AlertNotifier.EXTRA_OPEN_TARGET)
         pendingOpenTarget = target
         return true
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        metaAds?.dispose()
+        metaAds = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     override fun onPause() {

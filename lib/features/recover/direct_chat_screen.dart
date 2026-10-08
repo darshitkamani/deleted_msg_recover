@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/country.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/country_picker.dart';
+import '../../core/ads/meta_first_native_ad.dart';
 
 /// Composes a wa.me deep link to open a chat with any phone number,
 /// pre-filled with a message -- WhatsApp itself resolves this to whichever
@@ -172,7 +173,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: PreloadGoogleAds.instance.showNativeAd(),
+          child: const MetaFirstNativeAd(),
         ),
       ],
     );

@@ -11,6 +11,7 @@ import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/welcome_chat_tile.dart';
 import 'chat_detail_screen.dart';
+import '../../core/ads/meta_first_native_ad.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -50,9 +51,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         // always-first "row" in this list) rather than scrolling away as
         // part of the list content -- same fixed-slot treatment as the
         // small native ad in ChatDetailScreen.
-        PreloadGoogleAds.instance.showNativeAd(
-          nativeADType: NativeADType.small,
-        ),
+        MetaFirstNativeAd(type: NativeADType.small),
 
         Expanded(
           child: RefreshIndicator(

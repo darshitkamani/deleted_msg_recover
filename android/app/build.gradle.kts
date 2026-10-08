@@ -82,6 +82,9 @@ dependencies {
     // Kotlin (NotificationListener.kt/MessageStore.kt) need this declared here explicitly.
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-crashlytics")
+    // Meta Audience Network, called directly (not through AdMob mediation) via
+    // MetaAdsBridge.kt; Dart tries it first and falls back to AdMob on any error.
+    implementation("com.facebook.android:audience-network-sdk:6.22.0")
     testImplementation("junit:junit:4.13.2")
     // Runs the real NotificationListener + MessageStore (real SQLite) on the JVM, so the
     // delete-detection flow can be tested without a device.

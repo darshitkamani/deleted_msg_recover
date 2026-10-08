@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/constants.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../core/ads/meta_first_native_ad.dart';
 
 /// A pinned, app-authored "chat" at the top of the Chats tab that explains
 /// what the app does -- styled like a real WhatsApp conversation (bubbles,
@@ -60,7 +61,7 @@ class WelcomeChatScreen extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: PreloadGoogleAds.instance.showNativeAd(),
+            child: const MetaFirstNativeAd(),
           ),
         ],
       ),

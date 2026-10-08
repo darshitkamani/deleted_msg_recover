@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Meta native ad for the medium slot: fills the Flutter slot's height, with the
+     media view taking whatever the fixed rows below leave. Mirrors the AdMob medium
+     template (preload_google_ads) so both networks look alike. Text sizes are in dp,
+     like that template's sdp, so a large system font can't overflow the fixed slot. -->
+<com.facebook.ads.NativeAdLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/meta_ad_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <com.facebook.ads.MediaView
+                android:id="@+id/meta_ad_media"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <include layout="@layout/meta_native_choices" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.facebook.ads.MediaView
+                android:id="@+id/meta_ad_icon"
+                android:layout_width="45dp"
+                android:layout_height="45dp"
+                android:layout_marginHorizontal="5dp" />
+
+            <include layout="@layout/meta_native_texts" />
+        </LinearLayout>
+
+        <include layout="@layout/meta_native_cta" />
+    </LinearLayout>
+</com.facebook.ads.NativeAdLayout>

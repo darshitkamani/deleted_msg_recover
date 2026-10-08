@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Meta Audience Network caches video ads behind a local HTTP proxy on 127.0.0.1;
+     Android 9+ blocks that cleartext traffic unless it's allowed here. Everything
+     else keeps the platform default (cleartext blocked). -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

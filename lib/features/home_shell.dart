@@ -12,6 +12,7 @@ import 'recover/direct_chat_screen.dart';
 import 'recover/recover_screen.dart';
 import 'settings/settings_screen.dart';
 import 'statuses/statuses_screen.dart';
+import '../core/ads/meta_first_native_ad.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -289,7 +290,7 @@ class _ExitAppDialog extends StatelessWidget {
                 border: Border.all(color: scheme.outlineVariant),
               ),
               clipBehavior: Clip.antiAlias,
-              child: PreloadGoogleAds.instance.showNativeAd(),
+              child: const MetaFirstNativeAd(),
             ),
           ],
         ),

@@ -15,6 +15,7 @@ import '../../widgets/error_state.dart';
 import 'image_viewer_screen.dart';
 import 'video_player_screen.dart';
 import 'video_thumbnail_tile.dart';
+import '../../core/ads/meta_first_native_ad.dart';
 
 enum _MediaFilter { all, images, videos }
 
@@ -420,7 +421,7 @@ class _StatusGrid extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.only(top: 12),
           children: [
-            PreloadGoogleAds.instance.showNativeAd(),
+            const MetaFirstNativeAd(),
             const SizedBox(height: 88),
             Icon(
               Icons.image_outlined,
@@ -459,9 +460,7 @@ class _StatusGrid extends StatelessWidget {
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            sliver: SliverToBoxAdapter(
-              child: PreloadGoogleAds.instance.showNativeAd(),
-            ),
+            sliver: SliverToBoxAdapter(child: const MetaFirstNativeAd()),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(12),

@@ -9,6 +9,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../chats/chat_detail_screen.dart';
 import '../chats/chats_list_screen.dart';
 import '../paywall/paywall_screen.dart';
+import '../../core/ads/meta_first_native_ad.dart';
 
 /// Landing screen for the Recover tab: three tiles -- Text Message routes to
 /// the existing recovered-chats list; Statuses and Direct just jump to their
@@ -83,7 +84,7 @@ class RecoverScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                PreloadGoogleAds.instance.showNativeAd(
+                MetaFirstNativeAd(
                   // preloader: AdsService.instance.recoverAdPreloader,
                 ),
 

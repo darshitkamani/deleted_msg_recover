@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:firebase_remote_config/firebase_remote_config.dart';
@@ -5,6 +6,8 @@ import 'package:preload_google_ads/preload_google_ads.dart';
 
 import '../../widgets/ad_loading_dialog.dart';
 import 'ad_remote_config.dart';
+import 'meta_ads_bridge.dart';
+import 'meta_first_interstitial.dart';
 import 'native_ad_sizing.dart';
 
 /// Thin, idempotent wrapper around [PreloadGoogleAds.instance.initialize] --
@@ -40,7 +43,7 @@ class AdsService {
   /// switched off -- which also makes anything reaching an ad call earlier a
   /// no-op instead of using the package's built-in defaults (Google's *test*
   /// ad unit ids, everything enabled), which would otherwise load a test ad.
-  OnDemandInterstitialAd? _interstitial;
+  MetaFirstInterstitial? _interstitial;
   OnDemandRewardedInterstitialAd? _rewardedInterstitial;
 
   /// Firebase Remote Config key holding this app's ad flags/counters/ad
@@ -57,6 +60,14 @@ class AdsService {
   /// for ~35 impressions.
   static const _nativeRetryLimit = 1;
 
+  final _config = Completer<AdRemoteConfig>();
+
+  /// The ad config [init] settled on (fetched, with test AdMob ids in debug).
+  /// Completes only once [init] has run, and never starts it -- so the
+  /// Meta-first ad widgets can wait on it without pulling ad loading earlier
+  /// than [_RootRouter] means it to happen.
+  Future<AdRemoteConfig> get config => _config.future;
+
   Future<void> init() {
     return _initFuture ??= _initialize();
   }
@@ -71,6 +82,13 @@ class AdsService {
     final config = kDebugMode ? fetched.withTestIds() : fetched;
     showAdMetricsLab.value = config.showAdMetricsLab;
 
+    // Meta Audience Network is tried before AdMob for native, banner and
+    // interstitial (see MetaFirstNativeAd / MetaFirstBannerAd /
+    // MetaFirstInterstitial). Debug builds use Meta's test mode, since its
+    // placement ids can't be swapped for shared test ids like AdMob's.
+    await MetaAdsBridge.initialize(testMode: kDebugMode);
+    _config.complete(config);
+
     await PreloadGoogleAds.instance.initialize(
       adConfigData: AdConfigData(
         adFlag: config.toAdFlag(),
@@ -82,8 +100,9 @@ class AdsService {
     );
 
     if (config.interstitialEnabled) {
-      _interstitial = OnDemandInterstitialAd(
-        adUnitId: config.interstitialId!,
+      _interstitial = MetaFirstInterstitial(
+        metaPlacementId: config.metaInterstitialPlacement,
+        googleAdUnitId: config.googleInterstitialId,
         interval: config.interstitialCounter,
       );
     }

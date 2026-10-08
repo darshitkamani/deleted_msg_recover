@@ -47,7 +47,8 @@ class NativeAdHeights {
       (smallestWidthDp.floor() ~/ _bucketStepDp) * _bucketStepDp,
     );
     final sdp = bucketDp / _baseBucketDp;
-    double fit(double templateSdp) => templateSdp * sdp + _shellPadding + _slack;
+    double fit(double templateSdp) =>
+        templateSdp * sdp + _shellPadding + _slack;
     return NativeAdHeights(
       medium: fit(_mediumTemplateSdp),
       small: fit(_smallTemplateSdp),

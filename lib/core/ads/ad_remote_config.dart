@@ -32,6 +32,33 @@ class AdRemoteConfig {
   final String? rewardedId;
   final String? rewardedInterstitialId;
 
+  /// Meta Audience Network placement ids, tried *before* the matching AdMob
+  /// format (see AdsService) -- a Meta error falls straight back to AdMob,
+  /// and a missing id skips Meta entirely. Unlike the AdMob ids these are
+  /// kept as-is in debug builds: Meta has no shared test placement ids, so
+  /// debug uses its test mode on the real placements instead.
+  ///
+  /// [metaNativeBannerId] is a "Native Banner" placement (no media view),
+  /// used for the small native slot; [metaNativeId] for the medium one.
+  /// [metaBannerId] is a 50dp banner placement, [metaMediumRectangleId] a
+  /// 300x250 one -- both fall back to the AdMob [bannerId], which serves
+  /// either size.
+  final String? metaNativeId;
+  final String? metaNativeBannerId;
+  final String? metaInterstitialId;
+  final String? metaBannerId;
+  final String? metaMediumRectangleId;
+
+  /// Meta on/off switches, the counterparts of the show* flags above:
+  /// [showMetaAd] for every Meta format, and one per format (the banner one
+  /// covers both banner sizes). Off only skips Meta -- the format then goes
+  /// straight to AdMob, which still follows its own show* flag. [showAd]
+  /// stays the master switch for both networks. All default to on.
+  final bool showMetaAd;
+  final bool showMetaNative;
+  final bool showMetaInterstitial;
+  final bool showMetaBanner;
+
   const AdRemoteConfig({
     required this.showAd,
     required this.showBanner,
@@ -49,6 +76,15 @@ class AdRemoteConfig {
     this.interstitialId,
     this.rewardedId,
     this.rewardedInterstitialId,
+    this.metaNativeId,
+    this.metaNativeBannerId,
+    this.metaInterstitialId,
+    this.metaBannerId,
+    this.metaMediumRectangleId,
+    this.showMetaAd = true,
+    this.showMetaNative = true,
+    this.showMetaInterstitial = true,
+    this.showMetaBanner = true,
     this.showAdMetricsLab = false,
   });
 
@@ -70,6 +106,12 @@ class AdRemoteConfig {
     nativeCounter: 0,
     interstitialCounter: 5,
     showAdMetricsLab: false,
+    // Meta placements (Monetization Manager, property 4514578412193984).
+    // No Native Banner placement yet, so small native slots go straight to
+    // AdMob until `metaNativeBannerId` is set.
+    metaNativeId: '937049769164180_937052809163876',
+    metaInterstitialId: '937049769164180_937051689163988',
+    metaMediumRectangleId: '937049769164180_937053395830484',
   );
 
   /// Parses Remote Config's fetched JSON, falling back to [fallback]
@@ -120,6 +162,21 @@ class AdRemoteConfig {
       rewardedId: stringOrNull('rewardedId') ?? fallback.rewardedId,
       rewardedInterstitialId: stringOrNull('rewardedInterstitialId') ??
           fallback.rewardedInterstitialId,
+      metaNativeId: stringOrNull('metaNativeId') ?? fallback.metaNativeId,
+      metaNativeBannerId:
+          stringOrNull('metaNativeBannerId') ?? fallback.metaNativeBannerId,
+      metaInterstitialId:
+          stringOrNull('metaInterstitialId') ?? fallback.metaInterstitialId,
+      metaBannerId: stringOrNull('metaBannerId') ?? fallback.metaBannerId,
+      metaMediumRectangleId: stringOrNull('metaMediumRectangleId') ??
+          fallback.metaMediumRectangleId,
+      showMetaAd: boolOr('showMetaAd', fallback.showMetaAd),
+      showMetaNative: boolOr('showMetaNative', fallback.showMetaNative),
+      showMetaInterstitial: boolOr(
+        'showMetaInterstitial',
+        fallback.showMetaInterstitial,
+      ),
+      showMetaBanner: boolOr('showMetaBanner', fallback.showMetaBanner),
       showAdMetricsLab: boolOr('showAdMetricsLab', fallback.showAdMetricsLab),
     );
   }
@@ -146,6 +203,15 @@ class AdRemoteConfig {
         interstitialId: AdTestIds.interstitial,
         rewardedId: AdTestIds.rewarded,
         rewardedInterstitialId: AdTestIds.rewardedInterstitial,
+        metaNativeId: metaNativeId,
+        metaNativeBannerId: metaNativeBannerId,
+        metaInterstitialId: metaInterstitialId,
+        metaBannerId: metaBannerId,
+        metaMediumRectangleId: metaMediumRectangleId,
+        showMetaAd: showMetaAd,
+        showMetaNative: showMetaNative,
+        showMetaInterstitial: showMetaInterstitial,
+        showMetaBanner: showMetaBanner,
       );
 
   /// Serializes back to the same shape [fromJson] reads -- used to seed
@@ -163,6 +229,10 @@ class AdRemoteConfig {
         'nativeCounter': nativeCounter,
         'interstitialCounter': interstitialCounter,
         'showAdMetricsLab': showAdMetricsLab,
+        'showMetaAd': showMetaAd,
+        'showMetaNative': showMetaNative,
+        'showMetaInterstitial': showMetaInterstitial,
+        'showMetaBanner': showMetaBanner,
         if (appOpenId != null) 'appOpenId': appOpenId,
         if (bannerId != null) 'bannerId': bannerId,
         if (nativeId != null) 'nativeId': nativeId,
@@ -170,6 +240,14 @@ class AdRemoteConfig {
         if (rewardedId != null) 'rewardedId': rewardedId,
         if (rewardedInterstitialId != null)
           'rewardedInterstitialId': rewardedInterstitialId,
+        if (metaNativeId != null) 'metaNativeId': metaNativeId,
+        if (metaNativeBannerId != null)
+          'metaNativeBannerId': metaNativeBannerId,
+        if (metaInterstitialId != null)
+          'metaInterstitialId': metaInterstitialId,
+        if (metaBannerId != null) 'metaBannerId': metaBannerId,
+        if (metaMediumRectangleId != null)
+          'metaMediumRectangleId': metaMediumRectangleId,
       };
 
   /// A format stays off if it has no configured ad unit id, regardless of
@@ -180,7 +258,9 @@ class AdRemoteConfig {
   /// must mean "off," never "test ad."
   AdFlag toAdFlag() => AdFlag(
         showAd: showAd,
-        showBanner: showBanner && bannerId != null,
+        // Banners are loaded on demand by MetaFirstBannerAd (Meta first, then
+        // this AdMob id), so the package never preloads one.
+        showBanner: false,
         // Interstitial and rewarded interstitial use the package's on-demand
         // classes (see AdsService) so they load when needed -- turned off
         // here so the package's own loaders never preload them.
@@ -195,9 +275,31 @@ class AdRemoteConfig {
       );
 
   /// Whether the app's own interstitial (see AdsService) should run: same
-  /// "no id means off" rule as [toAdFlag].
+  /// "no id means off" rule as [toAdFlag], for either network.
   bool get interstitialEnabled =>
-      showAd && showInterstitial && interstitialId != null;
+      metaInterstitialPlacement != null || googleInterstitialId != null;
+
+  bool get _metaOn => showAd && showMetaAd;
+
+  /// The Meta placement each slot should try first, or null to skip Meta
+  /// (switched off, or no id) and go straight to AdMob.
+  String? get metaNativePlacement =>
+      _metaOn && showMetaNative ? metaNativeId : null;
+  String? get metaNativeBannerPlacement =>
+      _metaOn && showMetaNative ? metaNativeBannerId : null;
+  String? get metaInterstitialPlacement =>
+      _metaOn && showMetaInterstitial ? metaInterstitialId : null;
+  String? get metaBannerPlacement =>
+      _metaOn && showMetaBanner ? metaBannerId : null;
+  String? get metaMediumRectanglePlacement =>
+      _metaOn && showMetaBanner ? metaMediumRectangleId : null;
+
+  /// The AdMob fallback for each Meta-first format, or null when AdMob's own
+  /// flag has it off. (Native's AdMob side is the package's preloaded ad,
+  /// which checks `showNative` itself.)
+  String? get googleInterstitialId =>
+      showAd && showInterstitial ? interstitialId : null;
+  String? get googleBannerId => showAd && showBanner ? bannerId : null;
 
   /// Whether an app open ad should be requested on a cold start (the old
   /// "splash" ad): same "no id means off" rule as [toAdFlag].

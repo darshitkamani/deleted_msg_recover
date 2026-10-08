@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Button xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/meta_ad_cta"
+    android:layout_width="match_parent"
+    android:layout_height="32dp"
+    android:gravity="center"
+    android:letterSpacing="0.1"
+    android:minHeight="0dp"
+    android:minWidth="0dp"
+    android:padding="0dp"
+    android:stateListAnimator="@null"
+    android:textAllCaps="true"
+    android:textSize="13dp"
+    android:textStyle="bold" />

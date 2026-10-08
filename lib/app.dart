@@ -5,6 +5,7 @@ import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
 import 'core/ads/ads_service.dart';
+import 'core/ads/meta_ad_lab.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/app_state.dart';
 import 'core/update/update_service.dart';
@@ -55,6 +56,15 @@ class RecoverApp extends StatelessWidget {
                   showCounter: showAdMetricsLab,
                   showInRelease: showAdMetricsLab,
                 ),
+              ),
+              // Meta Ad Lab (Meta stats + AdMob Ad Inspector): always in debug
+              // builds, and in release only behind the same remote flag.
+              ValueListenableBuilder<bool>(
+                valueListenable: AdsService.instance.showAdMetricsLab,
+                builder: (context, showAdMetricsLab, _) =>
+                    kDebugMode || showAdMetricsLab
+                        ? const MetaAdLab()
+                        : const SizedBox.shrink(),
               ),
             ],
           ),
