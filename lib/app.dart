@@ -133,9 +133,9 @@ class _RootRouterState extends State<_RootRouter> {
       // which would also preload a small native ad nothing ever displays.
       // Interstitial, rewarded interstitial and app open are not part of
       // this -- AdsService loads those on demand.
-      PreloadGoogleAds.instance.reloadNativeAd(
-        nativeADType: NativeADType.medium,
-      );
+      // PreloadGoogleAds.instance.reloadNativeAd(
+      //   nativeADType: NativeADType.medium,
+      // );
     });
   }
 
