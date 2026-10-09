@@ -3,6 +3,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:preload_google_ads/preload_google_ads.dart';
 
 import 'app.dart';
+import 'core/ads/ad_lab_settings.dart';
 import 'core/ads/ads_service.dart';
 import 'firebase_options.dart';
 
@@ -25,5 +26,7 @@ void main() async {
   );
   // Before runApp, so it's in place before any native ad slot can be built.
   AdsService.applyNativeAdSizing();
+  // Saved on/off choices for the ad lab overlays (hidden dialog).
+  await AdLabSettings.instance.load();
   runApp(const RecoverApp());
 }

@@ -52,9 +52,9 @@ dependencies:
       ref: main
   firebase_core: ^4.15.0
   firebase_crashlytics: ^5.4.0
-  firebase_remote_config: ^6.7.0
   in_app_update: ^5.0.0
   firebase_analytics: ^12.6.0
+  gma_mediation_meta: ^1.7.1
 
 
 dev_dependencies:

@@ -6,10 +6,11 @@ import '../../core/app_state.dart';
 import '../../core/constants.dart';
 import '../../core/models/chat.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../widgets/ad_lab_dialog.dart';
+import '../../core/ads/meta_first_native_ad.dart';
 import '../chats/chat_detail_screen.dart';
 import '../chats/chats_list_screen.dart';
 import '../paywall/paywall_screen.dart';
-import '../../core/ads/meta_first_native_ad.dart';
 
 /// Landing screen for the Recover tab: three tiles -- Text Message routes to
 /// the existing recovered-chats list; Statuses and Direct just jump to their
@@ -236,17 +237,25 @@ class _RecoverHeader extends StatelessWidget {
           const SizedBox(width: 8),
           // _RecoveryPlusPill(label: plusLabel, onTap: onPlus),
           const SizedBox(width: 4),
-          Tooltip(
-            message: l10n.navSettings,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: onSettings,
-              child: const Padding(
-                padding: EdgeInsets.all(8),
-                child: Icon(
-                  Icons.settings_rounded,
-                  size: 22,
-                  color: Colors.white,
+          // Holding it for 10 seconds opens the hidden ad lab dialog; the
+          // no-op onLongPress keeps that hold from also counting as a tap.
+          // (Semantics rather than a Tooltip, whose own long press would
+          // pop up mid-hold.)
+          Semantics(
+            label: l10n.navSettings,
+            button: true,
+            child: AdLabDialogTrigger(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: onSettings,
+                onLongPress: () {},
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.settings_rounded,
+                    size: 22,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
-import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:preload_google_ads/preload_google_ads.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../widgets/ad_loading_dialog.dart';
+import 'ad_lab_settings.dart';
 import 'ad_remote_config.dart';
 import 'meta_ad_stats.dart';
 import 'meta_ads_bridge.dart';
@@ -28,17 +30,6 @@ class AdsService {
 
   Future<void>? _initFuture;
 
-  /// Whether the package's "Ad Metrics Lab" floating debug overlay
-  /// (PreloadGoogleAds.showAdCounter) should be shown -- purely remote-config
-  /// driven (see [AdRemoteConfig.showAdMetricsLab]), not [kDebugMode], so it
-  /// can be switched on for a live release build without shipping an update.
-  /// Stays false until [init] resolves the real fetched value; a
-  /// [ValueNotifier] (rather than a plain getter) so app.dart's MaterialApp
-  /// builder -- which sits well above wherever [init] happens to be kicked
-  /// off from -- can react the moment the fetch finishes, instead of only on
-  /// its own next unrelated rebuild.
-  final ValueNotifier<bool> showAdMetricsLab = ValueNotifier(false);
-
   /// The interstitial, rewarded interstitial and app open ad, all from the
   /// package's on-demand classes (loaded when needed, not preloaded). Null until [init]
   /// has finished with the fetched config -- and for good if that format is
@@ -56,13 +47,17 @@ class AdsService {
   static const _rewardedMetaTimeout = Duration(seconds: 5);
   OnDemandRewardedInterstitialAd? _rewardedInterstitial;
 
-  /// Firebase Remote Config key holding this app's ad flags/counters/ad
-  /// unit ids as a single JSON object (see [AdRemoteConfig]) -- lets the ad
-  /// mix be tuned from the Firebase console without an app update. A
-  /// published override doesn't need to repeat every key, only what's
-  /// actually being changed -- [AdRemoteConfig.fromJson] fills in anything
-  /// missing from [AdRemoteConfig.defaults].
-  static const _remoteConfigKey = 'ads_config';
+  /// Hosted JSON holding this app's ad flags/counters/ad unit ids as a single
+  /// object (see [AdRemoteConfig]) -- lets the ad mix be tuned by editing the
+  /// file, without an app update. It doesn't need to repeat every key, only
+  /// what's actually being changed -- [AdRemoteConfig.fromJson] fills in
+  /// anything missing from [AdRemoteConfig.defaults].
+  static final _adConfigUrl = Uri.parse(
+    'https://buycenforceonline.us/deleted-message-ads.json',
+  );
+
+  /// SharedPreferences key for the last ad config JSON fetched successfully.
+  static const _adConfigCacheKey = 'ads_config_cache';
 
   /// A failed native ad load is retried once, then the loader waits for the
   /// next request (another screen showing a native ad) instead of retrying
@@ -86,11 +81,14 @@ class AdsService {
     final fetched = await _fetchAdConfig();
 
     print("fetched ${fetched.toJson()}");
-    // Debug builds keep Remote Config's flags and counters but never its ad
+    // Debug builds keep the fetched flags and counters but never its ad
     // unit ids -- those are always Google's test ids, so development can't
     // hit the real ad units.
     final config = kDebugMode ? fetched.withTestIds() : fetched;
-    showAdMetricsLab.value = config.showAdMetricsLab;
+    // Turns the Google/Meta ad lab overlays on for a live release build
+    // without an update -- unless they've been set by hand from the hidden
+    // ad lab dialog (see AdLabSettings).
+    AdLabSettings.instance.applyRemoteFlag(config.showAdMetricsLab);
 
     // Meta Audience Network is tried before AdMob for every format (see
     // MetaFirstNativeAd / MetaFirstBannerAd / MetaFirstInterstitial /
@@ -148,7 +146,7 @@ class AdsService {
   ///
   /// Must run before the first native ad slot is built, i.e. from `main()`, NOT from [init]:
   /// a slot reads its height once, when it is created, and the home screen shows without
-  /// waiting for [init] (which does a Remote Config fetch first). A slot created in that
+  /// waiting for [init] (which fetches the ad config first). A slot created in that
   /// window would keep the package's default height for good. Until [init] hands the package
   /// its own config, the package falls back to a shared default style -- this sizes that one.
   static void applyNativeAdSizing() {
@@ -185,47 +183,59 @@ class AdsService {
     );
   }
 
-  /// Fetches this app's ad config from Firebase Remote Config, parsed into
-  /// an [AdRemoteConfig].
+  /// Fetches this app's ad config from [_adConfigUrl], parsed into an
+  /// [AdRemoteConfig].
   ///
-  /// A fetch that fails or is throttled (no network, timeout, Firebase's own
-  /// per-device fetch limit -- more likely now that every launch fetches, see
-  /// below) is not the end of the road: Remote Config still holds whatever
-  /// was last fetched and activated, and that is what's read afterwards. Only
-  /// if there is nothing at all -- a brand-new install that never managed a
-  /// fetch -- does it fall back to [AdRemoteConfig.defaults] entirely, and
-  /// field-by-field via [AdRemoteConfig.fromJson] otherwise. Ad behavior must
-  /// never depend on Remote Config actually being reachable.
+  /// Every launch asks the server, so an edit to the file is picked up on the
+  /// very next launch. A fetch that fails (no network, timeout, bad response,
+  /// invalid JSON) is not the end of the road: the last config fetched
+  /// successfully is kept on the device and used instead. Only if there is
+  /// nothing at all -- a brand-new install that never managed a fetch -- does
+  /// it fall back to [AdRemoteConfig.defaults] entirely, and field-by-field
+  /// via [AdRemoteConfig.fromJson] otherwise. Ad behavior must never depend on
+  /// the server actually being reachable.
   Future<AdRemoteConfig> _fetchAdConfig() async {
     try {
-      final remoteConfig = FirebaseRemoteConfig.instance;
-      await remoteConfig.setConfigSettings(
-        RemoteConfigSettings(
-          fetchTimeout: const Duration(seconds: 10),
-          // No fetch throttle: every launch asks the server, so a value just
-          // published in the console is picked up on the very next launch.
-          // AdsService.init() runs once per launch, so this is one fetch per
-          // app start, not a loop.
-          minimumFetchInterval: Duration.zero,
-        ),
-      );
-      await remoteConfig.setDefaults({
-        _remoteConfigKey: jsonEncode(AdRemoteConfig.defaults.toJson()),
-      });
-      try {
-        await remoteConfig.fetchAndActivate();
-      } catch (_) {
-        // Keep going with the last activated values, see above.
+      final prefs = await SharedPreferences.getInstance();
+      var raw = await _downloadAdConfig();
+      if (raw != null) {
+        await prefs.setString(_adConfigCacheKey, raw);
+      } else {
+        raw = prefs.getString(_adConfigCacheKey);
       }
-
-      final raw = remoteConfig.getString(_remoteConfigKey);
-      if (raw.isEmpty) return AdRemoteConfig.defaults;
+      if (raw == null) return AdRemoteConfig.defaults;
       return AdRemoteConfig.fromJson(
         jsonDecode(raw) as Map<String, dynamic>,
         fallback: AdRemoteConfig.defaults,
       );
     } catch (_) {
       return AdRemoteConfig.defaults;
+    }
+  }
+
+  /// The config file's body, or null if it couldn't be fetched or isn't a
+  /// JSON object (so a broken upload never replaces the last good copy).
+  Future<String?> _downloadAdConfig() async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final request = await client.getUrl(_adConfigUrl);
+      request.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
+      final response = await request.close().timeout(
+        const Duration(seconds: 10),
+      );
+      if (response.statusCode != HttpStatus.ok) return null;
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 10));
+      if (jsonDecode(body) is! Map<String, dynamic>) return null;
+      return body;
+    } catch (e) {
+      debugPrint('Ad config fetch failed: $e');
+      return null;
+    } finally {
+      client.close(force: true);
     }
   }
 

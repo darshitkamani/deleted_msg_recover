@@ -29,7 +29,7 @@ class MetaAdsBridge {
 
   /// Meta failures in a row after which a format stops asking Meta for the
   /// rest of this process (i.e. until the next app launch) -- its slots then go
-  /// straight to AdMob. Set from Remote Config's `metaNoFillLimit` by
+  /// straight to AdMob. Set from the ad config's `metaNoFillLimit` by
   /// AdsService; a success resets the count. The interstitial, app-open and
   /// rewarded slots share one count, since they share one placement.
   static int noFillLimit = 3;

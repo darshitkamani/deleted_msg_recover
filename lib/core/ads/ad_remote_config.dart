@@ -1,6 +1,6 @@
 import 'package:preload_google_ads/preload_google_ads.dart';
 
-/// Typed shape of the `ads_config` Firebase Remote Config JSON blob (see
+/// Typed shape of the hosted ad config JSON (see
 /// [AdsService]) -- every field's fallback rule (and its type) lives here
 /// in one place, instead of AdsService poking at a raw
 /// `Map<String, dynamic>` inline.
@@ -96,9 +96,9 @@ class AdRemoteConfig {
 
   /// Mirrors exactly what used to be hardcoded in AdsService before Remote
   /// Config was wired in. Used both as AdsService's own fallback whenever
-  /// Remote Config can't be reached at all, and field-by-field inside
+  /// the config file has never been fetched, and field-by-field inside
   /// [fromJson] whenever the fetched JSON is missing a key or has the
-  /// wrong type -- so a bad or partial value published in the console
+  /// wrong type -- so a bad or partial value published in the file
   /// degrades one field at a time instead of breaking ad init entirely.
   static const defaults = AdRemoteConfig(
     showAd: true,
@@ -120,7 +120,7 @@ class AdRemoteConfig {
     metaMediumRectangleId: '937049769164180_937053395830484',
   );
 
-  /// Parses Remote Config's fetched JSON, falling back to [fallback]
+  /// Parses the fetched config JSON, falling back to [fallback]
   /// field-by-field for anything missing or the wrong type.
   factory AdRemoteConfig.fromJson(
     Map<String, dynamic> json, {
@@ -222,9 +222,8 @@ class AdRemoteConfig {
         metaNoFillLimit: metaNoFillLimit,
       );
 
-  /// Serializes back to the same shape [fromJson] reads -- used to seed
-  /// Remote Config's own pre-fetch default (see AdsService) from
-  /// [defaults], so that literal JSON only has to be written once.
+  /// Serializes back to the same shape [fromJson] reads (AdsService logs the
+  /// config it settled on with this).
   Map<String, dynamic> toJson() => {
         'showAd': showAd,
         'showBanner': showBanner,

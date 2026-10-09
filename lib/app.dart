@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
+import 'core/ads/ad_lab_settings.dart';
 import 'core/ads/ads_service.dart';
 import 'core/ads/meta_ad_lab.dart';
 import 'core/analytics/analytics_service.dart';
@@ -37,34 +38,29 @@ class RecoverApp extends StatelessWidget {
             AnalyticsService.instance.navigatorObserver,
           ],
           // Draws the package's own "Ad Metrics Lab" floating debug overlay
-          // (PreloadGoogleAds.showAdCounter) above every screen, gated
-          // purely by AdsService.showAdMetricsLab (which mirrors the
-          // `showAdMetricsLab` remote config flag) via showInRelease --
-          // the package itself still refuses to render in release unless
-          // that's passed true, so this is the only thing that can turn it
-          // on in a live release build, and only remotely. A
-          // ValueListenableBuilder (rather than reading .value once here)
-          // because this builder isn't guaranteed to re-run at the moment
-          // AdsService.init() resolves the fetched flag.
+          // (PreloadGoogleAds.showAdCounter) and the Meta Ad Lab (Meta stats +
+          // AdMob Ad Inspector) above every screen. Each follows the
+          // `showAdMetricsLab` remote flag (always on in debug) unless set by
+          // hand from the hidden ad lab dialog -- see AdLabSettings. The
+          // package refuses to render in release unless showInRelease is
+          // true, so that's passed the same value. ValueListenableBuilders
+          // because this builder isn't guaranteed to re-run when the flag is
+          // fetched or toggled.
           builder: (context, child) => Stack(
             children: [
               if (child != null) child,
               ValueListenableBuilder<bool>(
-                valueListenable: AdsService.instance.showAdMetricsLab,
-                builder: (context, showAdMetricsLab, _) =>
+                valueListenable: AdLabSettings.instance.showGoogleLab,
+                builder: (context, show, _) =>
                     PreloadGoogleAds.instance.showAdCounter(
-                      showCounter: showAdMetricsLab || kDebugMode,
-                      showInRelease: showAdMetricsLab,
+                      showCounter: show,
+                      showInRelease: show,
                     ),
               ),
-              // Meta Ad Lab (Meta stats + AdMob Ad Inspector): always in debug
-              // builds, and in release only behind the same remote flag.
               ValueListenableBuilder<bool>(
-                valueListenable: AdsService.instance.showAdMetricsLab,
-                builder: (context, showAdMetricsLab, _) =>
-                    kDebugMode || showAdMetricsLab
-                    ? const MetaAdLab()
-                    : const SizedBox.shrink(),
+                valueListenable: AdLabSettings.instance.showMetaLab,
+                builder: (context, show, _) =>
+                    show ? const MetaAdLab() : const SizedBox.shrink(),
               ),
             ],
           ),

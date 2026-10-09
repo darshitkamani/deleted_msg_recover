@@ -130,14 +130,22 @@ class MetaAdsBridge(private val activity: Activity, flutterEngine: FlutterEngine
         }
         val id = newId("native")
         val format = if (small) "nativeBanner" else "native"
+        // A MethodChannel.Result may be answered only once ("Reply already
+        // submitted" otherwise crashes the app), and nothing stops Meta from
+        // calling back again after the first answer.
+        var answered = false
         val listener = object : NativeAdListener {
             override fun onAdLoaded(loaded: Ad) {
+                if (answered) return
+                answered = true
                 nativeAds[id] = ad
                 result.success(id)
             }
 
             override fun onError(failed: Ad?, error: AdError) {
                 Log.w(TAG, "native load failed (${error.errorCode}): ${error.errorMessage}")
+                if (answered) return
+                answered = true
                 ad.destroy()
                 result.error("LOAD_FAILED", error.errorMessage, error.errorCode)
             }
@@ -159,14 +167,23 @@ class MetaAdsBridge(private val activity: Activity, flutterEngine: FlutterEngine
         val ad = AdView(activity, placement(placementId), size)
         val id = newId("banner")
         val format = if (mediumRectangle) "mediumRectangle" else "banner"
+        // AdView auto-refreshes, firing onAdLoaded / onError again for every
+        // refresh -- only the first load may answer the Dart call (a second
+        // reply crashes with "Reply already submitted"), and a failed refresh
+        // must not destroy the banner that's still on screen.
+        var answered = false
         val listener = object : AdListener {
             override fun onAdLoaded(loaded: Ad) {
+                if (answered) return
+                answered = true
                 bannerAds[id] = ad
                 result.success(id)
             }
 
             override fun onError(failed: Ad?, error: AdError) {
                 Log.w(TAG, "banner load failed (${error.errorCode}): ${error.errorMessage}")
+                if (answered) return
+                answered = true
                 ad.destroy()
                 result.error("LOAD_FAILED", error.errorMessage, error.errorCode)
             }
@@ -185,6 +202,7 @@ class MetaAdsBridge(private val activity: Activity, flutterEngine: FlutterEngine
         var answered = false
         val listener = object : InterstitialAdListener {
             override fun onAdLoaded(loaded: Ad) {
+                if (answered) return
                 interstitials[id] = ad
                 answered = true
                 result.success(id)
