@@ -1,3 +1,4 @@
+import 'package:deleted_msg_recover/widgets/chat_avatar.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
@@ -499,19 +500,24 @@ class _RecentActivityTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: scheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    chat.isGroup ? Icons.group_rounded : Icons.person_rounded,
-                    size: 18,
-                    color: scheme.onPrimaryContainer,
-                  ),
+                ChatAvatar(
+                  avatarPath: chat.avatarPath,
+                  title: chat.title,
+                  isGroup: chat.isGroup,
                 ),
+                // Container(
+                //   width: 38,
+                //   height: 38,
+                //   decoration: BoxDecoration(
+                //     color: scheme.primaryContainer,
+                //     shape: BoxShape.circle,
+                //   ),
+                //   child: Icon(
+                //     chat.isGroup ? Icons.group_rounded : Icons.person_rounded,
+                //     size: 18,
+                //     color: scheme.onPrimaryContainer,
+                //   ),
+                // ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(

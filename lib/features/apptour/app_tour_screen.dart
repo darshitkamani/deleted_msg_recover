@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/generated/app_localizations.dart';
@@ -8,10 +10,38 @@ import '../../l10n/generated/app_localizations.dart';
 /// app.dart: for a user whose setup is still pending, this page appearing is
 /// also the point ads get initialized, so a first-run user sees onboarding
 /// before anything ad-related loads.
-class AppTourScreen extends StatelessWidget {
+///
+/// The Continue button shows a loader for the first [_continueDelay] the page
+/// is on screen, giving the ads initialized above a head start before
+/// [HomeShell]'s first native ad slot is built.
+class AppTourScreen extends StatefulWidget {
   final VoidCallback onContinue;
 
   const AppTourScreen({super.key, required this.onContinue});
+
+  @override
+  State<AppTourScreen> createState() => _AppTourScreenState();
+}
+
+class _AppTourScreenState extends State<AppTourScreen> {
+  static const _continueDelay = Duration(seconds: 3);
+
+  bool _continueReady = false;
+  Timer? _continueTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _continueTimer = Timer(_continueDelay, () {
+      if (mounted) setState(() => _continueReady = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _continueTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,10 +136,19 @@ class AppTourScreen extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: onContinue,
+                  onPressed: _continueReady ? widget.onContinue : null,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(l10n.appTourContinueButton),
+                    child: _continueReady
+                        ? Text(l10n.appTourContinueButton)
+                        : SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: scheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
                   ),
                 ),
               ),
