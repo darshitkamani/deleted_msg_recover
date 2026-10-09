@@ -37,6 +37,17 @@ class NativeBridge {
     return _methodChannel.invokeMethod('openNotificationAccessSettings');
   }
 
+  /// This device's Google advertising ID, or null if the user deleted it
+  /// (or Play services is unavailable). Shown in the Ad Inspector overlay for
+  /// registering the phone as a Meta Audience Network test device.
+  static Future<String?> getAdvertisingId() async {
+    try {
+      return await _methodChannel.invokeMethod<String>('getAdvertisingId');
+    } on PlatformException {
+      return null;
+    }
+  }
+
   static Future<bool> isIgnoringBatteryOptimizations() async {
     final result = await _methodChannel.invokeMethod<bool>(
       'isIgnoringBatteryOptimizations',

@@ -7,7 +7,6 @@ import '../../core/constants.dart';
 import '../../core/models/chat.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/ad_lab_dialog.dart';
-import '../../core/ads/meta_first_native_ad.dart';
 import '../chats/chat_detail_screen.dart';
 import '../chats/chats_list_screen.dart';
 import '../paywall/paywall_screen.dart';
@@ -85,9 +84,7 @@ class RecoverScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                MetaFirstNativeAd(
-                  // preloader: AdsService.instance.recoverAdPreloader,
-                ),
+                PreloadGoogleAds.instance.showNativeAd(),
 
                 if (!appState.notificationAccessGranted) ...[
                   const SizedBox(height: 20),

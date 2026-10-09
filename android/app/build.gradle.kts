@@ -41,8 +41,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 15
-        versionName = "3.2.0"
+        versionCode = 16
+        versionName = "3.3.0"
         manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
@@ -76,15 +76,15 @@ flutter {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // AdvertisingIdClient, so the Meta Ad Lab can show this device's advertising ID
+    // (needed to register it as a Meta Audience Network test device).
+    implementation("com.google.android.gms:play-services-ads-identifier:18.0.0")
     // BoM pins every Firebase artifact's version together; only declare Crashlytics itself,
     // the firebase_crashlytics Flutter plugin brings in firebase-common/-core transitively,
     // but not as `api`, so recordException() calls made directly from this module's own
     // Kotlin (NotificationListener.kt/MessageStore.kt) need this declared here explicitly.
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-crashlytics")
-    // Meta Audience Network, called directly (not through AdMob mediation) via
-    // MetaAdsBridge.kt; Dart tries it first and falls back to AdMob on any error.
-    implementation("com.facebook.android:audience-network-sdk:6.22.0")
     testImplementation("junit:junit:4.13.2")
     // Runs the real NotificationListener + MessageStore (real SQLite) on the JVM, so the
     // delete-detection flow can be tested without a device.

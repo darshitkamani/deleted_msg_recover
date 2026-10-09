@@ -11,7 +11,6 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/welcome_chat_tile.dart';
-import '../../core/ads/meta_first_native_ad.dart';
 
 /// Every edited or deleted message, aggregated across every chat and grouped
 /// by sender ("user wise") -- unlike ChatsListScreen/ChatDetailScreen, which
@@ -157,7 +156,7 @@ class _DeletedFeedList extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: const MetaFirstNativeAd(),
+          child: PreloadGoogleAds.instance.showNativeAd(),
         ),
         // Same app-authored explainer tile pinned above ChatsListScreen's
         // real conversations, shown here too -- always present regardless

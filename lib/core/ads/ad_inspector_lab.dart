@@ -1,32 +1,37 @@
 import 'package:preload_google_ads/preload_google_ads.dart';
 
-import 'meta_ad_stats.dart';
+import '../native_bridge.dart';
 
-/// Floating "Meta Ad Lab" debug overlay: a draggable button (Meta blue, so it
-/// isn't confused with the package's indigo Ad Metrics Lab) that opens a
-/// per-format table of Meta requests / loads / impressions / clicks / errors /
-/// fallbacks to AdMob, the last Meta error, and a button for Google's AdMob
-/// Ad Inspector.
+/// Floating "Ad Inspector" debug overlay: a draggable button (green, so it
+/// isn't confused with the package's indigo Ad Metrics Lab) that opens a small
+/// panel with this device's advertising ID and a button for Google's AdMob Ad
+/// Inspector -- the tool for checking mediation (which ad source, e.g. Meta
+/// Audience Network bidding, filled each request; single-ad-source testing).
 ///
-/// Drawn by app.dart above every screen in debug builds, and in release only
-/// while the `showAdMetricsLab` remote flag is on.
-class MetaAdLab extends StatefulWidget {
-  const MetaAdLab({super.key});
+/// Drawn by app.dart above every screen while AdLabSettings.showInspectorLab
+/// is on.
+class AdInspectorLab extends StatefulWidget {
+  const AdInspectorLab({super.key});
 
   @override
-  State<MetaAdLab> createState() => _MetaAdLabState();
+  State<AdInspectorLab> createState() => _AdInspectorLabState();
 }
 
-class _MetaAdLabState extends State<MetaAdLab> {
-  static const _metaBlue = Color(0xFF0866FF);
+class _AdInspectorLabState extends State<AdInspectorLab> {
+  static const _green = Color(0xFF1E8E3E);
   static const _buttonSize = 52.0;
-  static const _panelWidth = 330.0;
-  static const _panelHeight = 360.0;
+  static const _panelWidth = 300.0;
+  static const _panelHeight = 150.0;
 
   /// Starts on the right edge, below the Ad Metrics Lab button's (20, 140).
   Offset? _position;
   bool _open = false;
   String? _inspectorError;
+
+  /// This device's advertising ID, for registering it as a test device (AdMob
+  /// Settings -> Test devices, Meta Monetization Manager -> Integration ->
+  /// Testing). Fetched once.
+  late final Future<String?> _advertisingId = NativeBridge.getAdvertisingId();
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +49,7 @@ class _MetaAdLabState extends State<MetaAdLab> {
             top: position.dy + _buttonSize + 8 + _panelHeight > size.height
                 ? (position.dy - _panelHeight - 8).clamp(10.0, size.height)
                 : position.dy + _buttonSize + 8,
-            child: _panel(context, isDark),
+            child: _panel(isDark),
           ),
         Positioned(
           left: position.dx,
@@ -68,24 +73,16 @@ class _MetaAdLabState extends State<MetaAdLab> {
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [_metaBlue, Color(0xFF0050D0)],
+                  colors: [Color(0xFF34A853), _green],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
               alignment: Alignment.center,
-              child: _open
-                  ? const Icon(Icons.close_rounded, color: Colors.white)
-                  : const Text(
-                      'META',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                        decoration: TextDecoration.none,
-                      ),
-                    ),
+              child: Icon(
+                _open ? Icons.close_rounded : Icons.search_rounded,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -93,8 +90,7 @@ class _MetaAdLabState extends State<MetaAdLab> {
     );
   }
 
-  Widget _panel(BuildContext context, bool isDark) {
-    final stats = MetaAdStats.instance;
+  Widget _panel(bool isDark) {
     return Material(
       color: Colors.transparent,
       child: Container(
@@ -103,10 +99,7 @@ class _MetaAdLabState extends State<MetaAdLab> {
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _metaBlue.withValues(alpha: 0.45),
-            width: 1.5,
-          ),
+          border: Border.all(color: _green.withValues(alpha: 0.45), width: 1.5),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -114,25 +107,12 @@ class _MetaAdLabState extends State<MetaAdLab> {
           children: [
             Row(
               children: [
-                const Icon(Icons.campaign_rounded, size: 16, color: _metaBlue),
+                const Icon(Icons.search_rounded, size: 16, color: _green),
                 const SizedBox(width: 6),
                 const Text(
-                  'Meta Ad Lab',
+                  'Ad Inspector',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(width: 8),
-                ValueListenableBuilder<bool?>(
-                  valueListenable: stats.initialized,
-                  builder: (_, ready, _) => switch (ready) {
-                    true => _pill('SDK READY', Colors.green),
-                    false => _pill('SDK FAILED', Colors.red),
-                    null => _pill('SDK PENDING', Colors.grey),
-                  },
-                ),
-                if (kDebugMode) ...[
-                  const SizedBox(width: 4),
-                  _pill('TEST ADS', Colors.orange),
-                ],
                 const Spacer(),
                 GestureDetector(
                   onTap: () => setState(() => _open = false),
@@ -145,43 +125,7 @@ class _MetaAdLabState extends State<MetaAdLab> {
               ],
             ),
             const Divider(height: 14),
-            Row(
-              children: [
-                const Expanded(
-                  flex: 4,
-                  child: Text(
-                    'FORMAT',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-                _header('REQ', Colors.deepPurple),
-                _header('LOAD', Colors.blue),
-                _header('IMP', Colors.green),
-                _header('CLK', Colors.teal),
-                _header('FAIL', Colors.red),
-                _header('→G', Colors.orange),
-              ],
-            ),
-            const Divider(height: 8),
-            for (final format in MetaAdFormat.values)
-              _row(format, stats[format]),
-            const Divider(height: 14),
-            ValueListenableBuilder<String?>(
-              valueListenable: stats.lastError,
-              builder: (_, error, _) => Text(
-                'Last error: ${error ?? '—'}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: error == null ? Colors.grey : Colors.red,
-                ),
-              ),
-            ),
+            _advertisingIdRow(),
             const SizedBox(height: 10),
             FilledButton.tonalIcon(
               onPressed: _openAdInspector,
@@ -204,6 +148,46 @@ class _MetaAdLabState extends State<MetaAdLab> {
     );
   }
 
+  /// Advertising ID with a copy button -- the ID AdMob's and Meta's test
+  /// device lists ask for (not the hashed AdMob test device id in main.dart).
+  Widget _advertisingIdRow() {
+    return FutureBuilder<String?>(
+      future: _advertisingId,
+      builder: (context, snapshot) {
+        final id = snapshot.data;
+        final label = switch (snapshot.connectionState) {
+          ConnectionState.done => id ?? 'unavailable (deleted in Settings?)',
+          _ => 'loading…',
+        };
+        return Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Ad ID: $label',
+                maxLines: 2,
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+            ),
+            if (id != null)
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: id));
+                  debugPrint('Advertising ID: $id');
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    const SnackBar(content: Text('Advertising ID copied')),
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: Icon(Icons.copy_rounded, size: 16, color: _green),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Google's own AdMob Ad Inspector. Opens on test devices only -- debug
   /// builds' device is registered in main.dart; a release build needs its
   /// device added as a test device in the AdMob console.
@@ -215,73 +199,4 @@ class _MetaAdLabState extends State<MetaAdLab> {
       }
     });
   }
-
-  Widget _pill(String text, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Text(
-      text,
-      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: color),
-    ),
-  );
-
-  Widget _header(String title, Color color) => Expanded(
-    flex: 2,
-    child: Text(
-      title,
-      textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: color),
-    ),
-  );
-
-  Widget _row(MetaAdFormat format, MetaFormatStats stats) {
-    return AnimatedBuilder(
-      animation: stats.all,
-      builder: (_, _) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 4,
-              // "G only": hit the no-fill limit, AdMob until next launch.
-              child: Text(
-                stats.switchedToGoogle.value
-                    ? '${format.label} · G only'
-                    : format.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: stats.switchedToGoogle.value ? Colors.orange : null,
-                ),
-              ),
-            ),
-            _cell(stats.requests.value),
-            _cell(stats.loaded.value),
-            _cell(stats.impressions.value),
-            _cell(stats.clicks.value),
-            _cell(stats.failed.value, highlight: Colors.red),
-            _cell(stats.fallbacks.value, highlight: Colors.orange),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _cell(int value, {Color? highlight}) => Expanded(
-    flex: 2,
-    child: Text(
-      '$value',
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: value > 0 && highlight != null ? highlight : null,
-      ),
-    ),
-  );
 }

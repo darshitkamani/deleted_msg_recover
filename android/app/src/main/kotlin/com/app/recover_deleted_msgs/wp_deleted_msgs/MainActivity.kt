@@ -21,6 +21,7 @@ import androidx.annotation.NonNull
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -50,8 +51,6 @@ class MainActivity : FlutterActivity() {
     @Volatile
     private var pendingOpenTarget: String? = null
 
-    private var metaAds: MetaAdsBridge? = null
-
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -62,8 +61,6 @@ class MainActivity : FlutterActivity() {
         }
 
         captureOpenTarget(intent)
-
-        metaAds = MetaAdsBridge(this, flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -119,6 +116,12 @@ class MainActivity : FlutterActivity() {
                             pendingOpenTarget = null
                         }
                         "getAlertsEnabled" -> result.success(MonitorPrefs.alertsEnabled(applicationContext))
+                        // The Google advertising ID (null if the user deleted it), shown in
+                        // the Ad Inspector overlay for registering this phone as an AdMob/Meta test device.
+                        // Off the main thread: getAdvertisingIdInfo blocks on Play services.
+                        "getAdvertisingId" -> runInBackground(result) {
+                            AdvertisingIdClient.getAdvertisingIdInfo(applicationContext).id
+                        }
                         "setAlertsEnabled" -> {
                             MonitorPrefs.setAlertsEnabled(applicationContext, call.argument<Boolean>("enabled") ?: true)
                             result.success(null)
@@ -523,12 +526,6 @@ class MainActivity : FlutterActivity() {
         intent.removeExtra(AlertNotifier.EXTRA_OPEN_TARGET)
         pendingOpenTarget = target
         return true
-    }
-
-    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
-        metaAds?.dispose()
-        metaAds = null
-        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     override fun onPause() {

@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
 import 'package:provider/provider.dart';
 
+import 'core/ads/ad_inspector_lab.dart';
 import 'core/ads/ad_lab_settings.dart';
 import 'core/ads/ads_service.dart';
-import 'core/ads/meta_ad_lab.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/app_state.dart';
 import 'core/update/update_service.dart';
@@ -38,8 +38,8 @@ class RecoverApp extends StatelessWidget {
             AnalyticsService.instance.navigatorObserver,
           ],
           // Draws the package's own "Ad Metrics Lab" floating debug overlay
-          // (PreloadGoogleAds.showAdCounter) and the Meta Ad Lab (Meta stats +
-          // AdMob Ad Inspector) above every screen. Each follows the
+          // (PreloadGoogleAds.showAdCounter) and the Ad Inspector overlay
+          // (advertising ID + AdMob Ad Inspector) above every screen. Each follows the
           // `showAdMetricsLab` remote flag (always on in debug) unless set by
           // hand from the hidden ad lab dialog -- see AdLabSettings. The
           // package refuses to render in release unless showInRelease is
@@ -58,9 +58,9 @@ class RecoverApp extends StatelessWidget {
                     ),
               ),
               ValueListenableBuilder<bool>(
-                valueListenable: AdLabSettings.instance.showMetaLab,
+                valueListenable: AdLabSettings.instance.showInspectorLab,
                 builder: (context, show, _) =>
-                    show ? const MetaAdLab() : const SizedBox.shrink(),
+                    show ? const AdInspectorLab() : const SizedBox.shrink(),
               ),
             ],
           ),

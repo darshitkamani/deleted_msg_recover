@@ -14,7 +14,6 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/message_bubble.dart';
 import '../../widgets/chat_avatar.dart';
-import '../../core/ads/meta_first_native_ad.dart';
 
 /// Opening a chat here marks it "opened" -- this is the app's proxy for
 /// "the user has seen this", the same way opening WhatsApp itself would,
@@ -223,7 +222,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               clipBehavior: Clip.antiAlias,
-              child: const MetaFirstNativeAd(),
+              child: PreloadGoogleAds.instance.showNativeAd(),
             ),
             Expanded(
               child: Stack(
@@ -396,7 +395,7 @@ class _ExitChatDialog extends StatelessWidget {
                 border: Border.all(color: scheme.outlineVariant),
               ),
               clipBehavior: Clip.antiAlias,
-              child: const MetaFirstNativeAd(),
+              child: PreloadGoogleAds.instance.showNativeAd(),
             ),
           ],
         ),

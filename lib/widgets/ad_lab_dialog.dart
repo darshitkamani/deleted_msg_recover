@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../core/ads/ad_lab_settings.dart';
 
-/// Hidden dialog for switching the Google and Meta ad lab overlays on/off on
+/// Hidden dialog for switching the Ad Metrics Lab and Ad Inspector overlays on/off on
 /// this device. Reached only by holding [AdLabDialogTrigger] for
 /// [AdLabDialogTrigger.holdDuration], so it's internal-only and not
 /// localized.
@@ -28,11 +28,11 @@ Future<void> showAdLabDialog(BuildContext context) {
             ),
           ),
           ValueListenableBuilder<bool>(
-            valueListenable: settings.showMetaLab,
+            valueListenable: settings.showInspectorLab,
             builder: (context, value, _) => SwitchListTile(
-              title: const Text('Meta Ad Lab'),
+              title: const Text('Ad Inspector'),
               value: value,
-              onChanged: settings.setMetaLab,
+              onChanged: settings.setInspectorLab,
             ),
           ),
         ],
