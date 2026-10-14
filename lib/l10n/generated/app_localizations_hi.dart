@@ -455,6 +455,10 @@ class AppLocalizationsHi extends AppLocalizations {
       'एक छोटा विज्ञापन लोड हो रहा है, फिर आपका स्टेटस शेयर के लिए तैयार होगा।';
 
   @override
+  String get adLoadingOpenChatBody =>
+      'एक छोटा विज्ञापन लोड हो रहा है, फिर आपकी चैट खुल जाएगी।';
+
+  @override
   String get appWhatsApp => 'व्हाट्सएप';
 
   @override

@@ -1,3 +1,4 @@
+import '../core/ads/ads_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -24,9 +25,15 @@ class WelcomeChatTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const WelcomeChatScreen())),
+          onTap: () {
+            final navigator = Navigator.of(context);
+            AdsService.instance.showInterstitialThen(
+              context,
+              () => navigator.push(
+                MaterialPageRoute(builder: (_) => const WelcomeChatScreen()),
+              ),
+            );
+          },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(

@@ -1,3 +1,4 @@
+import '../../core/ads/ads_service.dart';
 import 'package:deleted_msg_recover/widgets/chat_avatar.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
@@ -143,11 +144,17 @@ class RecoverScreen extends StatelessWidget {
                   for (final chat in recentChats.take(3))
                     _RecentActivityTile(
                       chat: chat,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => ChatDetailScreen(chat: chat),
-                        ),
-                      ),
+                      onTap: () {
+                        final navigator = Navigator.of(context);
+                        AdsService.instance.showInterstitialThen(
+                          context,
+                          () => navigator.push(
+                            MaterialPageRoute(
+                              builder: (_) => ChatDetailScreen(chat: chat),
+                            ),
+                          ),
+                        );
+                      },
                     ),
               ],
             ),

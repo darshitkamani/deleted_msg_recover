@@ -35,6 +35,24 @@ class AdsService {
   OnDemandInterstitialAd? _interstitial;
   OnDemandRewardedInterstitialAd? _rewardedInterstitial;
 
+  /// Ad unit for the interstitial shown on opening a chat (see
+  /// [showInterstitialThen]); null until [init], or if it's switched off
+  /// (`showChatInterstitial` in the config).
+  String? _chatInterstitialId;
+
+  /// Shows that ad on every this-many'th chat opened
+  /// (`chatInterstitialCounter` in the config), counted in
+  /// [_chatOpensSinceAd].
+  int _chatInterstitialEvery = 1;
+  int _chatOpensSinceAd = 0;
+
+  /// Guards [showInterstitialThen] against a second tap while one is already
+  /// loading or showing.
+  bool _chatInterstitialBusy = false;
+
+  /// How long opening a chat waits for its interstitial before just opening.
+  static const _chatInterstitialTimeout = Duration(seconds: 6);
+
   /// Hosted JSON holding this app's ad flags/counters/ad unit ids as a single
   /// object (see [AdRemoteConfig]) -- lets the ad mix be tuned by editing the
   /// file, without an app update. It doesn't need to repeat every key, only
@@ -87,6 +105,12 @@ class AdsService {
       ),
     );
 
+    if (config.chatInterstitialEnabled) {
+      _chatInterstitialId = config.interstitialId;
+      _chatInterstitialEvery = config.chatInterstitialCounter < 1
+          ? 1
+          : config.chatInterstitialCounter;
+    }
     if (config.interstitialEnabled) {
       _interstitial = OnDemandInterstitialAd(
         adUnitId: config.interstitialId!,
@@ -242,5 +266,108 @@ class AdsService {
 
     if (ad != null) await loader.show(ad);
     then();
+  }
+
+  /// Shows an interstitial right now, then runs [then] once it's dismissed --
+  /// used on every chat tile tap, with [then] opening the chat; the ad only
+  /// comes on every `chatInterstitialCounter`th tap, the others just open.
+  /// Requested on the spot behind a loading dialog; if it's switched off, or
+  /// the ad fails or takes longer than [_chatInterstitialTimeout], [then]
+  /// runs straight away, so the chat always opens.
+  ///
+  /// A shown ad also restarts the every-Nth-navigation interstitial's count
+  /// ([showInterstitialOnNavigation]), so the two don't land back to back.
+  Future<void> showInterstitialThen(
+    BuildContext context,
+    VoidCallback then,
+  ) async {
+    final adUnitId = _chatInterstitialId;
+    if (adUnitId == null) {
+      then();
+      return;
+    }
+    if (_chatInterstitialBusy) return;
+    _chatOpensSinceAd++;
+    if (_chatOpensSinceAd < _chatInterstitialEvery) {
+      then();
+      return;
+    }
+    _chatInterstitialBusy = true;
+    try {
+      final navigator = Navigator.of(context, rootNavigator: true);
+      showAdLoadingDialog(context, action: AdLoadingAction.openChat);
+      final ad = await _loadInterstitial(adUnitId);
+      navigator.pop();
+
+      if (ad != null) {
+        await _showInterstitial(ad);
+        _chatOpensSinceAd = 0;
+        _interstitial?.reset();
+      }
+    } finally {
+      _chatInterstitialBusy = false;
+    }
+    then();
+  }
+
+  /// Loads one interstitial, or null if it fails or misses the timeout (an
+  /// ad arriving after that is discarded). Counted in the Ad Metrics Lab's
+  /// interstitial row like the navigation one.
+  Future<InterstitialAd?> _loadInterstitial(String adUnitId) {
+    final completer = Completer<InterstitialAd?>();
+    final timer = Timer(_chatInterstitialTimeout, () {
+      if (!completer.isCompleted) completer.complete(null);
+    });
+    final stats = AdStats.instance;
+    stats.interReq.value++;
+    try {
+      InterstitialAd.load(
+        adUnitId: adUnitId,
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            stats.recordLoadSource(ad);
+            stats.interLoad.value++;
+            if (completer.isCompleted) {
+              ad.dispose();
+              return;
+            }
+            timer.cancel();
+            completer.complete(ad);
+          },
+          onAdFailedToLoad: (error) {
+            stats.interFailed.value++;
+            debugPrint('Chat interstitial failed to load: $error');
+            timer.cancel();
+            if (!completer.isCompleted) completer.complete(null);
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('Chat interstitial load threw: $e');
+      timer.cancel();
+      if (!completer.isCompleted) completer.complete(null);
+    }
+    return completer.future;
+  }
+
+  /// Shows [ad] and completes once it's dismissed (or fails to show).
+  Future<void> _showInterstitial(InterstitialAd ad) {
+    final done = Completer<void>();
+    ad.fullScreenContentCallback = FullScreenContentCallback<InterstitialAd>(
+      onAdImpression: (_) => AdStats.instance.interImp.value++,
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        if (!done.isCompleted) done.complete();
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        debugPrint('Chat interstitial failed to show: $error');
+        ad.dispose();
+        if (!done.isCompleted) done.complete();
+      },
+    );
+    ad.setImmersiveMode(true);
+    ad.show();
+    return done.future;
   }
 }

@@ -455,6 +455,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'A short ad is loading, then your status will be ready to share.';
 
   @override
+  String get adLoadingOpenChatBody =>
+      'A short ad is loading, then your chat will open.';
+
+  @override
   String get appWhatsApp => 'WhatsApp';
 
   @override

@@ -1,3 +1,4 @@
+import '../../core/ads/ads_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
@@ -149,8 +150,12 @@ class _ChatTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
+            final navigator = Navigator.of(context);
+            AdsService.instance.showInterstitialThen(
+              context,
+              () => navigator.push(
+                MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
+              ),
             );
           },
           child: Padding(

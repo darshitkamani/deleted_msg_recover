@@ -6,9 +6,10 @@ import '../l10n/generated/app_localizations.dart';
 
 /// What the user is waiting on behind [showAdLoadingDialog] -- picks the icon
 /// and the wording of the message.
-enum AdLoadingAction { download, share }
+enum AdLoadingAction { download, share, openChat }
 
-/// Shown while the ad that gates a status download/share is being requested,
+/// Shown while the ad that gates a status download/share, or opening a chat,
+/// is being requested,
 /// so the tap visibly does something instead of the app just sitting there.
 /// Same look as [showAppConfirmDialog] (blurred backdrop, rounded card,
 /// gradient icon medallion, soft entrance), with a progress ring around the
@@ -64,7 +65,6 @@ class _AdLoadingDialog extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final accent = scheme.primary;
     final accentDark = Color.lerp(accent, Colors.black, 0.25)!;
-    final isDownload = action == AdLoadingAction.download;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -120,7 +120,11 @@ class _AdLoadingDialog extends StatelessWidget {
                       ],
                     ),
                     child: Icon(
-                      isDownload ? Icons.download_rounded : Icons.share_rounded,
+                      switch (action) {
+                        AdLoadingAction.download => Icons.download_rounded,
+                        AdLoadingAction.share => Icons.share_rounded,
+                        AdLoadingAction.openChat => Icons.chat_rounded,
+                      },
                       color: Colors.white,
                       size: 30,
                     ),
@@ -138,7 +142,11 @@ class _AdLoadingDialog extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              isDownload ? l10n.adLoadingDownloadBody : l10n.adLoadingShareBody,
+              switch (action) {
+                AdLoadingAction.download => l10n.adLoadingDownloadBody,
+                AdLoadingAction.share => l10n.adLoadingShareBody,
+                AdLoadingAction.openChat => l10n.adLoadingOpenChatBody,
+              },
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurfaceVariant,

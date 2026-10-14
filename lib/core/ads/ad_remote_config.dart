@@ -16,6 +16,16 @@ class AdRemoteConfig {
   final int nativeCounter;
   final int interstitialCounter;
 
+  /// The interstitial shown when a chat tile is tapped (see
+  /// AdsService.showInterstitialThen) -- on its own switch, separate from
+  /// the every-Nth-navigation one ([showInterstitial]); both use
+  /// [interstitialId].
+  final bool showChatInterstitial;
+
+  /// Show that ad on every Nth chat opened: 1 = every tap, 2 = every 2nd,
+  /// ... Values below 1 are treated as 1.
+  final int chatInterstitialCounter;
+
   /// Shows the floating "Ad Metrics Lab" debug overlay (live load/impression/
   /// failed counters per ad format) on every screen, including release
   /// builds -- gated purely by this remote flag rather than [kDebugMode] so
@@ -43,6 +53,8 @@ class AdRemoteConfig {
     required this.showSplashAd,
     required this.nativeCounter,
     required this.interstitialCounter,
+    required this.showChatInterstitial,
+    required this.chatInterstitialCounter,
     this.appOpenId,
     this.bannerId,
     this.nativeId,
@@ -69,6 +81,8 @@ class AdRemoteConfig {
     showSplashAd: true,
     nativeCounter: 0,
     interstitialCounter: 5,
+    showChatInterstitial: true,
+    chatInterstitialCounter: 1,
     showAdMetricsLab: false,
   );
 
@@ -112,6 +126,14 @@ class AdRemoteConfig {
         'interstitialCounter',
         fallback.interstitialCounter,
       ),
+      showChatInterstitial: boolOr(
+        'showChatInterstitial',
+        fallback.showChatInterstitial,
+      ),
+      chatInterstitialCounter: intOr(
+        'chatInterstitialCounter',
+        fallback.chatInterstitialCounter,
+      ),
       appOpenId: stringOrNull('appOpenId') ?? fallback.appOpenId,
       bannerId: stringOrNull('bannerId') ?? fallback.bannerId,
       nativeId: stringOrNull('nativeId') ?? fallback.nativeId,
@@ -139,6 +161,8 @@ class AdRemoteConfig {
         showSplashAd: showSplashAd,
         nativeCounter: nativeCounter,
         interstitialCounter: interstitialCounter,
+        showChatInterstitial: showChatInterstitial,
+        chatInterstitialCounter: chatInterstitialCounter,
         showAdMetricsLab: showAdMetricsLab,
         appOpenId: AdTestIds.appOpen,
         bannerId: AdTestIds.banner,
@@ -161,6 +185,8 @@ class AdRemoteConfig {
         'showSplashAd': showSplashAd,
         'nativeCounter': nativeCounter,
         'interstitialCounter': interstitialCounter,
+        'showChatInterstitial': showChatInterstitial,
+        'chatInterstitialCounter': chatInterstitialCounter,
         'showAdMetricsLab': showAdMetricsLab,
         if (appOpenId != null) 'appOpenId': appOpenId,
         if (bannerId != null) 'bannerId': bannerId,
@@ -197,6 +223,11 @@ class AdRemoteConfig {
   /// "no id means off" rule as [toAdFlag].
   bool get interstitialEnabled =>
       showAd && showInterstitial && interstitialId != null;
+
+  /// Whether tapping a chat tile should show an interstitial: same "no id
+  /// means off" rule, independent of [showInterstitial].
+  bool get chatInterstitialEnabled =>
+      showAd && showChatInterstitial && interstitialId != null;
 
   /// Whether an app open ad should be requested on a cold start (the old
   /// "splash" ad): same "no id means off" rule as [toAdFlag].

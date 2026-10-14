@@ -932,6 +932,12 @@ abstract class AppLocalizations {
   /// **'A short ad is loading, then your status will be ready to share.'**
   String get adLoadingShareBody;
 
+  /// No description provided for @adLoadingOpenChatBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A short ad is loading, then your chat will open.'**
+  String get adLoadingOpenChatBody;
+
   /// No description provided for @appWhatsApp.
   ///
   /// In en, this message translates to:
