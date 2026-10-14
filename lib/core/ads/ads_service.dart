@@ -53,6 +53,11 @@ class AdsService {
   /// for ~35 impressions.
   static const _nativeRetryLimit = 1;
 
+  /// Failed native loads allowed per app session (retries included) before
+  /// the package stops native ads until the next cold start -- see
+  /// [AdConfigData.nativeMaxFailuresPerSession].
+  static const _nativeMaxFailuresPerSession = 3;
+
   Future<void> init() {
     return _initFuture ??= _initialize();
   }
@@ -76,6 +81,8 @@ class AdsService {
         adIDs: config.toAdIDS(),
         adCounter: config.toAdCounter(),
         nativeRetryLimit: _nativeRetryLimit,
+        enableNativeFailureLimit: true,
+        nativeMaxFailuresPerSession: _nativeMaxFailuresPerSession,
         nativeADLayout: _nativeAdLayout(),
       ),
     );

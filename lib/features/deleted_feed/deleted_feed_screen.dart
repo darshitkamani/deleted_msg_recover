@@ -4,16 +4,18 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/constants.dart';
+import '../../core/models/chat.dart';
 import '../../core/models/edited_deleted_message.dart';
 import '../../core/models/media_type.dart';
 import '../../core/native_bridge.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../widgets/app_tab_switcher.dart';
+import '../../widgets/chat_avatar.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/welcome_chat_tile.dart';
 
 /// Every edited or deleted message, aggregated across every chat and grouped
-/// by sender ("user wise") -- unlike ChatsListScreen/ChatDetailScreen, which
+/// by day, then by chat within each day -- unlike ChatsListScreen/ChatDetailScreen, which
 /// are scoped one conversation at a time, this pulls the same cross-chat
 /// aggregate view the Recover grid already uses for media (see
 /// NativeBridge.getEditedOrDeletedMessages), just for edits/deletions.
@@ -88,18 +90,25 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Groups by sender, falling back to the chat title when no explicit
-    // sender name was captured (a 1:1 chat's own notifications don't always
-    // carry a separate person name). Insertion order follows the source
-    // list, which is already most-recent-first, so both which group appears
-    // first and each group's own row order stay chronological.
-    final groups = <String, List<EditedDeletedMessage>>{};
+    // Groups by day, then by chat within that day -- by chat rather than by
+    // sender because the profile photo is captured per chat (contact or
+    // group photo), so each group header can show the same avatar the chat
+    // list does; a group chat's rows still name their own sender. Insertion
+    // order follows the source list, which is already most-recent-first, so
+    // days, the chats within a day, and each chat's rows all stay
+    // chronological.
+    final days = <DateTime, Map<String, List<EditedDeletedMessage>>>{};
     for (final item in _items) {
-      final key = item.sender?.isNotEmpty == true
-          ? item.sender!
-          : item.chatTitle;
-      groups.putIfAbsent(key, () => []).add(item);
+      final time = DateTime.fromMillisecondsSinceEpoch(item.timestamp);
+      final day = DateTime(time.year, time.month, time.day);
+      days
+          .putIfAbsent(day, () => {})
+          .putIfAbsent(item.chatKey, () => [])
+          .add(item);
     }
+    final chatsByKey = {
+      for (final chat in context.watch<AppState>().chats) chat.chatKey: chat,
+    };
 
     // No own Scaffold/AppBar -- like every other bottom-nav tab body
     // (ChatsListScreen, StatusesScreen), this is rendered inside HomeShell's
@@ -131,7 +140,7 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
               ? const Center(child: CircularProgressIndicator())
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: _DeletedFeedList(groups: groups),
+                  child: _DeletedFeedList(days: days, chatsByKey: chatsByKey),
                 ),
         ),
       ],
@@ -140,9 +149,13 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
 }
 
 class _DeletedFeedList extends StatelessWidget {
-  final Map<String, List<EditedDeletedMessage>> groups;
+  final Map<DateTime, Map<String, List<EditedDeletedMessage>>> days;
 
-  const _DeletedFeedList({required this.groups});
+  /// For each group's profile photo and group flag, which the deleted
+  /// messages themselves don't carry.
+  final Map<String, Chat> chatsByKey;
+
+  const _DeletedFeedList({required this.days, required this.chatsByKey});
 
   @override
   Widget build(BuildContext context) {
@@ -162,12 +175,23 @@ class _DeletedFeedList extends StatelessWidget {
         // real conversations, shown here too -- always present regardless
         // of the WA/WA Business tab or whether anything's been detected yet.
         const WelcomeChatTile(),
-        if (groups.isEmpty)
+        if (days.isEmpty)
           _EmptyState(text: l10n.deletedFeedEmpty)
         else
-          for (final entry in groups.entries) ...[
-            _SenderHeader(sender: entry.key, items: entry.value),
-            for (final item in entry.value) _DeletedFeedRow(item: item),
+          for (final day in days.entries) ...[
+            _DayHeader(date: day.key),
+            for (final group in day.value.entries) ...[
+              _ChatHeader(
+                chat: chatsByKey[group.key],
+                title: group.value.first.chatTitle,
+                items: group.value,
+              ),
+              for (final item in group.value)
+                _DeletedFeedRow(
+                  item: item,
+                  isGroup: chatsByKey[group.key]?.isGroup ?? false,
+                ),
+            ],
           ],
       ],
     );
@@ -217,11 +241,74 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _SenderHeader extends StatelessWidget {
-  final String sender;
+/// The day a run of groups below it belongs to -- same pill as
+/// ChatDetailScreen's date divider.
+class _DayHeader extends StatelessWidget {
+  final DateTime date;
+
+  const _DayHeader({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    final String label;
+    if (date == today) {
+      label = l10n.dateToday;
+    } else if (date == yesterday) {
+      label = l10n.dateYesterday;
+    } else {
+      label = DateFormat.yMMMMd().format(date);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 4),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF182229) : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                blurRadius: 1,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Text(
+            label,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One chat's edits/deletions on one day: its profile photo (as in the chat
+/// list), name, and how many of that day's messages were deleted.
+class _ChatHeader extends StatelessWidget {
+  /// Null if the chat isn't in [AppState.chats] (e.g. not loaded yet) --
+  /// the avatar then falls back to the letter.
+  final Chat? chat;
+  final String title;
   final List<EditedDeletedMessage> items;
 
-  const _SenderHeader({required this.sender, required this.items});
+  const _ChatHeader({
+    required this.chat,
+    required this.title,
+    required this.items,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,24 +317,19 @@ class _SenderHeader extends StatelessWidget {
     final deletedCount = items.where((m) => m.isDeleted).length;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 16, 6, 6),
+      padding: const EdgeInsets.fromLTRB(6, 12, 6, 6),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: theme.colorScheme.primaryContainer,
-            child: Text(
-              sender.isNotEmpty ? sender.characters.first.toUpperCase() : '?',
-              style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          ChatAvatar(
+            avatarPath: chat?.avatarPath,
+            title: title,
+            isGroup: chat?.isGroup ?? false,
+            radius: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              sender,
+              title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleSmall?.copyWith(
@@ -279,15 +361,23 @@ class _SenderHeader extends StatelessWidget {
 class _DeletedFeedRow extends StatelessWidget {
   final EditedDeletedMessage item;
 
-  const _DeletedFeedRow({required this.item});
+  /// Whether the row's chat is a group -- the chat name is already in the
+  /// header above, so a group's rows name their sender instead.
+  final bool isGroup;
+
+  const _DeletedFeedRow({required this.item, required this.isGroup});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final time = DateFormat(
-      'MMM d, HH:mm',
-    ).format(DateTime.fromMillisecondsSinceEpoch(item.timestamp));
+    // Just the time: the day is in the header above.
+    final time = DateFormat.Hm().format(
+      DateTime.fromMillisecondsSinceEpoch(item.timestamp),
+    );
+    final sender = isGroup && item.sender?.isNotEmpty == true
+        ? item.sender!
+        : null;
 
     // Same rule ChatDetailScreen's message bubble uses: an edited message
     // shows what it originally said as its main content, not the latest
@@ -319,7 +409,7 @@ class _DeletedFeedRow extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      item.chatTitle,
+                      sender ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelMedium?.copyWith(
