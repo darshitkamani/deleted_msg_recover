@@ -214,13 +214,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             : const Color(0xFFECE5DD),
         body: Column(
           children: [
-            Container(
-              constraints: const BoxConstraints(minHeight: 100),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+            NativeAdSlot(
+              placement: NativePlacement.chatDetail,
+              builder: (context, ad) => Container(
+                constraints: const BoxConstraints(minHeight: 100),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ad,
               ),
-              clipBehavior: Clip.antiAlias,
-              child: const NativeAdSlot(),
             ),
             Expanded(
               child: Stack(
@@ -377,23 +380,33 @@ class _ExitChatDialog extends StatelessWidget {
                 color: scheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              l10n.exitAppSponsoredLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-                letterSpacing: 0.4,
+            NativeAdSlot(
+              placement: NativePlacement.chatExitDialog,
+              // The "Sponsored" label and frame go with the ad.
+              builder: (context, ad) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 14),
+                  Text(
+                    l10n.exitAppSponsoredLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    constraints: const BoxConstraints(minHeight: 100),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: ad,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              constraints: const BoxConstraints(minHeight: 100),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: const NativeAdSlot(),
             ),
           ],
         ),

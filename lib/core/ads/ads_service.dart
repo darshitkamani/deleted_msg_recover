@@ -10,6 +10,7 @@ import '../native_bridge.dart';
 import 'ad_lab_settings.dart';
 import 'ad_remote_config.dart';
 import 'native_ad_sizing.dart';
+import 'native_placement.dart';
 
 /// Thin, idempotent wrapper around [PreloadGoogleAds.instance.initialize] --
 /// callers just call [init] whenever they know it's safe to; the network
@@ -32,6 +33,15 @@ class AdsService {
   /// built earlier would request an ad the package can't render yet -- a
   /// wasted request, retried on the package's defaults (and test ad id).
   final ValueNotifier<bool> ready = ValueNotifier(false);
+
+  /// The config [init] settled on -- for the per-screen native ad switches
+  /// ([showsNativeAt]). Null until then.
+  AdRemoteConfig? _config;
+
+  /// Whether the native ad at [placement] is switched on in the config
+  /// (`showNative...` keys; on when missing). Only meaningful once [ready].
+  bool showsNativeAt(NativePlacement placement) =>
+      _config?.showsNativeAt(placement) ?? true;
 
   /// The interstitial, rewarded interstitial and app open ad, all from the
   /// package's on-demand classes (loaded when needed, not preloaded). Null until [init]
@@ -161,11 +171,16 @@ class AdsService {
     // [ready] lets any native slot build: reloadNativeAd resets the loader
     // first, so run alongside a slot's own request it would send a second
     // one. A slot built after this just waits for the ad already loading.
-    if (config.showAd && config.showNative && config.nativeId != null) {
+    final anyNativePlacement = NativePlacement.values.any(config.showsNativeAt);
+    if (config.showAd &&
+        config.showNative &&
+        config.nativeId != null &&
+        anyNativePlacement) {
       await PreloadGoogleAds.instance.reloadNativeAd(
         nativeADType: NativeADType.medium,
       );
     }
+    _config = config;
     ready.value = true;
 
     if (config.chatInterstitialEnabled) {

@@ -1,5 +1,7 @@
 import 'package:preload_google_ads/preload_google_ads.dart';
 
+import 'native_placement.dart';
+
 /// Typed shape of the hosted ad config JSON (see
 /// [AdsService]) -- every field's fallback rule (and its type) lives here
 /// in one place, instead of AdsService poking at a raw
@@ -37,6 +39,15 @@ class AdRemoteConfig {
   /// The native ad in the deleted-message popup's expanded card (shown over
   /// other apps, see DeletedOverlay.kt); uses [nativeId].
   final bool showOverlayNative;
+
+  /// Per-screen native ad switches, by [NativePlacement.configKey]. A
+  /// placement missing from the map is on -- see [showsNativeAt].
+  final Map<String, bool> nativePlacements;
+
+  /// Whether the native ad at [placement] should show (on top of the global
+  /// [showNative] and [showAd], which still apply).
+  bool showsNativeAt(NativePlacement placement) =>
+      nativePlacements[placement.configKey] ?? true;
 
   /// Whether that popup opens fully expanded (message, actions, ad) straight
   /// away instead of as a small card the user taps to expand -- the switch
@@ -84,6 +95,7 @@ class AdRemoteConfig {
     required this.showChatInterstitial,
     required this.chatInterstitialCounter,
     required this.showOverlayNative,
+    this.nativePlacements = const {},
     required this.overlayAutoExpand,
     required this.overlayAutoExpandIntervalSeconds,
     this.appOpenId,
@@ -183,8 +195,21 @@ class AdRemoteConfig {
         'chatInterstitialCounter',
         fallback.chatInterstitialCounter,
       ),
-      showOverlayNative: boolOr('showOverlayNative', fallback.showOverlayNative),
-      overlayAutoExpand: boolOr('overlayAutoExpand', fallback.overlayAutoExpand),
+      showOverlayNative: boolOr(
+        'showOverlayNative',
+        fallback.showOverlayNative,
+      ),
+      nativePlacements: {
+        for (final placement in NativePlacement.values)
+          placement.configKey: boolOr(
+            placement.configKey,
+            fallback.showsNativeAt(placement),
+          ),
+      },
+      overlayAutoExpand: boolOr(
+        'overlayAutoExpand',
+        fallback.overlayAutoExpand,
+      ),
       overlayAutoExpandIntervalSeconds: intOr(
         'overlayAutoExpandIntervalSeconds',
         fallback.overlayAutoExpandIntervalSeconds,
@@ -192,10 +217,10 @@ class AdRemoteConfig {
       appOpenId: stringOrNull('appOpenId') ?? fallback.appOpenId,
       bannerId: stringOrNull('bannerId') ?? fallback.bannerId,
       nativeId: stringOrNull('nativeId') ?? fallback.nativeId,
-      interstitialId:
-          stringOrNull('interstitialId') ?? fallback.interstitialId,
+      interstitialId: stringOrNull('interstitialId') ?? fallback.interstitialId,
       rewardedId: stringOrNull('rewardedId') ?? fallback.rewardedId,
-      rewardedInterstitialId: stringOrNull('rewardedInterstitialId') ??
+      rewardedInterstitialId:
+          stringOrNull('rewardedInterstitialId') ??
           fallback.rewardedInterstitialId,
       showAdMetricsLab: boolOr('showAdMetricsLab', fallback.showAdMetricsLab),
     );
@@ -206,63 +231,65 @@ class AdRemoteConfig {
   /// (or gets counted against) the real ad units. Every slot gets an id, so
   /// which formats are actually on is decided purely by the show* flags.
   AdRemoteConfig withTestIds() => AdRemoteConfig(
-        showAd: showAd,
-        showBanner: showBanner,
-        showInterstitial: showInterstitial,
-        showNative: showNative,
-        showOpenApp: showOpenApp,
-        showRewarded: showRewarded,
-        showRewardedInterstitial: showRewardedInterstitial,
-        showSplashAd: showSplashAd,
-        nativeCounter: nativeCounter,
-        interstitialCounter: interstitialCounter,
-        appOpenTimeoutSeconds: appOpenTimeoutSeconds,
-        appOpenMinBackgroundSeconds: appOpenMinBackgroundSeconds,
-        appOpenCooldownSeconds: appOpenCooldownSeconds,
-        showChatInterstitial: showChatInterstitial,
-        chatInterstitialCounter: chatInterstitialCounter,
-        showOverlayNative: showOverlayNative,
-        overlayAutoExpand: overlayAutoExpand,
-        overlayAutoExpandIntervalSeconds: overlayAutoExpandIntervalSeconds,
-        showAdMetricsLab: showAdMetricsLab,
-        appOpenId: AdTestIds.appOpen,
-        bannerId: AdTestIds.banner,
-        nativeId: AdTestIds.native,
-        interstitialId: AdTestIds.interstitial,
-        rewardedId: AdTestIds.rewarded,
-        rewardedInterstitialId: AdTestIds.rewardedInterstitial,
-      );
+    showAd: showAd,
+    showBanner: showBanner,
+    showInterstitial: showInterstitial,
+    showNative: showNative,
+    showOpenApp: showOpenApp,
+    showRewarded: showRewarded,
+    showRewardedInterstitial: showRewardedInterstitial,
+    showSplashAd: showSplashAd,
+    nativeCounter: nativeCounter,
+    interstitialCounter: interstitialCounter,
+    appOpenTimeoutSeconds: appOpenTimeoutSeconds,
+    appOpenMinBackgroundSeconds: appOpenMinBackgroundSeconds,
+    appOpenCooldownSeconds: appOpenCooldownSeconds,
+    showChatInterstitial: showChatInterstitial,
+    chatInterstitialCounter: chatInterstitialCounter,
+    showOverlayNative: showOverlayNative,
+    nativePlacements: nativePlacements,
+    overlayAutoExpand: overlayAutoExpand,
+    overlayAutoExpandIntervalSeconds: overlayAutoExpandIntervalSeconds,
+    showAdMetricsLab: showAdMetricsLab,
+    appOpenId: AdTestIds.appOpen,
+    bannerId: AdTestIds.banner,
+    nativeId: AdTestIds.native,
+    interstitialId: AdTestIds.interstitial,
+    rewardedId: AdTestIds.rewarded,
+    rewardedInterstitialId: AdTestIds.rewardedInterstitial,
+  );
 
   /// Serializes back to the same shape [fromJson] reads (AdsService logs the
   /// config it settled on with this).
   Map<String, dynamic> toJson() => {
-        'showAd': showAd,
-        'showBanner': showBanner,
-        'showInterstitial': showInterstitial,
-        'showNative': showNative,
-        'showOpenApp': showOpenApp,
-        'showRewarded': showRewarded,
-        'showRewardedInterstitial': showRewardedInterstitial,
-        'showSplashAd': showSplashAd,
-        'nativeCounter': nativeCounter,
-        'interstitialCounter': interstitialCounter,
-        'appOpenTimeoutSeconds': appOpenTimeoutSeconds,
-        'appOpenMinBackgroundSeconds': appOpenMinBackgroundSeconds,
-        'appOpenCooldownSeconds': appOpenCooldownSeconds,
-        'showChatInterstitial': showChatInterstitial,
-        'chatInterstitialCounter': chatInterstitialCounter,
-        'showOverlayNative': showOverlayNative,
-        'overlayAutoExpand': overlayAutoExpand,
-        'overlayAutoExpandIntervalSeconds': overlayAutoExpandIntervalSeconds,
-        'showAdMetricsLab': showAdMetricsLab,
-        if (appOpenId != null) 'appOpenId': appOpenId,
-        if (bannerId != null) 'bannerId': bannerId,
-        if (nativeId != null) 'nativeId': nativeId,
-        if (interstitialId != null) 'interstitialId': interstitialId,
-        if (rewardedId != null) 'rewardedId': rewardedId,
-        if (rewardedInterstitialId != null)
-          'rewardedInterstitialId': rewardedInterstitialId,
-      };
+    'showAd': showAd,
+    'showBanner': showBanner,
+    'showInterstitial': showInterstitial,
+    'showNative': showNative,
+    'showOpenApp': showOpenApp,
+    'showRewarded': showRewarded,
+    'showRewardedInterstitial': showRewardedInterstitial,
+    'showSplashAd': showSplashAd,
+    'nativeCounter': nativeCounter,
+    'interstitialCounter': interstitialCounter,
+    'appOpenTimeoutSeconds': appOpenTimeoutSeconds,
+    'appOpenMinBackgroundSeconds': appOpenMinBackgroundSeconds,
+    'appOpenCooldownSeconds': appOpenCooldownSeconds,
+    'showChatInterstitial': showChatInterstitial,
+    'chatInterstitialCounter': chatInterstitialCounter,
+    'showOverlayNative': showOverlayNative,
+    ...nativePlacements,
+    'overlayAutoExpand': overlayAutoExpand,
+    'overlayAutoExpandIntervalSeconds': overlayAutoExpandIntervalSeconds,
+    'showAdMetricsLab': showAdMetricsLab,
+    if (appOpenId != null) 'appOpenId': appOpenId,
+    if (bannerId != null) 'bannerId': bannerId,
+    if (nativeId != null) 'nativeId': nativeId,
+    if (interstitialId != null) 'interstitialId': interstitialId,
+    if (rewardedId != null) 'rewardedId': rewardedId,
+    if (rewardedInterstitialId != null)
+      'rewardedInterstitialId': rewardedInterstitialId,
+  };
 
   /// A format stays off if it has no configured ad unit id, regardless of
   /// its own show* flag -- otherwise the package's own lower-level fallback
@@ -271,20 +298,20 @@ class AdRemoteConfig {
   /// (test) content instead of just not loading it. "Enabled with no id"
   /// must mean "off," never "test ad."
   AdFlag toAdFlag() => AdFlag(
-        showAd: showAd,
-        showBanner: showBanner && bannerId != null,
-        // Interstitial and rewarded interstitial use the package's on-demand
-        // classes (see AdsService) so they load when needed -- turned off
-        // here so the package's own loaders never preload them.
-        showInterstitial: false,
-        showNative: showNative && nativeId != null,
-        // App open also uses the package's on-demand class (see AdsService),
-        // so both of its package-side triggers stay off.
-        showOpenApp: false,
-        showRewarded: showRewarded && rewardedId != null,
-        showRewardedInterstitial: false,
-        showSplashAd: false,
-      );
+    showAd: showAd,
+    showBanner: showBanner && bannerId != null,
+    // Interstitial and rewarded interstitial use the package's on-demand
+    // classes (see AdsService) so they load when needed -- turned off
+    // here so the package's own loaders never preload them.
+    showInterstitial: false,
+    showNative: showNative && nativeId != null,
+    // App open also uses the package's on-demand class (see AdsService),
+    // so both of its package-side triggers stay off.
+    showOpenApp: false,
+    showRewarded: showRewarded && rewardedId != null,
+    showRewardedInterstitial: false,
+    showSplashAd: false,
+  );
 
   /// Whether the app's own interstitial (see AdsService) should run: same
   /// "no id means off" rule as [toAdFlag].
@@ -308,28 +335,27 @@ class AdRemoteConfig {
 
   /// Whether an app open ad should be requested every time the app returns
   /// from the background.
-  bool get appOpenOnResumeEnabled =>
-      showAd && showOpenApp && appOpenId != null;
+  bool get appOpenOnResumeEnabled => showAd && showOpenApp && appOpenId != null;
 
   /// Whether the app's own on-demand rewarded interstitial should run.
   bool get rewardedInterstitialEnabled =>
       showAd && showRewardedInterstitial && rewardedInterstitialId != null;
 
   AdCounter toAdCounter() => AdCounter(
-        nativeCounter: nativeCounter,
-        interstitialCounter: interstitialCounter,
-      );
+    nativeCounter: nativeCounter,
+    interstitialCounter: interstitialCounter,
+  );
 
   /// Passed through as-is, including null -- never substitutes a test id
   /// for a missing one. A null id here is harmless on its own: [toAdFlag]
   /// already turns off whichever format it belongs to, so the package
   /// never actually tries to load with it.
   AdIDS toAdIDS() => AdIDS(
-        appOpenId: appOpenId,
-        bannerId: bannerId,
-        nativeId: nativeId,
-        interstitialId: interstitialId,
-        rewardedId: rewardedId,
-        rewardedInterstitialId: rewardedInterstitialId,
-      );
+    appOpenId: appOpenId,
+    bannerId: bannerId,
+    nativeId: nativeId,
+    interstitialId: interstitialId,
+    rewardedId: rewardedId,
+    rewardedInterstitialId: rewardedInterstitialId,
+  );
 }

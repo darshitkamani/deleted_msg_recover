@@ -35,9 +35,7 @@ class _MediaFolderScreenState extends State<MediaFolderScreen> {
   // A full sync walks the entire granted SAF tree -- expensive, especially
   // on a large Media folder -- so it's only worth re-running automatically
   // once this much time has passed since the last one, rather than on
-  // every single screen open or tab switch. Pull-to-refresh always forces
-  // one regardless, so the user still has an explicit way to get fresh data
-  // sooner.
+  // every single screen open or tab switch.
   static const _autoSyncCooldown = Duration(minutes: 15);
 
   String _package = pkgWhatsApp;
@@ -119,9 +117,8 @@ class _MediaFolderScreenState extends State<MediaFolderScreen> {
   /// entire time. A failure here surfaces the same error screen as
   /// [_refresh] rather than leaving that progress bar spinning forever.
   ///
-  /// Called either because [_refresh] decided a fresh scan was actually due
-  /// ([_shouldAutoSync]), or directly from pull-to-refresh, which always
-  /// forces one regardless of the cooldown.
+  /// Called when [_refresh] decides a fresh scan is actually due
+  /// ([_shouldAutoSync]).
   Future<void> _sync() async {
     if (_syncing) return;
     setState(() => _syncing = true);
@@ -256,18 +253,9 @@ class _MediaFolderScreenState extends State<MediaFolderScreen> {
                                 text: l10n.mediaFolderScanningState,
                               )
                             : _EmptyMediaFolder(onViewGuide: _openGuide))
-                      : RefreshIndicator(
-                          onRefresh: _sync,
-                          child: _isGrid
-                              ? _MediaFolderGrid(
-                                  items: _items,
-                                  onOpen: _openItem,
-                                )
-                              : _MediaFolderList(
-                                  items: _items,
-                                  onOpen: _openItem,
-                                ),
-                        ))
+                      : _isGrid
+                      ? _MediaFolderGrid(items: _items, onOpen: _openItem)
+                      : _MediaFolderList(items: _items, onOpen: _openItem))
                 : _FolderAccessRequest(
                     folderHint: _folderHint,
                     onGrant: _requestAccess,

@@ -45,7 +45,7 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
     super.didChangeDependencies();
     // This tab is built once and then kept alive by HomeShell's IndexedStack,
     // so without this it would keep showing whatever it loaded on first
-    // visit -- new deletions would only appear after a manual pull-to-refresh.
+    // visit -- new deletions wouldn't appear at all (there's no pull-to-refresh).
     // AppState bumps dataRevision on every native message event and app
     // resume; reload quietly (no spinner) whenever it moves.
     final revision = context.watch<AppState>().dataRevision;
@@ -139,10 +139,7 @@ class _DeletedFeedScreenState extends State<DeletedFeedScreen> {
               ? ErrorState(error: _error!, onRetry: _load)
               : _loading
               ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: _DeletedFeedList(days: days, chatsByKey: chatsByKey),
-                ),
+              : _DeletedFeedList(days: days, chatsByKey: chatsByKey),
         ),
       ],
     );
@@ -164,13 +161,13 @@ class _DeletedFeedList extends StatelessWidget {
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      // Always scrollable (even when empty) so pull-to-refresh still works,
-      // same reasoning as StatusesScreen's empty grid.
-      physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: const NativeAdSlot(),
+        NativeAdSlot(
+          placement: NativePlacement.deleted,
+          builder: (context, ad) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: ad,
+          ),
         ),
         // Same app-authored explainer tile pinned above ChatsListScreen's
         // real conversations, shown here too -- always present regardless

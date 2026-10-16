@@ -173,7 +173,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: const NativeAdSlot(),
+          child: const NativeAdSlot(placement: NativePlacement.directChat),
         ),
       ],
     );

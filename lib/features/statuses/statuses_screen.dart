@@ -1,10 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:preload_google_ads/preload_google_ads.dart';
+import 'package:preload_google_ads/preload_google_ads.dart' hide AppState;
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/ads/ads_service.dart';
+import '../../core/app_state.dart';
 import '../../core/constants.dart';
 import '../../core/models/status_item.dart';
 import '../../core/native_bridge.dart';
@@ -41,17 +43,35 @@ class _StatusesScreenState extends State<StatusesScreen> {
   Object? _error;
   _MediaFilter _filter = _MediaFilter.all;
 
+  int? _seenRevision;
+
   @override
   void initState() {
     super.initState();
     _refresh();
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This tab is built once and kept alive by HomeShell's IndexedStack, and
+    // there's no pull-to-refresh, so it reloads quietly (no spinner) whenever
+    // AppState.dataRevision moves -- on every app resume and new message --
+    // to pick up statuses posted since.
+    final revision = context.watch<AppState>().dataRevision;
+    if (_seenRevision != null && revision != _seenRevision) {
+      _refresh(silent: true);
+    }
+    _seenRevision = revision;
+  }
+
+  Future<void> _refresh({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final hasAccess = await NativeBridge.hasStatusAccess(_package);
       List<StatusItem> items = [];
@@ -70,6 +90,8 @@ class _StatusesScreenState extends State<StatusesScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      // A failed background reload keeps showing the last good list.
+      if (silent) return;
       setState(() {
         _error = e;
         _loading = false;
@@ -188,11 +210,7 @@ class _StatusesScreenState extends State<StatusesScreen> {
               : _loading
               ? const Center(child: CircularProgressIndicator())
               : (_hasAccess ?? false)
-              ? _StatusGrid(
-                  items: _filteredItems,
-                  onRefresh: _refresh,
-                  onOpen: _openItem,
-                )
+              ? _StatusGrid(items: _filteredItems, onOpen: _openItem)
               : _AccessRequest(
                   folderHint: _folderHint,
                   onGrant: _requestAccess,
@@ -404,83 +422,74 @@ class _AccessRequest extends StatelessWidget {
 
 class _StatusGrid extends StatelessWidget {
   final List<StatusItem> items;
-  final Future<void> Function() onRefresh;
   final void Function(StatusItem) onOpen;
 
-  const _StatusGrid({
-    required this.items,
-    required this.onRefresh,
-    required this.onOpen,
-  });
+  const _StatusGrid({required this.items, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView(
-          padding: const EdgeInsets.only(top: 12),
-          children: [
-            const NativeAdSlot(),
-            const SizedBox(height: 88),
-            Icon(
-              Icons.image_outlined,
-              size: 48,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  AppLocalizations.of(context).statusesEmptyState,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      // A CustomScrollView rather than a plain GridView so the native ad can
-      // sit as an ordinary sliver above the grid and scroll away with the
-      // rest of the content, instead of staying pinned to the top of the
-      // screen the way a fixed widget above the grid would.
-      child: CustomScrollView(
-        // Keep a couple of screens' worth of tiles warm so fast scrolling
-        // doesn't re-decode images that were just off-screen a moment ago.
-        // ignore: deprecated_member_use
-        cacheExtent: 800,
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            sliver: const SliverToBoxAdapter(child: NativeAdSlot()),
+      return ListView(
+        padding: const EdgeInsets.only(top: 12),
+        children: [
+          const NativeAdSlot(placement: NativePlacement.statuses),
+          const SizedBox(height: 88),
+          Icon(
+            Icons.image_outlined,
+            size: 48,
+            color: Theme.of(context).colorScheme.outline,
           ),
-          SliverPadding(
-            padding: const EdgeInsets.all(12),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.82,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => RepaintBoundary(
-                  child: _StatusTile(item: items[index], onOpen: onOpen),
+          const SizedBox(height: 12),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                AppLocalizations.of(context).statusesEmptyState,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                childCount: items.length,
               ),
             ),
           ),
         ],
-      ),
+      );
+    }
+
+    // A CustomScrollView rather than a plain GridView so the native ad can
+    // sit as an ordinary sliver above the grid and scroll away with the
+    // rest of the content, instead of staying pinned to the top of the
+    // screen the way a fixed widget above the grid would.
+    return CustomScrollView(
+      // Keep a couple of screens' worth of tiles warm so fast scrolling
+      // doesn't re-decode images that were just off-screen a moment ago.
+      // ignore: deprecated_member_use
+      cacheExtent: 800,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          sliver: const SliverToBoxAdapter(
+            child: NativeAdSlot(placement: NativePlacement.statuses),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(12),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.82,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => RepaintBoundary(
+                child: _StatusTile(item: items[index], onOpen: onOpen),
+              ),
+              childCount: items.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -6,7 +6,7 @@ import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 /// A single video's grid tile: a generated frame with a play badge on top.
 /// Thumbnails are generated once per path and kept in memory for the life
 /// of the app, since the same status list gets rebuilt often (tab
-/// switches, pull-to-refresh) and re-decoding the same video is wasteful.
+/// switches, reloads) and re-decoding the same video is wasteful.
 class VideoThumbnailTile extends StatefulWidget {
   final String path;
 

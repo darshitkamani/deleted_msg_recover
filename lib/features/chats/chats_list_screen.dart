@@ -54,31 +54,28 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         // part of the list content -- same fixed-slot treatment as the
         // native ad in ChatDetailScreen. Medium, like every slot: the small
         // native ad is never loaded.
-        const NativeAdSlot(),
+        const NativeAdSlot(placement: NativePlacement.chats),
 
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: appState.refreshData,
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              // The welcome chat is always pinned first, regardless of the
-              // WA/WA Business tab or whether any real chats have been
-              // captured yet -- it's app-authored content, not tied to
-              // either package.
-              itemCount: chats.length + 1 + (chats.isEmpty ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == 0) return const WelcomeChatTile();
-                if (chats.isEmpty) {
-                  return appState.chatsError != null
-                      ? ErrorState(
-                          error: appState.chatsError!,
-                          onRetry: appState.refreshData,
-                        )
-                      : const _EmptyChatsNotice();
-                }
-                return _ChatTile(chat: chats[index - 1]);
-              },
-            ),
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+            // The welcome chat is always pinned first, regardless of the
+            // WA/WA Business tab or whether any real chats have been
+            // captured yet -- it's app-authored content, not tied to
+            // either package.
+            itemCount: chats.length + 1 + (chats.isEmpty ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == 0) return const WelcomeChatTile();
+              if (chats.isEmpty) {
+                return appState.chatsError != null
+                    ? ErrorState(
+                        error: appState.chatsError!,
+                        onRetry: appState.refreshData,
+                      )
+                    : const _EmptyChatsNotice();
+              }
+              return _ChatTile(chat: chats[index - 1]);
+            },
           ),
         ),
       ],

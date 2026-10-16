@@ -87,7 +87,7 @@ class RecoverScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const NativeAdSlot(),
+                const NativeAdSlot(placement: NativePlacement.recover),
                 if (appState.showOverlayPromo) ...[
                   const SizedBox(height: 16),
                   _OverlayPromoCard(
