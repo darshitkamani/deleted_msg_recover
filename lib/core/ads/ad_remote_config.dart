@@ -22,6 +22,15 @@ class AdRemoteConfig {
   /// given up on (it's then kept for the next return to the app). At least 1.
   final int appOpenTimeoutSeconds;
 
+  /// Failed interstitial loads (both kinds: every-Nth-navigation and on
+  /// opening a chat) allowed per app session before interstitials stop until
+  /// the next launch. 0 = no limit.
+  final int interstitialMaxFailuresPerSession;
+
+  /// Failed native loads (retries included) allowed per app session before
+  /// native ads stop until the next launch. 0 = no limit.
+  final int nativeMaxFailuresPerSession;
+
   /// The app open ad on returning to the app only comes after at least this
   /// long in the background -- not for a quick trip to the share sheet or a
   /// settings screen.
@@ -90,6 +99,8 @@ class AdRemoteConfig {
     required this.nativeCounter,
     required this.interstitialCounter,
     required this.appOpenTimeoutSeconds,
+    this.interstitialMaxFailuresPerSession = 5,
+    this.nativeMaxFailuresPerSession = 3,
     required this.appOpenMinBackgroundSeconds,
     required this.appOpenCooldownSeconds,
     required this.showChatInterstitial,
@@ -179,6 +190,14 @@ class AdRemoteConfig {
         'appOpenTimeoutSeconds',
         fallback.appOpenTimeoutSeconds,
       ).clamp(1, 30),
+      interstitialMaxFailuresPerSession: intOr(
+        'interstitialMaxFailuresPerSession',
+        fallback.interstitialMaxFailuresPerSession,
+      ).clamp(0, 1000),
+      nativeMaxFailuresPerSession: intOr(
+        'nativeMaxFailuresPerSession',
+        fallback.nativeMaxFailuresPerSession,
+      ).clamp(0, 1000),
       appOpenMinBackgroundSeconds: intOr(
         'appOpenMinBackgroundSeconds',
         fallback.appOpenMinBackgroundSeconds,
@@ -242,6 +261,8 @@ class AdRemoteConfig {
     nativeCounter: nativeCounter,
     interstitialCounter: interstitialCounter,
     appOpenTimeoutSeconds: appOpenTimeoutSeconds,
+    interstitialMaxFailuresPerSession: interstitialMaxFailuresPerSession,
+    nativeMaxFailuresPerSession: nativeMaxFailuresPerSession,
     appOpenMinBackgroundSeconds: appOpenMinBackgroundSeconds,
     appOpenCooldownSeconds: appOpenCooldownSeconds,
     showChatInterstitial: showChatInterstitial,
@@ -273,6 +294,8 @@ class AdRemoteConfig {
     'nativeCounter': nativeCounter,
     'interstitialCounter': interstitialCounter,
     'appOpenTimeoutSeconds': appOpenTimeoutSeconds,
+    'interstitialMaxFailuresPerSession': interstitialMaxFailuresPerSession,
+    'nativeMaxFailuresPerSession': nativeMaxFailuresPerSession,
     'appOpenMinBackgroundSeconds': appOpenMinBackgroundSeconds,
     'appOpenCooldownSeconds': appOpenCooldownSeconds,
     'showChatInterstitial': showChatInterstitial,

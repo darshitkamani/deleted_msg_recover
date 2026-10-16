@@ -50,6 +50,13 @@ class AdsService {
   /// no-op instead of using the package's built-in defaults (Google's *test*
   /// ad unit ids, everything enabled), which would otherwise load a test ad.
   OnDemandInterstitialAd? _interstitial;
+
+  /// Interstitial failures so far this session (see [_watchInterstitialFailures])
+  /// and the config's cap on them; once reached, both interstitial kinds stop.
+  int _interFailures = 0;
+  int _interMaxFailures = 0;
+  bool _interStopped = false;
+  bool _watchingInterFailures = false;
   OnDemandRewardedInterstitialAd? _rewardedInterstitial;
 
   /// Ad unit for the interstitial shown on opening a chat (see
@@ -87,11 +94,6 @@ class AdsService {
   /// on a timer indefinitely -- which is what kept native at ~150 requests
   /// for ~35 impressions.
   static const _nativeRetryLimit = 1;
-
-  /// Failed native loads allowed per app session (retries included) before
-  /// the package stops native ads until the next cold start -- see
-  /// [AdConfigData.nativeMaxFailuresPerSession].
-  static const _nativeMaxFailuresPerSession = 3;
 
   Future<void> init() {
     return _initFuture ??= _initialize();
@@ -158,8 +160,11 @@ class AdsService {
         adIDs: config.toAdIDS(),
         adCounter: config.toAdCounter(),
         nativeRetryLimit: _nativeRetryLimit,
-        enableNativeFailureLimit: true,
-        nativeMaxFailuresPerSession: _nativeMaxFailuresPerSession,
+        // `nativeMaxFailuresPerSession` in the config; 0 turns the limit off.
+        enableNativeFailureLimit: config.nativeMaxFailuresPerSession > 0,
+        nativeMaxFailuresPerSession: config.nativeMaxFailuresPerSession > 0
+            ? config.nativeMaxFailuresPerSession
+            : AdConfigData.defaultNativeMaxFailuresPerSession,
         nativeADLayout: _nativeAdLayout(),
       ),
     );
@@ -183,13 +188,15 @@ class AdsService {
     _config = config;
     ready.value = true;
 
-    if (config.chatInterstitialEnabled) {
+    _interMaxFailures = config.interstitialMaxFailuresPerSession;
+    _watchInterstitialFailures();
+    if (config.chatInterstitialEnabled && !_interStopped) {
       _chatInterstitialId = config.interstitialId;
       _chatInterstitialEvery = config.chatInterstitialCounter < 1
           ? 1
           : config.chatInterstitialCounter;
     }
-    if (config.interstitialEnabled) {
+    if (config.interstitialEnabled && !_interStopped) {
       _interstitial = OnDemandInterstitialAd(
         adUnitId: config.interstitialId!,
         interval: config.interstitialCounter,
@@ -360,6 +367,39 @@ class AdsService {
   /// `interstitialCounter`th one (see [OnDemandInterstitialAd]). A no-op
   /// until [init] has completed.
   void showInterstitialOnNavigation() => _interstitial?.onNavigation();
+
+  /// Counts failed interstitial loads -- both kinds report into
+  /// [AdStats.interFailed]: the package's every-Nth-navigation one and
+  /// [_loadInterstitial] for opening a chat -- and once
+  /// `interstitialMaxFailuresPerSession` is reached, stops both until the next
+  /// launch ([_stopInterstitials]). Only increases count (the Ad Metrics Lab
+  /// resetting its numbers isn't a load result).
+  void _watchInterstitialFailures() {
+    if (_watchingInterFailures) return;
+    _watchingInterFailures = true;
+    final failed = AdStats.instance.interFailed;
+    var last = failed.value;
+    failed.addListener(() {
+      final now = failed.value;
+      if (now > last && !_interStopped && _interMaxFailures > 0) {
+        _interFailures += now - last;
+        if (_interFailures >= _interMaxFailures) _stopInterstitials();
+      }
+      last = now;
+    });
+  }
+
+  /// No more interstitial requests this session: the navigation one is
+  /// dropped, and opening a chat just opens it (no loading dialog).
+  void _stopInterstitials() {
+    _interStopped = true;
+    _interstitial?.reset();
+    _interstitial = null;
+    _chatInterstitialId = null;
+    debugPrint(
+      'Interstitials stopped after $_interFailures failed loads this session.',
+    );
+  }
 
   /// Shows the rewarded interstitial right now, then runs [then] once it's
   /// dismissed. Nothing is preloaded, so the user waits behind a loading
