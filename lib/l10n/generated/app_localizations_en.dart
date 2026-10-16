@@ -25,6 +25,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'This app quietly backs up your WhatsApp and WhatsApp Business notifications, so if someone deletes a message before you see it, you still can.';
 
   @override
+  String get onboardingNotificationHint => 'Tap Next, then turn this switch on';
+
+  @override
+  String get onboardingNotificationNote =>
+      'Tap Next and turn it on for this app, so it can save WhatsApp messages as they arrive. Works for messages received after setup, and everything stays on your phone.';
+
+  @override
+  String get onboardingSimpleTitle => 'Read deleted messages';
+
+  @override
+  String get onboardingSimpleBody =>
+      'See what a WhatsApp message said, even after the sender deletes it.';
+
+  @override
+  String get onboardingFlowStep1 => 'Someone sends you a message';
+
+  @override
+  String get onboardingFlowStep2 => 'They delete it for everyone';
+
+  @override
+  String get onboardingFlowStep3 => 'You can still read it here';
+
+  @override
+  String get onboardingFlowNow => 'now';
+
+  @override
+  String get onboardingFlowFootnote =>
+      'Works for messages received after setup. Everything stays on your phone.';
+
+  @override
+  String get onboardingDemoName => 'Rahul';
+
+  @override
+  String get onboardingDemoMessage => 'See you at 6?';
+
+  @override
   String get onboardingHowItWorksTitle => 'How it works';
 
   @override

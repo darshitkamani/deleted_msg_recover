@@ -25,6 +25,43 @@ class AppLocalizationsHi extends AppLocalizations {
       'यह ऐप आपके व्हाट्सएप और व्हाट्सएप बिजनेस नोटिफिकेशन का बैकअप चुपचाप रखता है, ताकि अगर कोई मैसेज देखने से पहले डिलीट कर दे, तो भी आप उसे पढ़ सकें।';
 
   @override
+  String get onboardingNotificationHint =>
+      'आगे पर टैप करें, फिर यह स्विच चालू करें';
+
+  @override
+  String get onboardingNotificationNote =>
+      'आगे पर टैप करें और इस ऐप के लिए इसे चालू करें, ताकि यह WhatsApp मैसेज आते ही सेव कर सके। सेटअप के बाद आए मैसेज के लिए काम करता है, और सब कुछ आपके फ़ोन पर ही रहता है।';
+
+  @override
+  String get onboardingSimpleTitle => 'डिलीट हुए मैसेज पढ़ें';
+
+  @override
+  String get onboardingSimpleBody =>
+      'भेजने वाले के डिलीट करने के बाद भी देखें कि WhatsApp मैसेज में क्या लिखा था।';
+
+  @override
+  String get onboardingFlowStep1 => 'कोई आपको मैसेज भेजता है';
+
+  @override
+  String get onboardingFlowStep2 => 'वह उसे सभी के लिए डिलीट कर देता है';
+
+  @override
+  String get onboardingFlowStep3 => 'आप फिर भी उसे यहाँ पढ़ सकते हैं';
+
+  @override
+  String get onboardingFlowNow => 'अभी';
+
+  @override
+  String get onboardingFlowFootnote =>
+      'सेटअप के बाद आए मैसेज के लिए काम करता है। सब कुछ आपके फ़ोन पर ही रहता है।';
+
+  @override
+  String get onboardingDemoName => 'राहुल';
+
+  @override
+  String get onboardingDemoMessage => '6 बजे मिलते हैं?';
+
+  @override
   String get onboardingHowItWorksTitle => 'यह कैसे काम करता है';
 
   @override

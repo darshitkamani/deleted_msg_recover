@@ -128,6 +128,72 @@ abstract class AppLocalizations {
   /// **'This app quietly backs up your WhatsApp and WhatsApp Business notifications, so if someone deletes a message before you see it, you still can.'**
   String get onboardingIntroDescription;
 
+  /// No description provided for @onboardingNotificationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Next, then turn this switch on'**
+  String get onboardingNotificationHint;
+
+  /// No description provided for @onboardingNotificationNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Next and turn it on for this app, so it can save WhatsApp messages as they arrive. Works for messages received after setup, and everything stays on your phone.'**
+  String get onboardingNotificationNote;
+
+  /// No description provided for @onboardingSimpleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Read deleted messages'**
+  String get onboardingSimpleTitle;
+
+  /// No description provided for @onboardingSimpleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'See what a WhatsApp message said, even after the sender deletes it.'**
+  String get onboardingSimpleBody;
+
+  /// No description provided for @onboardingFlowStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone sends you a message'**
+  String get onboardingFlowStep1;
+
+  /// No description provided for @onboardingFlowStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'They delete it for everyone'**
+  String get onboardingFlowStep2;
+
+  /// No description provided for @onboardingFlowStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'You can still read it here'**
+  String get onboardingFlowStep3;
+
+  /// No description provided for @onboardingFlowNow.
+  ///
+  /// In en, this message translates to:
+  /// **'now'**
+  String get onboardingFlowNow;
+
+  /// No description provided for @onboardingFlowFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'Works for messages received after setup. Everything stays on your phone.'**
+  String get onboardingFlowFootnote;
+
+  /// No description provided for @onboardingDemoName.
+  ///
+  /// In en, this message translates to:
+  /// **'Rahul'**
+  String get onboardingDemoName;
+
+  /// No description provided for @onboardingDemoMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'See you at 6?'**
+  String get onboardingDemoMessage;
+
   /// No description provided for @onboardingHowItWorksTitle.
   ///
   /// In en, this message translates to:
