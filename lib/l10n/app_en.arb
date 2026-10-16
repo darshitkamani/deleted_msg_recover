@@ -8,7 +8,8 @@
 
   "onboardingIntroTitle": "Never miss a deleted message",
   "onboardingIntroDescription": "This app quietly backs up your WhatsApp and WhatsApp Business notifications, so if someone deletes a message before you see it, you still can.",
-  "onboardingNotificationHint": "Tap Next, then turn this switch on",
+  "onboardingNotificationWhy": "Needed to save messages before they're deleted",
+  "onboardingNotificationHint": "Tap Next, then turn this switch on, Needed to save messages before they're deleted",
   "onboardingNotificationNote": "Tap Next and turn it on for this app, so it can save WhatsApp messages as they arrive. Works for messages received after setup, and everything stays on your phone.",
   "onboardingSimpleTitle": "Read deleted messages",
   "onboardingSimpleBody": "See what a WhatsApp message said, even after the sender deletes it.",
@@ -69,6 +70,23 @@
   "recoverTitle": "Message Recovery",
   "recoverTagline": "Get back what was deleted",
   "recoverPlusBadge": "Recovery+",
+  "firstRunLoaderTitle": "Getting things ready…",
+  "firstRunLoaderBody": "Setting up your recovered messages",
+  "overlayDialogTitle": "See deleted messages instantly",
+  "overlayDialogBody": "Get a popup with the original message the moment someone deletes or edits it, on top of WhatsApp or any app.",
+  "overlayDialogAction": "Turn on popup",
+  "overlayDialogLater": "Not now",
+  "overlayDialogCopy": "Copy",
+  "overlayDialogOpen": "Open WhatsApp",
+  "overlayDialogPreviewTitle": "{name} deleted a message",
+  "@overlayDialogPreviewTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "overlayPromoTitle": "Deleted-message popup",
+  "overlayPromoBody": "See deleted messages right on top of WhatsApp",
+  "overlayPromoAction": "Turn on",
   "recoverPermissionBannerTitle": "Notification access needed",
   "recoverPermissionBannerBody": "Turn this on so deleted messages can actually be caught.",
   "recoverPermissionBannerAction": "Enable now",

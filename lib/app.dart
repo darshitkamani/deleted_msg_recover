@@ -10,7 +10,6 @@ import 'core/ads/ads_service.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/app_state.dart';
 import 'core/update/update_service.dart';
-import 'features/apptour/app_tour_screen.dart';
 import 'features/home_shell.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/splash/splash_screen.dart';
@@ -51,11 +50,8 @@ class RecoverApp extends StatelessWidget {
               if (child != null) child,
               ValueListenableBuilder<bool>(
                 valueListenable: AdLabSettings.instance.showGoogleLab,
-                builder: (context, show, _) =>
-                    PreloadGoogleAds.instance.showAdCounter(
-                      showCounter: show,
-                      showInRelease: show,
-                    ),
+                builder: (context, show, _) => PreloadGoogleAds.instance
+                    .showAdCounter(showCounter: show, showInRelease: show),
               ),
               ValueListenableBuilder<bool>(
                 valueListenable: AdLabSettings.instance.showInspectorLab,
@@ -104,37 +100,21 @@ class _RootRouterState extends State<_RootRouter> {
 
   /// Starts [AdsService.init] (idempotent, guarded here so the follow-up
   /// reload below only runs once) at the right moment for this user:
-  ///  - Setup already finished (onboarding + app tour): as soon as the
-  ///    persisted flags and permission state are known, i.e. during the
-  ///    splash -- the SDK is warm long before HomeShell.
-  ///  - Setup still pending (first run, or onboarding re-run because
-  ///    notification access is missing): not during the splash or the
-  ///    onboarding permission steps, only once the app tour page is on
-  ///    screen, so a first-run user isn't hit with ad loading before then.
-  ///    That still leaves the whole tour to warm up before HomeShell.
+  ///  - Onboarding already finished: as soon as the persisted flags and
+  ///    permission state are known, i.e. during the splash -- the SDK is
+  ///    warm long before HomeShell.
+  ///  - Onboarding still pending (first run, or re-run because notification
+  ///    access is missing): not during the splash or onboarding, only once
+  ///    it's done. HomeShell then shows a short loader first
+  ///    ([AppState.showFirstRunLoader]), which gives ads their head start.
   void _maybeInitAds(AppState appState) {
     if (_adsInitStarted || !appState.ready || !appState.accessChecked) return;
-    final setupPending =
-        !appState.onboardingComplete || !appState.appTourComplete;
-    final onTourPage =
-        appState.onboardingComplete &&
-        !appState.appTourComplete &&
-        _splashMinTimeElapsed;
-    if (setupPending && !onTourPage) return;
+    if (!appState.onboardingComplete) return;
 
     _adsInitStarted = true;
-    AdsService.instance.init().then((_) {
-      // Warms up the one format the package still preloads: the MEDIUM
-      // native ad, the only size the app shows. Not reloadUnloadedAds(),
-      // which would also preload a small native ad nothing ever displays.
-      // Interstitial, rewarded interstitial and app open are not part of
-      // this -- AdsService loads those on demand.
-      // For a first-run user this starts on the app tour page, so the ad is
-      // usually ready by the time Continue (held for 3s) leads to HomeShell.
-      PreloadGoogleAds.instance.reloadNativeAd(
-        nativeADType: NativeADType.medium,
-      );
-    });
+    // Also warms up the first native ad -- inside init, before native slots
+    // are allowed to build (see AdsService.ready).
+    AdsService.instance.init();
   }
 
   @override
@@ -181,9 +161,8 @@ class _RootRouterState extends State<_RootRouter> {
     if (!appState.onboardingComplete) {
       return const OnboardingScreen();
     }
-    if (!appState.appTourComplete) {
-      return AppTourScreen(onContinue: appState.completeAppTour);
-    }
+    // No app tour page any more: HomeShell straight after onboarding, with
+    // its own short first-run loader.
     return const HomeShell();
   }
 }

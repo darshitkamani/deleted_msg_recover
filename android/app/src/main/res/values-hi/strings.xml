@@ -20,4 +20,5 @@
     <string name="overlay_copied">कॉपी हो गया</string>
     <string name="overlay_close">बंद करें</string>
     <string name="overlay_ad_badge">विज्ञापन</string>
+    <string name="overlay_settings_hint">सूची में “%1$s” ढूंढें (🔍 पर टैप करके खोजें) और उसे चालू करें</string>
 </resources>

@@ -36,6 +36,34 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   /// Whether the popup actually shows: switched on and permitted.
   bool get overlayActive => overlayEnabled && canDrawOverlays;
 
+  /// The Recover screen's "turn on the popup" card was closed -- hidden until
+  /// the next launch.
+  bool overlayPromoDismissed = false;
+
+  /// HomeShell's loading screen, shown for a few seconds right after
+  /// onboarding (in memory only: just that first arrival). It takes over the
+  /// old app tour page's job of giving ads a head start.
+  bool showFirstRunLoader = false;
+
+  void finishFirstRunLoader() {
+    if (!showFirstRunLoader) return;
+    showFirstRunLoader = false;
+    notifyListeners();
+  }
+
+  /// Whether HomeShell's popup-permission dialog has already been considered
+  /// this session -- it comes up at most once per launch.
+  bool overlayDialogHandled = false;
+
+  /// Whether to show that card: capturing works, but the popup isn't on.
+  bool get showOverlayPromo =>
+      notificationAccessGranted && !overlayActive && !overlayPromoDismissed;
+
+  void dismissOverlayPromo() {
+    overlayPromoDismissed = true;
+    notifyListeners();
+  }
+
   /// Deleted/edited messages that happened since the user last looked at
   /// the Deleted tab -- the badge on its bottom-nav icon. Covers changes
   /// detected while the app is open, which get no alert notification.
@@ -162,6 +190,10 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   /// mid-onboarding -- the user should still see the remaining steps.
   Future<void> completeOnboarding() async {
     onboardingComplete = true;
+    // HomeShell comes straight after onboarding now (no app tour page), and
+    // covers itself with a short loader on this first arrival -- see
+    // [showFirstRunLoader].
+    showFirstRunLoader = true;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_onboardingCompletePrefKey, true);

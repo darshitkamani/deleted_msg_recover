@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/demo_samples.dart';
 import '../../l10n/generated/app_localizations.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -15,6 +16,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with WidgetsBindingObserver {
   final _controller = PageController();
   int _page = 0;
+
+  /// Who sends (and deletes) what in the intro's flow, picked once.
+  DemoSample? _sample;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sample ??= DemoSample.random(context);
+  }
 
   /// The intro (which also covers notification access), then battery.
   static const _pageCount = 2;
@@ -104,6 +114,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   // Next here opens notification access until it's granted
                   // (see _onNextPressed), then moves on.
                   _IntroSlide(
+                    sample: _sample!,
                     notificationAccessGranted:
                         appState.notificationAccessGranted,
                     onAllowNotificationAccess:
@@ -188,10 +199,12 @@ class _DotsIndicator extends StatelessWidget {
 /// and, below it, the notification access that step 1 relies on, which this
 /// page's Next asks for.
 class _IntroSlide extends StatelessWidget {
+  final DemoSample sample;
   final bool notificationAccessGranted;
   final VoidCallback onAllowNotificationAccess;
 
   const _IntroSlide({
+    required this.sample,
     required this.notificationAccessGranted,
     required this.onAllowNotificationAccess,
   });
@@ -225,7 +238,7 @@ class _IntroSlide extends StatelessWidget {
           _FlowStep(
             number: 1,
             label: l10n.onboardingFlowStep1,
-            child: const _NotificationMock(),
+            child: _NotificationMock(sample: sample),
           ),
           _FlowStep(
             number: 2,
@@ -236,7 +249,7 @@ class _IntroSlide extends StatelessWidget {
             number: 3,
             label: l10n.onboardingFlowStep3,
             isLast: true,
-            child: const _RecoveredRowMock(),
+            child: _RecoveredRowMock(sample: sample),
           ),
           const SizedBox(height: 4),
           _NotificationAccessRow(
@@ -462,7 +475,9 @@ class _MockCard extends StatelessWidget {
 
 /// Step 1: an Android notification from WhatsApp.
 class _NotificationMock extends StatelessWidget {
-  const _NotificationMock();
+  final DemoSample sample;
+
+  const _NotificationMock({required this.sample});
 
   @override
   Widget build(BuildContext context) {
@@ -495,7 +510,7 @@ class _NotificationMock extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      l10n.onboardingDemoName,
+                      sample.name,
                       style: theme.textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -510,10 +525,7 @@ class _NotificationMock extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  l10n.onboardingDemoMessage,
-                  style: theme.textTheme.bodyMedium,
-                ),
+                Text(sample.message, style: theme.textTheme.bodyMedium),
               ],
             ),
           ),
@@ -568,7 +580,9 @@ class _DeletedBubbleMock extends StatelessWidget {
 
 /// Step 3: the same message as this app's Deleted tab shows it.
 class _RecoveredRowMock extends StatelessWidget {
-  const _RecoveredRowMock();
+  final DemoSample sample;
+
+  const _RecoveredRowMock({required this.sample});
 
   @override
   Widget build(BuildContext context) {
@@ -584,7 +598,7 @@ class _RecoveredRowMock extends StatelessWidget {
             radius: 16,
             backgroundColor: scheme.primary,
             child: Text(
-              l10n.onboardingDemoName.characters.first,
+              sample.name.characters.first,
               style: TextStyle(
                 color: scheme.onPrimary,
                 fontWeight: FontWeight.bold,
@@ -599,7 +613,7 @@ class _RecoveredRowMock extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      l10n.onboardingDemoName,
+                      sample.name,
                       style: theme.textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -626,7 +640,7 @@ class _RecoveredRowMock extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  l10n.onboardingDemoMessage,
+                  sample.message,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                   ),

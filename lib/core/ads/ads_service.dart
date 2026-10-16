@@ -27,6 +27,12 @@ class AdsService {
 
   Future<void>? _initFuture;
 
+  /// True once [init] has handed the package its config (and with it the
+  /// native ad layouts). Native ad slots wait for it (see NativeAdSlot): one
+  /// built earlier would request an ad the package can't render yet -- a
+  /// wasted request, retried on the package's defaults (and test ad id).
+  final ValueNotifier<bool> ready = ValueNotifier(false);
+
   /// The interstitial, rewarded interstitial and app open ad, all from the
   /// package's on-demand classes (loaded when needed, not preloaded). Null until [init]
   /// has finished with the fetched config -- and for good if that format is
@@ -148,6 +154,20 @@ class AdsService {
       ),
     );
 
+    // Warms up the one format the package still preloads: the MEDIUM native
+    // ad, the only size the app shows (not reloadUnloadedAds(), which would
+    // also preload a small native ad nothing ever displays). Started -- and
+    // awaited, which returns once the request is on its way -- before
+    // [ready] lets any native slot build: reloadNativeAd resets the loader
+    // first, so run alongside a slot's own request it would send a second
+    // one. A slot built after this just waits for the ad already loading.
+    if (config.showAd && config.showNative && config.nativeId != null) {
+      await PreloadGoogleAds.instance.reloadNativeAd(
+        nativeADType: NativeADType.medium,
+      );
+    }
+    ready.value = true;
+
     if (config.chatInterstitialEnabled) {
       _chatInterstitialId = config.interstitialId;
       _chatInterstitialEvery = config.chatInterstitialCounter < 1
@@ -176,9 +196,7 @@ class AdsService {
       // The cold-start ad counts toward the cooldown too.
       if (config.appOpenOnLaunchEnabled) _lastAppOpenAt = DateTime.now();
       AppStateEventNotifier.startListening();
-      _appStateSub ??= AppStateEventNotifier.appStateStream.listen(
-        _onAppState,
-      );
+      _appStateSub ??= AppStateEventNotifier.appStateStream.listen(_onAppState);
     }
   }
 
@@ -306,11 +324,12 @@ class AdsService {
       if (response.statusCode != HttpStatus.ok) return null;
       // Non-breaking spaces (U+00A0), which copying JSON out of a web page
       // or chat tends to leave as indentation, aren't valid JSON whitespace.
-      final body = (await response
-              .transform(utf8.decoder)
-              .join()
-              .timeout(const Duration(seconds: 10)))
-          .replaceAll(' ', ' ');
+      final body =
+          (await response
+                  .transform(utf8.decoder)
+                  .join()
+                  .timeout(const Duration(seconds: 10)))
+              .replaceAll(' ', ' ');
       if (jsonDecode(body) is! Map<String, dynamic>) return null;
       return body;
     } catch (e) {

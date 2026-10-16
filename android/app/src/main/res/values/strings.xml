@@ -20,4 +20,5 @@
     <string name="overlay_copied">Copied</string>
     <string name="overlay_close">Close</string>
     <string name="overlay_ad_badge">Ad</string>
+    <string name="overlay_settings_hint">Find “%1$s” in the list, then tap the toggle to turn it on</string>
 </resources>

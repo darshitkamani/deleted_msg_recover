@@ -25,7 +25,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'This app quietly backs up your WhatsApp and WhatsApp Business notifications, so if someone deletes a message before you see it, you still can.';
 
   @override
-  String get onboardingNotificationHint => 'Tap Next, then turn this switch on';
+  String get onboardingNotificationWhy =>
+      'Needed to save messages before they\'re deleted';
+
+  @override
+  String get onboardingNotificationHint =>
+      'Tap Next, then turn this switch on, Needed to save messages before they\'re deleted';
 
   @override
   String get onboardingNotificationNote =>
@@ -196,6 +201,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recoverPlusBadge => 'Recovery+';
+
+  @override
+  String get firstRunLoaderTitle => 'Getting things ready…';
+
+  @override
+  String get firstRunLoaderBody => 'Setting up your recovered messages';
+
+  @override
+  String get overlayDialogTitle => 'See deleted messages instantly';
+
+  @override
+  String get overlayDialogBody =>
+      'Get a popup with the original message the moment someone deletes or edits it, on top of WhatsApp or any app.';
+
+  @override
+  String get overlayDialogAction => 'Turn on popup';
+
+  @override
+  String get overlayDialogLater => 'Not now';
+
+  @override
+  String get overlayDialogCopy => 'Copy';
+
+  @override
+  String get overlayDialogOpen => 'Open WhatsApp';
+
+  @override
+  String overlayDialogPreviewTitle(String name) {
+    return '$name deleted a message';
+  }
+
+  @override
+  String get overlayPromoTitle => 'Deleted-message popup';
+
+  @override
+  String get overlayPromoBody =>
+      'See deleted messages right on top of WhatsApp';
+
+  @override
+  String get overlayPromoAction => 'Turn on';
 
   @override
   String get recoverPermissionBannerTitle => 'Notification access needed';

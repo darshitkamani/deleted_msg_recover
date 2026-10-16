@@ -13,6 +13,7 @@ import '../../widgets/app_tab_switcher.dart';
 import '../../widgets/chat_avatar.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/welcome_chat_tile.dart';
+import '../../core/ads/native_ad_slot.dart';
 
 /// Every edited or deleted message, aggregated across every chat and grouped
 /// by day, then by chat within each day -- unlike ChatsListScreen/ChatDetailScreen, which
@@ -169,7 +170,7 @@ class _DeletedFeedList extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: PreloadGoogleAds.instance.showNativeAd(),
+          child: const NativeAdSlot(),
         ),
         // Same app-authored explainer tile pinned above ChatsListScreen's
         // real conversations, shown here too -- always present regardless

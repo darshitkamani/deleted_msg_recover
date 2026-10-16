@@ -13,6 +13,7 @@ import '../../widgets/error_state.dart';
 import '../../widgets/welcome_chat_tile.dart';
 import '../../widgets/chat_avatar.dart';
 import 'chat_detail_screen.dart';
+import '../../core/ads/native_ad_slot.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -53,7 +54,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         // part of the list content -- same fixed-slot treatment as the
         // native ad in ChatDetailScreen. Medium, like every slot: the small
         // native ad is never loaded.
-        PreloadGoogleAds.instance.showNativeAd(),
+        const NativeAdSlot(),
 
         Expanded(
           child: RefreshIndicator(

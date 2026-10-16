@@ -12,6 +12,7 @@ import '../../widgets/ad_lab_dialog.dart';
 import '../chats/chat_detail_screen.dart';
 import '../chats/chats_list_screen.dart';
 import '../paywall/paywall_screen.dart';
+import '../../core/ads/native_ad_slot.dart';
 
 /// Landing screen for the Recover tab: three tiles -- Text Message routes to
 /// the existing recovered-chats list; Statuses and Direct just jump to their
@@ -86,7 +87,16 @@ class RecoverScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                PreloadGoogleAds.instance.showNativeAd(),
+                const NativeAdSlot(),
+                if (appState.showOverlayPromo) ...[
+                  const SizedBox(height: 16),
+                  _OverlayPromoCard(
+                    // Opens this app's "Display over other apps" screen if
+                    // needed; the card goes away once the popup is on.
+                    onTurnOn: () => appState.setOverlayEnabled(true),
+                    onDismiss: appState.dismissOverlayPromo,
+                  ),
+                ],
 
                 if (!appState.notificationAccessGranted) ...[
                   const SizedBox(height: 20),
@@ -309,6 +319,91 @@ class _RecoveryPlusPill extends StatelessWidget {
 /// Warns that notification access -- the one permission the whole app
 /// depends on -- isn't granted yet, right on the landing screen rather than
 /// only inside Settings, since without it nothing ever gets recovered.
+/// Promotes the deleted-message popup (DeletedOverlay.kt) to users who
+/// haven't turned it on: one compact row -- what it is, a Turn on button,
+/// and a close button that hides it until the next launch.
+class _OverlayPromoCard extends StatelessWidget {
+  final VoidCallback onTurnOn;
+  final VoidCallback onDismiss;
+
+  const _OverlayPromoCard({required this.onTurnOn, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTurnOn,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.picture_in_picture_alt_rounded,
+                  size: 19,
+                  color: scheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.overlayPromoTitle,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.overlayPromoBody,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: onTurnOn,
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                child: Text(l10n.overlayPromoAction),
+              ),
+              IconButton(
+                onPressed: onDismiss,
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PermissionBanner extends StatelessWidget {
   final String title;
   final String body;

@@ -12,6 +12,9 @@ import 'recover/direct_chat_screen.dart';
 import 'recover/recover_screen.dart';
 import 'settings/settings_screen.dart';
 import 'statuses/statuses_screen.dart';
+import '../widgets/first_run_loader.dart';
+import '../widgets/overlay_permission_dialog.dart';
+import '../core/ads/native_ad_slot.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -51,7 +54,10 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppState>().refreshData();
+      if (!mounted) return;
+      context.read<AppState>().refreshData();
+      // Now and then, ask for the deleted-message popup's permission.
+      OverlayPermissionPrompt.maybeSchedule(context);
     });
   }
 
@@ -99,9 +105,7 @@ class _HomeShellState extends State<HomeShell> {
             _index = pendingTab;
             _visitedTabs.add(pendingTab);
           });
-          appState.setDeletedTabVisible(
-            pendingTab == homeShellDeletedTabIndex,
-          );
+          appState.setDeletedTabVisible(pendingTab == homeShellDeletedTabIndex);
         }
       });
     }
@@ -122,7 +126,7 @@ class _HomeShellState extends State<HomeShell> {
     // shared app bar (title + settings action) above its own content.
     final showAppBar = _index != 0;
 
-    return PopScope(
+    final shell = PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
@@ -218,6 +222,21 @@ class _HomeShellState extends State<HomeShell> {
         // floatingActionButton: PreloadGoogleAds.instance.showAdCounter(),
       ),
     );
+
+    // Right after onboarding, a short loader covers the home screen while it
+    // (and its native ad) loads underneath -- see AppState.showFirstRunLoader.
+    // Always the same Stack, with [shell] always first, so the loader coming
+    // and going never rebuilds the home screen: that would throw away its
+    // native ad slot (and the ad in it) and request another.
+    return Stack(
+      children: [
+        shell,
+        if (appState.showFirstRunLoader)
+          Positioned.fill(
+            child: FirstRunLoader(onDone: appState.finishFirstRunLoader),
+          ),
+      ],
+    );
   }
 }
 
@@ -289,7 +308,7 @@ class _ExitAppDialog extends StatelessWidget {
                 border: Border.all(color: scheme.outlineVariant),
               ),
               clipBehavior: Clip.antiAlias,
-              child: PreloadGoogleAds.instance.showNativeAd(),
+              child: const NativeAdSlot(),
             ),
           ],
         ),

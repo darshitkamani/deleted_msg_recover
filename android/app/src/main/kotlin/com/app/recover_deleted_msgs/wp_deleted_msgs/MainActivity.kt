@@ -17,6 +17,7 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.webkit.MimeTypeMap
+import android.widget.Toast
 import androidx.annotation.NonNull
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -578,7 +579,14 @@ class MainActivity : FlutterActivity() {
      * order, falling back to this app's own App Info page if none resolve
      * (which still exists and lets the user find it manually).
      */
-    /** The system "Display over other apps" screen for this app (DeletedOverlay's permission). */
+    /**
+     * The system "Display over other apps" screen for this app (DeletedOverlay's permission).
+     *
+     * Asks for this app's own page, which Android 10 and below (and some OEM builds) open
+     * directly. Since Android 11 the system ignores the app part and always shows the list of
+     * all apps -- no app can get past that -- so there a hint naming this app is shown over it,
+     * to make it easy to find.
+     */
     private fun openOverlaySettings() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         val intent = Intent(
@@ -587,6 +595,14 @@ class MainActivity : FlutterActivity() {
         )
         try {
             startActivity(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val appName = applicationInfo.loadLabel(packageManager).toString()
+                Toast.makeText(
+                    this,
+                    getString(R.string.overlay_settings_hint, appName),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         } catch (_: Exception) {
             // Some OEM builds lack the per-app screen; fall back to the list of all apps.
             try {

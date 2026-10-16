@@ -128,10 +128,16 @@ abstract class AppLocalizations {
   /// **'This app quietly backs up your WhatsApp and WhatsApp Business notifications, so if someone deletes a message before you see it, you still can.'**
   String get onboardingIntroDescription;
 
+  /// No description provided for @onboardingNotificationWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Needed to save messages before they\'re deleted'**
+  String get onboardingNotificationWhy;
+
   /// No description provided for @onboardingNotificationHint.
   ///
   /// In en, this message translates to:
-  /// **'Tap Next, then turn this switch on'**
+  /// **'Tap Next, then turn this switch on, Needed to save messages before they\'re deleted'**
   String get onboardingNotificationHint;
 
   /// No description provided for @onboardingNotificationNote.
@@ -445,6 +451,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recovery+'**
   String get recoverPlusBadge;
+
+  /// No description provided for @firstRunLoaderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting things ready…'**
+  String get firstRunLoaderTitle;
+
+  /// No description provided for @firstRunLoaderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Setting up your recovered messages'**
+  String get firstRunLoaderBody;
+
+  /// No description provided for @overlayDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See deleted messages instantly'**
+  String get overlayDialogTitle;
+
+  /// No description provided for @overlayDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a popup with the original message the moment someone deletes or edits it, on top of WhatsApp or any app.'**
+  String get overlayDialogBody;
+
+  /// No description provided for @overlayDialogAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on popup'**
+  String get overlayDialogAction;
+
+  /// No description provided for @overlayDialogLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get overlayDialogLater;
+
+  /// No description provided for @overlayDialogCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get overlayDialogCopy;
+
+  /// No description provided for @overlayDialogOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open WhatsApp'**
+  String get overlayDialogOpen;
+
+  /// No description provided for @overlayDialogPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} deleted a message'**
+  String overlayDialogPreviewTitle(String name);
+
+  /// No description provided for @overlayPromoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted-message popup'**
+  String get overlayPromoTitle;
+
+  /// No description provided for @overlayPromoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'See deleted messages right on top of WhatsApp'**
+  String get overlayPromoBody;
+
+  /// No description provided for @overlayPromoAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get overlayPromoAction;
 
   /// No description provided for @recoverPermissionBannerTitle.
   ///

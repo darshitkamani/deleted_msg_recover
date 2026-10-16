@@ -25,8 +25,12 @@ class AppLocalizationsHi extends AppLocalizations {
       'यह ऐप आपके व्हाट्सएप और व्हाट्सएप बिजनेस नोटिफिकेशन का बैकअप चुपचाप रखता है, ताकि अगर कोई मैसेज देखने से पहले डिलीट कर दे, तो भी आप उसे पढ़ सकें।';
 
   @override
+  String get onboardingNotificationWhy =>
+      'डिलीट होने से पहले मैसेज सेव करने के लिए ज़रूरी';
+
+  @override
   String get onboardingNotificationHint =>
-      'आगे पर टैप करें, फिर यह स्विच चालू करें';
+      'आगे पर टैप करें, फिर यह स्विच चालू करें, डिलीट होने से पहले मैसेज सेव करने के लिए ज़रूरी';
 
   @override
   String get onboardingNotificationNote =>
@@ -197,6 +201,45 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get recoverPlusBadge => 'Recovery+';
+
+  @override
+  String get firstRunLoaderTitle => 'सब तैयार हो रहा है…';
+
+  @override
+  String get firstRunLoaderBody => 'आपके रिकवर मैसेज सेट किए जा रहे हैं';
+
+  @override
+  String get overlayDialogTitle => 'डिलीट मैसेज तुरंत देखें';
+
+  @override
+  String get overlayDialogBody =>
+      'जैसे ही कोई मैसेज डिलीट या एडिट करे, असली मैसेज के साथ एक पॉपअप पाएं, WhatsApp या किसी भी ऐप के ऊपर।';
+
+  @override
+  String get overlayDialogAction => 'पॉपअप चालू करें';
+
+  @override
+  String get overlayDialogLater => 'अभी नहीं';
+
+  @override
+  String get overlayDialogCopy => 'कॉपी करें';
+
+  @override
+  String get overlayDialogOpen => 'WhatsApp खोलें';
+
+  @override
+  String overlayDialogPreviewTitle(String name) {
+    return '$name ने एक मैसेज डिलीट किया';
+  }
+
+  @override
+  String get overlayPromoTitle => 'डिलीट-मैसेज पॉपअप';
+
+  @override
+  String get overlayPromoBody => 'डिलीट मैसेज सीधे WhatsApp के ऊपर देखें';
+
+  @override
+  String get overlayPromoAction => 'चालू करें';
 
   @override
   String get recoverPermissionBannerTitle => 'Notification access needed';
