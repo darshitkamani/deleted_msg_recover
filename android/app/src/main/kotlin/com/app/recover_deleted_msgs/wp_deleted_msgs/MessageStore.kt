@@ -713,6 +713,21 @@ class MessageStore private constructor(context: Context) :
         }
     }
 
+    /** The row's saved media type ("image", "video", ...), or null for a text-only message. */
+    fun mediaType(rowId: Long): String? {
+        try {
+            readableDatabase.rawQuery(
+                "SELECT media_type FROM messages WHERE id = ?",
+                arrayOf(rowId.toString())
+            ).use { cursor ->
+                return if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        } catch (e: SQLException) {
+            reportNonFatal("mediaType", e)
+            return null
+        }
+    }
+
     fun hasMedia(rowId: Long): Boolean {
         try {
             readableDatabase.rawQuery(

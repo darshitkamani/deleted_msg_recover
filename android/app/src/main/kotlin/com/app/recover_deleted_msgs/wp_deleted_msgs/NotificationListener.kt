@@ -31,6 +31,9 @@ private data class ExtractedMedia(val path: String, val type: String, val mime: 
 private const val PKG_WHATSAPP = "com.whatsapp"
 private const val PKG_WHATSAPP_BUSINESS = "com.whatsapp.w4b"
 
+/** How WhatsApp's notification text starts for a photo ("📷 Photo", or "📷 " + its caption). */
+private const val PHOTO_LABEL = "📷"
+
 // Filter logcat with `adb logcat -s NotifCapture` (or `flutter logs`, which
 // shows every tag) to see exactly what happens to each WhatsApp notification
 // as it comes in -- which package/title it belongs to, why it was skipped
@@ -97,6 +100,10 @@ class NotificationListener : NotificationListenerService() {
      * touched on [bgExecutor]. Lost on a process restart, where the reconciler does without it.
      */
     private val lastShown = HashMap<String, List<Pair<Long, String>>>()
+
+    /** The chat title each 1:1 notification (by key) last had, for a re-post titled with the
+     * user's own name after an inline reply -- see handlePosted. */
+    private val knownTitles = HashMap<String, String>()
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -494,7 +501,30 @@ class NotificationListener : NotificationListenerService() {
         // split what's really one group across a new "chat" row per count.
         // Stripping it back to the plain group name keeps them all mapped to
         // the same chatKey.
-        val title = ChatTitleUtils.normalize(rawTitle)
+        // The phone's own user, as WhatsApp names them in the notification ("You"). After an
+        // inline reply from the notification, WhatsApp re-posts it with the reply added as a
+        // message from this user -- and, for a 1:1 chat, with this user's name as the title.
+        val selfName = style.user.name?.toString()?.takeIf { it.isNotBlank() }
+        // WhatsApp gives incoming messages a Person; one without (when others have one) is
+        // the user's own.
+        val anyPerson = style.messages.any { it.person != null }
+        val isSelf = { m: NotificationCompat.MessagingStyle.Message ->
+            val name = m.person?.name?.toString()
+            (name != null && name == selfName) || (m.person == null && anyPerson)
+        }
+        var title = ChatTitleUtils.normalize(rawTitle)
+        if (!isGroup && selfName != null && title == selfName) {
+            // Keyed by the user's own name, a reply would start a separate "You" chat. The
+            // chat is really the other person's: named by their messages, or failing that by
+            // what this same notification was called last time.
+            val other = style.messages.lastOrNull { !isSelf(it) }?.person?.name?.toString()
+                ?.takeIf { it.isNotBlank() }
+            title = other?.let { ChatTitleUtils.normalize(it) } ?: knownTitles[sbn.key] ?: run {
+                Log.d(TAG, "skip key=${sbn.key}: titled with the user's own name, chat unknown")
+                return
+            }
+        }
+        if (!isGroup) knownTitles[sbn.key] = title
         val chatKey = "$pkg|$title"
         Log.d(TAG, "handling key=${sbn.key} chat=\"$title\" group=$isGroup messages=${style.messages.size}")
 
@@ -513,7 +543,7 @@ class NotificationListener : NotificationListenerService() {
         val previousShown = lastShown[sbn.key]
         lastShown[sbn.key] = style.messages.mapNotNull { m ->
             val text = m.text?.toString() ?: ""
-            if (isDownloadPlaceholder(text)) null else m.timestamp to text
+            if (isDownloadPlaceholder(text) || isSelf(m)) null else m.timestamp to text
         }
 
         val lastMessage = style.messages.lastOrNull()
@@ -521,6 +551,11 @@ class NotificationListener : NotificationListenerService() {
             val text = msg.text?.toString()
             if (text != null && isDownloadPlaceholder(text)) {
                 Log.d(TAG, "  skip message: download/upload placeholder (\"$text\")")
+                null
+            } else if (isSelf(msg)) {
+                // The user's own reply: not something to recover, and keeping it would either
+                // attribute it to the other person or later flag it as deleted.
+                Log.d(TAG, "  skip message: sent by the user (\"${text?.take(40)}\")")
                 null
             } else {
                 msg to WindowEntry(
@@ -579,6 +614,15 @@ class NotificationListener : NotificationListenerService() {
                     val rowId = action.previous.id
                     if (rowId == null) {
                         Log.w(TAG, "  edit action with no row id, dropping: ${action.previous}")
+                        continue
+                    }
+                    // Photos aren't tracked for edits: a photo's notification text changes for
+                    // reasons other than an edit (e.g. "📷 Photo" turning into its caption), so
+                    // it's left exactly as first captured -- still recorded, still detectable
+                    // as deleted.
+                    if (isPhoto(store, rowId, action.previous.text, action.updated.text)) {
+                        store.markStillActive(rowId, sbn.key)
+                        Log.d(TAG, "  photo text changed, not treated as an edit: ${action.previous.text.take(40)}")
                         continue
                     }
                     val applied = store.applyEdit(rowId, action.updated.text, System.currentTimeMillis())
@@ -665,6 +709,11 @@ class NotificationListener : NotificationListenerService() {
             Log.d(TAG, "chat=\"$title\": nothing new inserted from this notification")
         }
     }
+
+    /** A photo message: saved as an image, or still carrying WhatsApp's 📷 photo label. */
+    private fun isPhoto(store: MessageStore, rowId: Long, previousText: String, newText: String): Boolean =
+        store.mediaType(rowId) == "image" ||
+            previousText.startsWith(PHOTO_LABEL) || newText.startsWith(PHOTO_LABEL)
 
     private fun describeWindow(entries: List<WindowEntry>): String =
         entries.joinToString(prefix = "[", postfix = "]") { "${it.timestamp}|${it.sender}|${it.text.take(40)}" }
