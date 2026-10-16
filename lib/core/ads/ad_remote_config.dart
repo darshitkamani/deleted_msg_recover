@@ -16,11 +16,36 @@ class AdRemoteConfig {
   final int nativeCounter;
   final int interstitialCounter;
 
+  /// How long the cold-start app open ad may take to arrive before it's
+  /// given up on (it's then kept for the next return to the app). At least 1.
+  final int appOpenTimeoutSeconds;
+
+  /// The app open ad on returning to the app only comes after at least this
+  /// long in the background -- not for a quick trip to the share sheet or a
+  /// settings screen.
+  final int appOpenMinBackgroundSeconds;
+
+  /// At most one app open ad per this many seconds (cold start included).
+  final int appOpenCooldownSeconds;
+
   /// The interstitial shown when a chat tile is tapped (see
   /// AdsService.showInterstitialThen) -- on its own switch, separate from
   /// the every-Nth-navigation one ([showInterstitial]); both use
   /// [interstitialId].
   final bool showChatInterstitial;
+
+  /// The native ad in the deleted-message popup's expanded card (shown over
+  /// other apps, see DeletedOverlay.kt); uses [nativeId].
+  final bool showOverlayNative;
+
+  /// Whether that popup opens fully expanded (message, actions, ad) straight
+  /// away instead of as a small card the user taps to expand -- the switch
+  /// to turn off if AdMob/Play object to it.
+  final bool overlayAutoExpand;
+
+  /// At most one auto-expanded popup per this many seconds; any more within
+  /// it start as the small card. Values below 0 are treated as 0.
+  final int overlayAutoExpandIntervalSeconds;
 
   /// Show that ad on every Nth chat opened: 1 = every tap, 2 = every 2nd,
   /// ... Values below 1 are treated as 1.
@@ -53,8 +78,14 @@ class AdRemoteConfig {
     required this.showSplashAd,
     required this.nativeCounter,
     required this.interstitialCounter,
+    required this.appOpenTimeoutSeconds,
+    required this.appOpenMinBackgroundSeconds,
+    required this.appOpenCooldownSeconds,
     required this.showChatInterstitial,
     required this.chatInterstitialCounter,
+    required this.showOverlayNative,
+    required this.overlayAutoExpand,
+    required this.overlayAutoExpandIntervalSeconds,
     this.appOpenId,
     this.bannerId,
     this.nativeId,
@@ -81,8 +112,14 @@ class AdRemoteConfig {
     showSplashAd: true,
     nativeCounter: 0,
     interstitialCounter: 5,
+    appOpenTimeoutSeconds: 8,
+    appOpenMinBackgroundSeconds: 30,
+    appOpenCooldownSeconds: 120,
     showChatInterstitial: true,
     chatInterstitialCounter: 1,
+    showOverlayNative: true,
+    overlayAutoExpand: true,
+    overlayAutoExpandIntervalSeconds: 180,
     showAdMetricsLab: false,
   );
 
@@ -126,6 +163,18 @@ class AdRemoteConfig {
         'interstitialCounter',
         fallback.interstitialCounter,
       ),
+      appOpenTimeoutSeconds: intOr(
+        'appOpenTimeoutSeconds',
+        fallback.appOpenTimeoutSeconds,
+      ).clamp(1, 30),
+      appOpenMinBackgroundSeconds: intOr(
+        'appOpenMinBackgroundSeconds',
+        fallback.appOpenMinBackgroundSeconds,
+      ).clamp(0, 86400),
+      appOpenCooldownSeconds: intOr(
+        'appOpenCooldownSeconds',
+        fallback.appOpenCooldownSeconds,
+      ).clamp(0, 86400),
       showChatInterstitial: boolOr(
         'showChatInterstitial',
         fallback.showChatInterstitial,
@@ -134,6 +183,12 @@ class AdRemoteConfig {
         'chatInterstitialCounter',
         fallback.chatInterstitialCounter,
       ),
+      showOverlayNative: boolOr('showOverlayNative', fallback.showOverlayNative),
+      overlayAutoExpand: boolOr('overlayAutoExpand', fallback.overlayAutoExpand),
+      overlayAutoExpandIntervalSeconds: intOr(
+        'overlayAutoExpandIntervalSeconds',
+        fallback.overlayAutoExpandIntervalSeconds,
+      ).clamp(0, 86400),
       appOpenId: stringOrNull('appOpenId') ?? fallback.appOpenId,
       bannerId: stringOrNull('bannerId') ?? fallback.bannerId,
       nativeId: stringOrNull('nativeId') ?? fallback.nativeId,
@@ -161,8 +216,14 @@ class AdRemoteConfig {
         showSplashAd: showSplashAd,
         nativeCounter: nativeCounter,
         interstitialCounter: interstitialCounter,
+        appOpenTimeoutSeconds: appOpenTimeoutSeconds,
+        appOpenMinBackgroundSeconds: appOpenMinBackgroundSeconds,
+        appOpenCooldownSeconds: appOpenCooldownSeconds,
         showChatInterstitial: showChatInterstitial,
         chatInterstitialCounter: chatInterstitialCounter,
+        showOverlayNative: showOverlayNative,
+        overlayAutoExpand: overlayAutoExpand,
+        overlayAutoExpandIntervalSeconds: overlayAutoExpandIntervalSeconds,
         showAdMetricsLab: showAdMetricsLab,
         appOpenId: AdTestIds.appOpen,
         bannerId: AdTestIds.banner,
@@ -185,8 +246,14 @@ class AdRemoteConfig {
         'showSplashAd': showSplashAd,
         'nativeCounter': nativeCounter,
         'interstitialCounter': interstitialCounter,
+        'appOpenTimeoutSeconds': appOpenTimeoutSeconds,
+        'appOpenMinBackgroundSeconds': appOpenMinBackgroundSeconds,
+        'appOpenCooldownSeconds': appOpenCooldownSeconds,
         'showChatInterstitial': showChatInterstitial,
         'chatInterstitialCounter': chatInterstitialCounter,
+        'showOverlayNative': showOverlayNative,
+        'overlayAutoExpand': overlayAutoExpand,
+        'overlayAutoExpandIntervalSeconds': overlayAutoExpandIntervalSeconds,
         'showAdMetricsLab': showAdMetricsLab,
         if (appOpenId != null) 'appOpenId': appOpenId,
         if (bannerId != null) 'bannerId': bannerId,
@@ -228,6 +295,11 @@ class AdRemoteConfig {
   /// means off" rule, independent of [showInterstitial].
   bool get chatInterstitialEnabled =>
       showAd && showChatInterstitial && interstitialId != null;
+
+  /// The popup's native ad unit, or null when it's off: same "no id means
+  /// off" rule, independent of [showNative].
+  String? get overlayNativeAdUnitId =>
+      showAd && showOverlayNative ? nativeId : null;
 
   /// Whether an app open ad should be requested on a cold start (the old
   /// "splash" ad): same "no id means off" rule as [toAdFlag].

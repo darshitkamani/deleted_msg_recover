@@ -606,6 +606,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get settingsAlertsTitle => 'मैसेज डिलीट या एडिट होने पर सूचना दें';
 
   @override
+  String get settingsOverlayTitle =>
+      'मैसेज डिलीट या एडिट होने पर दूसरे ऐप्स के ऊपर पॉपअप दिखाएं';
+
+  @override
   String get settingsDataHeader => 'डेटा';
 
   @override

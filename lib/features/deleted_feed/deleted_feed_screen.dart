@@ -405,19 +405,45 @@ class _DeletedFeedRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // One line: who sent it (group chats only -- a 1:1 chat's name
+              // is already in the header above), what happened to it, and
+              // when. The message itself goes underneath.
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      sender ?? '',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurfaceVariant,
+                  if (sender != null) ...[
+                    Flexible(
+                      child: Text(
+                        sender,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onSurface,
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                  ],
+                  if (item.isPossiblyDeleted)
+                    _StatusTag(
+                      icon: Icons.help_outline_rounded,
+                      label: l10n.possiblyDeletedMessageLabel,
+                      color: theme.colorScheme.tertiary,
+                    )
+                  else if (item.isDeleted)
+                    _StatusTag(
+                      icon: Icons.delete_outline_rounded,
+                      label: l10n.deletedMessageLabel,
+                      color: theme.colorScheme.error,
+                    )
+                  else if (item.isEdited)
+                    _StatusTag(
+                      icon: Icons.edit_outlined,
+                      label: l10n.editedBadge,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     time,
                     style: theme.textTheme.labelSmall?.copyWith(
@@ -426,26 +452,7 @@ class _DeletedFeedRow extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              if (item.isPossiblyDeleted)
-                _StatusTag(
-                  icon: Icons.help_outline_rounded,
-                  label: l10n.possiblyDeletedMessageLabel,
-                  color: theme.colorScheme.tertiary,
-                )
-              else if (item.isDeleted)
-                _StatusTag(
-                  icon: Icons.delete_outline_rounded,
-                  label: l10n.deletedMessageLabel,
-                  color: theme.colorScheme.error,
-                )
-              else if (item.isEdited)
-                _StatusTag(
-                  icon: Icons.edit_outlined,
-                  label: l10n.editedBadge,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -580,19 +587,28 @@ class _StatusTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: color,
-            fontStyle: FontStyle.italic,
+    // A small tinted pill, so it reads as a label rather than as part of
+    // the message.
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

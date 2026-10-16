@@ -41,8 +41,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 18
-        versionName = "3.5.0"
+        versionCode = 19
+        versionName = "3.6.0"
         manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
@@ -79,6 +79,9 @@ dependencies {
     // AdvertisingIdClient, so the Meta Ad Lab can show this device's advertising ID
     // (needed to register it as a Meta Audience Network test device).
     implementation("com.google.android.gms:play-services-ads-identifier:18.0.0")
+    // Google Mobile Ads, for the native ad in the deleted-message popup (DeletedOverlay), which is
+    // plain native UI. Same version google_mobile_ads brings in -- keep them in step when it's bumped.
+    implementation("com.google.android.gms:play-services-ads:25.4.0")
     // BoM pins every Firebase artifact's version together; only declare Crashlytics itself,
     // the firebase_crashlytics Flutter plugin brings in firebase-common/-core transitively,
     // but not as `api`, so recordException() calls made directly from this module's own

@@ -10,4 +10,14 @@
     <string name="alert_edited_title_group">%1$s ने %2$s में एक मैसेज एडिट किया</string>
     <string name="alert_edited_body">पहले: %1$s\nअब: %2$s</string>
     <string name="alert_message_fallback">मैसेज</string>
+    <string name="overlay_title_many">%1$d मैसेज डिलीट किए गए</string>
+    <string name="overlay_title_many_edited">%1$d मैसेज एडिट किए गए</string>
+    <string name="overlay_title_many_mixed">%1$d मैसेज डिलीट या एडिट किए गए</string>
+    <string name="overlay_tap_hint">पूरा मैसेज देखने के लिए टैप करें</string>
+    <string name="overlay_open_app">सभी डिलीट मैसेज देखें</string>
+    <string name="overlay_open_chat_app">%1$s खोलें</string>
+    <string name="overlay_copy">कॉपी करें</string>
+    <string name="overlay_copied">कॉपी हो गया</string>
+    <string name="overlay_close">बंद करें</string>
+    <string name="overlay_ad_badge">विज्ञापन</string>
 </resources>

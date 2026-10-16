@@ -28,6 +28,14 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   Set<String> monitoredApps = {pkgWhatsApp, pkgWhatsAppBusiness};
   bool alertsEnabled = true;
 
+  /// The user's on/off choice for the deleted-message popup over other apps;
+  /// it only shows while [canDrawOverlays] too -- see [overlayActive].
+  bool overlayEnabled = true;
+  bool canDrawOverlays = false;
+
+  /// Whether the popup actually shows: switched on and permitted.
+  bool get overlayActive => overlayEnabled && canDrawOverlays;
+
   /// Deleted/edited messages that happened since the user last looked at
   /// the Deleted tab -- the badge on its bottom-nav icon. Covers changes
   /// detected while the app is open, which get no alert notification.
@@ -104,6 +112,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     await _guard(refreshMonitoredApps);
     await _guard(_loadAlertsEnabled);
+    await _guard(_loadOverlayEnabled);
     await refreshData();
     _eventSub ??= NativeBridge.events.listen((event) {
       if (event['type'] == 'open') {
@@ -195,6 +204,9 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
         await NativeBridge.isNotificationAccessGranted();
     ignoringBatteryOptimizations =
         await NativeBridge.isIgnoringBatteryOptimizations();
+    // Also refreshed on every resume, i.e. on returning from the system
+    // "Display over other apps" screen.
+    canDrawOverlays = await NativeBridge.canDrawOverlays();
     notifyListeners();
   }
 
@@ -219,6 +231,20 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _loadAlertsEnabled() async {
     alertsEnabled = await NativeBridge.getAlertsEnabled();
     notifyListeners();
+  }
+
+  Future<void> _loadOverlayEnabled() async {
+    overlayEnabled = await NativeBridge.getOverlayEnabled();
+    notifyListeners();
+  }
+
+  /// Turning it on without the permission sends the user to grant it; the
+  /// switch shows on once they come back with it granted.
+  Future<void> setOverlayEnabled(bool enabled) async {
+    overlayEnabled = enabled;
+    notifyListeners();
+    await NativeBridge.setOverlayEnabled(enabled);
+    if (enabled && !canDrawOverlays) await NativeBridge.openOverlaySettings();
   }
 
   Future<void> setAlertsEnabled(bool enabled) async {

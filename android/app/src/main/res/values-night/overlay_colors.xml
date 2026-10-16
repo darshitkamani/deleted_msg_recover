@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="overlay_surface">#FF1E2422</color>
+    <color name="overlay_surface_variant">#FF29302D</color>
+    <color name="overlay_on_surface">#FFE6EAE8</color>
+    <color name="overlay_on_surface_variant">#FFA9B2AE</color>
+    <color name="overlay_outline">#33FFFFFF</color>
+    <color name="overlay_accent">#FF25C062</color>
+    <color name="overlay_on_accent">#FF0B1A12</color>
+    <color name="overlay_deleted">#FFFF8A80</color>
+    <color name="overlay_ad_badge">#FFF2B705</color>
+</resources>

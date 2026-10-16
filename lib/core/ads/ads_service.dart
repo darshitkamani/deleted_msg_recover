@@ -6,6 +6,7 @@ import 'package:preload_google_ads/preload_google_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../widgets/ad_loading_dialog.dart';
+import '../native_bridge.dart';
 import 'ad_lab_settings.dart';
 import 'ad_remote_config.dart';
 import 'native_ad_sizing.dart';
@@ -80,6 +81,21 @@ class AdsService {
     return _initFuture ??= _initialize();
   }
 
+  /// How long [init] waits for a fresh config download when there's a copy
+  /// saved from an earlier launch to fall back on. Longer than that and the
+  /// saved copy is used (the download still finishes and is saved for next
+  /// time), so a slow network doesn't push the cold-start app open ad past
+  /// its window.
+  static const _freshConfigWait = Duration(seconds: 2);
+
+  /// The app open ad shown on returning to the app -- see [_onAppState].
+  OnDemandAppOpenAd? _appOpen;
+  StreamSubscription<AppState>? _appStateSub;
+  DateTime? _backgroundedAt;
+  DateTime? _lastAppOpenAt;
+  int _appOpenMinBackground = 0;
+  int _appOpenCooldown = 0;
+
   Future<void> _initialize() async {
     final fetched = await _fetchAdConfig();
 
@@ -92,6 +108,33 @@ class AdsService {
     // without an update -- unless they've been set by hand from the hidden
     // ad lab dialog (see AdLabSettings).
     AdLabSettings.instance.applyRemoteFlag(config.showAdMetricsLab);
+    // Handed to the native deleted-message popup, which shows without
+    // Flutter running and so can't ask for it then.
+    debugPrint('Overlay ad unit: ${config.overlayNativeAdUnitId}');
+    unawaited(
+      NativeBridge.setOverlayConfig(
+        adUnitId: config.overlayNativeAdUnitId,
+        autoExpand: config.overlayAutoExpand,
+        autoExpandIntervalSeconds: config.overlayAutoExpandIntervalSeconds,
+      ).catchError((Object e) => debugPrint('Overlay config: $e')),
+    );
+
+    // The cold-start app open ad is requested first -- before the SDK set-up
+    // below and before any native ad -- because it's the one racing a
+    // timeout: the first ad request of a fresh process is the slowest (the
+    // SDK loads its code module then). Not awaited: nothing waits on the
+    // ad; if it misses the timeout it's kept and shown on the next resume.
+    final OnDemandAppOpenAd? appOpen =
+        config.appOpenOnLaunchEnabled || config.appOpenOnResumeEnabled
+        ? OnDemandAppOpenAd(adUnitId: config.appOpenId!)
+        : null;
+    if (appOpen != null && config.appOpenOnLaunchEnabled) {
+      unawaited(
+        appOpen.loadAndShow(
+          timeout: Duration(seconds: config.appOpenTimeoutSeconds),
+        ),
+      );
+    }
 
     await PreloadGoogleAds.instance.initialize(
       adConfigData: AdConfigData(
@@ -122,16 +165,48 @@ class AdsService {
         adUnitId: config.rewardedInterstitialId!,
       );
     }
-    if (config.appOpenOnLaunchEnabled || config.appOpenOnResumeEnabled) {
-      final appOpen = OnDemandAppOpenAd(adUnitId: config.appOpenId!);
-      // Every return from the background, requested at that moment.
-      if (config.appOpenOnResumeEnabled) appOpen.startListening();
-      // Once for this cold start. Not awaited: nothing waits on the ad, and
-      // it's simply skipped if it doesn't arrive in time.
-      if (config.appOpenOnLaunchEnabled) {
-        appOpen.loadAndShow(timeout: const Duration(seconds: 6));
-      }
+    // Returns from the background, requested at that moment -- but not on
+    // every one (see [_onAppState]). Not the package's own startListening(),
+    // which requests one on every single return, even after a few seconds
+    // in the share sheet or a settings screen.
+    if (appOpen != null && config.appOpenOnResumeEnabled) {
+      _appOpen = appOpen;
+      _appOpenMinBackground = config.appOpenMinBackgroundSeconds;
+      _appOpenCooldown = config.appOpenCooldownSeconds;
+      // The cold-start ad counts toward the cooldown too.
+      if (config.appOpenOnLaunchEnabled) _lastAppOpenAt = DateTime.now();
+      AppStateEventNotifier.startListening();
+      _appStateSub ??= AppStateEventNotifier.appStateStream.listen(
+        _onAppState,
+      );
     }
+  }
+
+  /// Shows the app open ad on returning to the app, only when the user was
+  /// actually away -- at least `appOpenMinBackgroundSeconds` in the
+  /// background (so popping out to the share sheet, a permission screen or
+  /// WhatsApp and straight back doesn't count) -- and at most once per
+  /// `appOpenCooldownSeconds`, counting the cold-start one. A request in
+  /// flight is never doubled up: [OnDemandAppOpenAd.loadAndShow] ignores
+  /// calls while busy, and reuses an ad that arrived too late last time.
+  void _onAppState(AppState state) {
+    final now = DateTime.now();
+    if (state == AppState.background) {
+      _backgroundedAt = now;
+      return;
+    }
+    final appOpen = _appOpen;
+    final leftAt = _backgroundedAt;
+    _backgroundedAt = null;
+    if (appOpen == null || leftAt == null) return;
+    if (now.difference(leftAt).inSeconds < _appOpenMinBackground) return;
+    final last = _lastAppOpenAt;
+    if (last != null && now.difference(last).inSeconds < _appOpenCooldown) {
+      return;
+    }
+    if (appOpen.isBusy) return;
+    _lastAppOpenAt = now;
+    appOpen.loadAndShow();
   }
 
   /// Sizes the native ad slots to fit the ad drawn in them -- the package's fixed caps clip the
@@ -180,22 +255,32 @@ class AdsService {
   /// Fetches this app's ad config from [_adConfigUrl], parsed into an
   /// [AdRemoteConfig].
   ///
-  /// Every launch asks the server, so an edit to the file is picked up on the
-  /// very next launch. A fetch that fails (no network, timeout, bad response,
-  /// invalid JSON) is not the end of the road: the last config fetched
-  /// successfully is kept on the device and used instead. Only if there is
-  /// nothing at all -- a brand-new install that never managed a fetch -- does
-  /// it fall back to [AdRemoteConfig.defaults] entirely, and field-by-field
-  /// via [AdRemoteConfig.fromJson] otherwise. Ad behavior must never depend on
+  /// Every launch asks the server, and an edit to the file is normally
+  /// picked up on the very next launch. But with a copy saved from an
+  /// earlier launch, the download only gets [_freshConfigWait]: slower than
+  /// that and the saved copy is used for this launch, while the download
+  /// carries on and saves itself for the next one. A brand-new install, with
+  /// nothing saved, waits for the download in full. A fetch that fails (no
+  /// network, timeout, bad response, invalid JSON) never replaces the saved
+  /// copy; only with nothing at all does it fall back to
+  /// [AdRemoteConfig.defaults] entirely, and field-by-field via
+  /// [AdRemoteConfig.fromJson] otherwise. Ad behavior must never depend on
   /// the server actually being reachable.
   Future<AdRemoteConfig> _fetchAdConfig() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      var raw = await _downloadAdConfig();
-      if (raw != null) {
-        await prefs.setString(_adConfigCacheKey, raw);
+      final saved = prefs.getString(_adConfigCacheKey);
+      final download = _downloadAdConfig().then((raw) async {
+        if (raw != null) await prefs.setString(_adConfigCacheKey, raw);
+        return raw;
+      });
+      final String? raw;
+      if (saved == null) {
+        raw = await download;
       } else {
-        raw = prefs.getString(_adConfigCacheKey);
+        raw =
+            await download.timeout(_freshConfigWait, onTimeout: () => null) ??
+            saved;
       }
       if (raw == null) return AdRemoteConfig.defaults;
       return AdRemoteConfig.fromJson(

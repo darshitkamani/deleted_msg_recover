@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colors for the "message deleted" popup (DeletedOverlay) and its native ad; dark versions
+     in values-night. -->
+<resources>
+    <color name="overlay_surface">#FFFFFFFF</color>
+    <color name="overlay_surface_variant">#FFF1F4F2</color>
+    <color name="overlay_on_surface">#FF1B1F1D</color>
+    <color name="overlay_on_surface_variant">#FF5E6662</color>
+    <color name="overlay_outline">#1F000000</color>
+    <color name="overlay_accent">#FF1DA851</color>
+    <color name="overlay_on_accent">#FFFFFFFF</color>
+    <color name="overlay_deleted">#FFD93025</color>
+    <color name="overlay_ad_badge">#FFF2B705</color>
+</resources>

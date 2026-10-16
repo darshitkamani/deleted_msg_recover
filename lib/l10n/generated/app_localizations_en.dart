@@ -607,6 +607,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Notify me when a message is deleted or edited';
 
   @override
+  String get settingsOverlayTitle =>
+      'Show a popup over other apps when a message is deleted or edited';
+
+  @override
   String get settingsDataHeader => 'Data';
 
   @override

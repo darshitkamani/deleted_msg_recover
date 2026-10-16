@@ -1178,6 +1178,12 @@ abstract class AppLocalizations {
   /// **'Notify me when a message is deleted or edited'**
   String get settingsAlertsTitle;
 
+  /// No description provided for @settingsOverlayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a popup over other apps when a message is deleted or edited'**
+  String get settingsOverlayTitle;
+
   /// No description provided for @settingsDataHeader.
   ///
   /// In en, this message translates to:

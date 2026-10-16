@@ -155,6 +155,46 @@ class NativeBridge {
     });
   }
 
+  /// The user's on/off choice for the deleted-message popup shown over other
+  /// apps (also needs [canDrawOverlays]).
+  static Future<bool> getOverlayEnabled() async {
+    final result = await _methodChannel.invokeMethod<bool>('getOverlayEnabled');
+    return result ?? true;
+  }
+
+  static Future<void> setOverlayEnabled(bool enabled) {
+    return _methodChannel.invokeMethod('setOverlayEnabled', {
+      'enabled': enabled,
+    });
+  }
+
+  /// Whether "Display over other apps" is granted.
+  static Future<bool> canDrawOverlays() async {
+    final result = await _methodChannel.invokeMethod<bool>('canDrawOverlays');
+    return result ?? false;
+  }
+
+  /// Opens the system "Display over other apps" screen for this app.
+  static Future<void> openOverlaySettings() {
+    return _methodChannel.invokeMethod('openOverlaySettings');
+  }
+
+  /// The popup's settings from the hosted config: the native ad unit in its
+  /// expanded card (null for none), and whether it opens expanded straight
+  /// away -- at most once per [autoExpandIntervalSeconds]. Kept natively,
+  /// since the popup shows with no Flutter engine running.
+  static Future<void> setOverlayConfig({
+    required String? adUnitId,
+    required bool autoExpand,
+    required int autoExpandIntervalSeconds,
+  }) {
+    return _methodChannel.invokeMethod('setOverlayConfig', {
+      'adUnitId': adUnitId,
+      'autoExpand': autoExpand,
+      'autoExpandIntervalSeconds': autoExpandIntervalSeconds,
+    });
+  }
+
   /// The screen a tapped deleted/edited alert asked to open (`'deleted'`),
   /// or null. Cleared on read, so each tap is handled once.
   static Future<String?> consumeOpenTarget() {

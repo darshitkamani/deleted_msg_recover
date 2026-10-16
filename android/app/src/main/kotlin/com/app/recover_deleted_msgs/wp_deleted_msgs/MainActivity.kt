@@ -126,6 +126,25 @@ class MainActivity : FlutterActivity() {
                             MonitorPrefs.setAlertsEnabled(applicationContext, call.argument<Boolean>("enabled") ?: true)
                             result.success(null)
                         }
+                        "getOverlayEnabled" -> result.success(MonitorPrefs.overlayEnabled(applicationContext))
+                        "setOverlayEnabled" -> {
+                            MonitorPrefs.setOverlayEnabled(applicationContext, call.argument<Boolean>("enabled") ?: true)
+                            result.success(null)
+                        }
+                        "canDrawOverlays" -> result.success(DeletedOverlay.hasPermission(applicationContext))
+                        "openOverlaySettings" -> {
+                            openOverlaySettings()
+                            result.success(null)
+                        }
+                        "setOverlayConfig" -> {
+                            MonitorPrefs.setOverlayAdUnitId(applicationContext, call.argument<String>("adUnitId"))
+                            MonitorPrefs.setOverlayAutoExpand(
+                                applicationContext,
+                                call.argument<Boolean>("autoExpand") ?: false,
+                                (call.argument<Int>("autoExpandIntervalSeconds") ?: 180) * 1000L
+                            )
+                            result.success(null)
+                        }
                         "getMonitoredApps" -> result.success(MonitorPrefs.getMonitored(applicationContext).toList())
                         "setMonitoredApps" -> {
                             val apps = call.argument<List<String>>("apps") ?: emptyList()
@@ -536,6 +555,8 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         AppVisibility.isForeground = true
+        // The popup is for while the user is elsewhere; the app itself shows it all.
+        DeletedOverlay.dismiss()
         // Nudges the system to reconnect the notification listener if it
         // was silently unbound (e.g. after the process was killed and later
         // restarted by Android without rebinding it) -- harmless no-op if
@@ -557,6 +578,24 @@ class MainActivity : FlutterActivity() {
      * order, falling back to this app's own App Info page if none resolve
      * (which still exists and lets the user find it manually).
      */
+    /** The system "Display over other apps" screen for this app (DeletedOverlay's permission). */
+    private fun openOverlaySettings() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        )
+        try {
+            startActivity(intent)
+        } catch (_: Exception) {
+            // Some OEM builds lack the per-app screen; fall back to the list of all apps.
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     private fun openBackgroundAppSettings() {
         val manufacturer = Build.MANUFACTURER.lowercase()
         val candidates = mutableListOf<Intent>()

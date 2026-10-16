@@ -592,6 +592,10 @@ class NotificationListener : NotificationListenerService() {
                         applicationContext, rowId, title, action.previous.sender,
                         action.previous.text, action.updated.text
                     )
+                    DeletedOverlay.showEdited(
+                        applicationContext, chatKey.substringBefore('|'), title, action.previous.sender,
+                        action.previous.text, action.updated.text
+                    )
                     Log.i(
                         TAG,
                         "Message => EDIT chat=\"$title\" \"${action.previous.text.take(40)}\" -> \"${action.updated.text.take(40)}\""
@@ -681,7 +685,14 @@ class NotificationListener : NotificationListenerService() {
         val possible = source == MessageStore.SOURCE_POSSIBLE
         store.applyDelete(rowId, System.currentTimeMillis(), source, detail)
         Log.i(TAG, "Message => DELETE ($source) chat=\"$title\" text=${previous.text.take(60)} detail=$detail")
-        AlertNotifier.notifyDeleted(applicationContext, rowId, title, previous.sender, previous.text, possible)
+        // A possible deletion is only a guess, so it's recorded and shown in the app's Deleted
+        // tab (marked "Possibly deleted") but never announced -- no notification, no popup.
+        if (!possible) {
+            AlertNotifier.notifyDeleted(applicationContext, rowId, title, previous.sender, previous.text)
+            DeletedOverlay.showDeleted(
+                applicationContext, chatKey.substringBefore('|'), title, previous.sender, previous.text, false
+            )
+        }
         EventBridge.emit(
             mapOf(
                 "type" to "deleted",
