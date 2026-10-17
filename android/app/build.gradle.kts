@@ -30,6 +30,13 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // The app is only translated to English and Hindi; libraries (AndroidX,
+    // Play services, the ads SDK) would otherwise add ~85 languages of their
+    // own strings to the bundle.
+    androidResources {
+        localeFilters += listOf("en", "hi")
+    }
+
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
@@ -41,8 +48,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 20
-        versionName = "3.7.0"
+        versionCode = 22
+        versionName = "3.9.0"
         manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
